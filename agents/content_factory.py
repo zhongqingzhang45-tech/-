@@ -122,3 +122,157 @@ class ContentFactory:
             if content_type:
                 q = q.filter(Content.content_type == content_type)
             return q.order_by(Content.created_at.desc()).limit(limit).all()
+
+    # ============ 新增：4 种内容类型 ============
+
+    def _get_analysis(self, product) -> Dict[str, Any]:
+        analysis = self.analysis_engine.analyze_product(product)
+        return self.analysis_engine.to_dict(analysis) if analysis else {}
+
+    def generate_copy(self, product) -> Optional[Content]:
+        """通用带货文案（content_type='copywriting'）"""
+        a = self._get_analysis(product)
+        prompt = prompts.PROMPT_WRITE_COPY.format(
+            title=product.title,
+            price=getattr(product, "price", 0),
+            selling_points="、".join(a.get("selling_points", [])[:5]),
+            pain_points="、".join(a.get("pain_points", [])[:5]),
+            use_scenarios="、".join(a.get("use_scenarios", [])[:3]),
+            target_audience="、".join(a.get("target_audience", [])[:3]),
+        )
+        result = self.llm.chat_json(prompts.SYSTEM_WRITER_COPY, prompt)
+        if not result:
+            return None
+        content = Content(
+            product_id=product.id,
+            content_type="copywriting",
+            platform="douyin",
+            title=result.get("title", ""),
+            body=result.get("body", ""),
+            call_to_action=result.get("call_to_action", ""),
+            tags=result.get("tags", []),
+            cart_text=result.get("cart_text", ""),
+            raw_prompt=prompt,
+            raw_response=str(result),
+            status="draft",
+        )
+        with get_db() as db:
+            db.add(content)
+            db.commit()
+            db.refresh(content)
+        logger.success(f"[文案] {content.title[:30]} 已生成")
+        return content
+
+    def generate_review(self, product) -> Optional[Content]:
+        """用户视角测评稿（content_type='review'）"""
+        a = self._get_analysis(product)
+        prompt = prompts.PROMPT_WRITE_REVIEW.format(
+            title=product.title,
+            price=getattr(product, "price", 0),
+            selling_points="、".join(a.get("selling_points", [])[:5]),
+            pain_points="、".join(a.get("pain_points", [])[:5]),
+            use_scenarios="、".join(a.get("use_scenarios", [])[:3]),
+        )
+        result = self.llm.chat_json(prompts.SYSTEM_WRITER_REVIEW, prompt)
+        if not result:
+            return None
+        content = Content(
+            product_id=product.id,
+            content_type="review",
+            platform="xhs",
+            title=result.get("title", ""),
+            body=result.get("body", ""),
+            call_to_action=result.get("call_to_action", ""),
+            tags=result.get("tags", []),
+            cart_text=result.get("cart_text", ""),
+            raw_prompt=prompt,
+            raw_response=str(result),
+            status="draft",
+        )
+        with get_db() as db:
+            db.add(content)
+            db.commit()
+            db.refresh(content)
+        logger.success(f"[测评] {content.title[:30]} 已生成")
+        return content
+
+    def generate_story_script(self, product) -> Optional[Content]:
+        """小短剧/剧情脚本（content_type='plot_script'）"""
+        a = self._get_analysis(product)
+        prompt = prompts.PROMPT_WRITE_STORY.format(
+            title=product.title,
+            selling_points="、".join(a.get("selling_points", [])[:5]),
+            pain_points="、".join(a.get("pain_points", [])[:5]),
+            use_scenarios="、".join(a.get("use_scenarios", [])[:3]),
+        )
+        result = self.llm.chat_json(prompts.SYSTEM_WRITER_STORY, prompt)
+        if not result:
+            return None
+        content = Content(
+            product_id=product.id,
+            content_type="plot_script",
+            platform="douyin",
+            title=result.get("title", ""),
+            body=result.get("body", ""),
+            call_to_action=result.get("call_to_action", ""),
+            tags=result.get("tags", []),
+            cart_text=result.get("cart_text", ""),
+            raw_prompt=prompt,
+            raw_response=str(result),
+            status="draft",
+        )
+        with get_db() as db:
+            db.add(content)
+            db.commit()
+            db.refresh(content)
+        logger.success(f"[剧情脚本] {content.title[:30]} 已生成")
+        return content
+
+    def generate_compare(self, product) -> Optional[Content]:
+        """对比文案（content_type='compare'）"""
+        a = self._get_analysis(product)
+        prompt = prompts.PROMPT_WRITE_COMPARE.format(
+            title=product.title,
+            price=getattr(product, "price", 0),
+            selling_points="、".join(a.get("selling_points", [])[:5]),
+            advantages="、".join(a.get("advantages", [])[:5]),
+            target_audience="、".join(a.get("target_audience", [])[:3]),
+        )
+        result = self.llm.chat_json(prompts.SYSTEM_WRITER_COMPARE, prompt)
+        if not result:
+            return None
+        content = Content(
+            product_id=product.id,
+            content_type="compare",
+            platform="wechat",
+            title=result.get("title", ""),
+            body=result.get("body", ""),
+            call_to_action=result.get("call_to_action", ""),
+            tags=result.get("tags", []),
+            cart_text=result.get("cart_text", ""),
+            raw_prompt=prompt,
+            raw_response=str(result),
+            status="draft",
+        )
+        with get_db() as db:
+            db.add(content)
+            db.commit()
+            db.refresh(content)
+        logger.success(f"[对比文案] {content.title[:30]} 已生成")
+        return content
+
+    # ---------- 一次性生成 6 种内容（图文+脚本+带货文案+测评+剧情脚本+对比文案） ----------
+    def generate_all(self, product) -> Dict[str, int]:
+        """为单个商品生成全部内容类型，返回各类型的成功条数"""
+        counters = {"image_text": 0, "script": 0, "copywriting": 0,
+                    "review": 0, "plot_script": 0, "compare": 0}
+        c = self.generate_xhs_post(product)
+        if c: counters["image_text"] = 1
+        s = self.generate_video_script(product)
+        if s: counters["script"] = 1
+        if self.generate_copy(product): counters["copywriting"] = 1
+        if self.generate_review(product): counters["review"] = 1
+        if self.generate_story_script(product): counters["plot_script"] = 1
+        if self.generate_compare(product): counters["compare"] = 1
+        logger.info(f"[{product.title[:30]}] 内容生成完成: {counters}")
+        return counters
