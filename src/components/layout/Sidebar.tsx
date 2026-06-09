@@ -1,24 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Users,
-  Bot,
-  FolderOpen,
-  BarChart3,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-} from 'lucide-react';
+import { Users, Bot, CreditCard, Settings, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { useAppStore } from '@/stores';
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: '控制台' },
-  { path: '/customers', icon: Users, label: '客户管理' },
-  { path: '/ai-agent', icon: Bot, label: 'AI智能体' },
-  { path: '/materials', icon: FolderOpen, label: '素材中心' },
-  { path: '/analytics', icon: BarChart3, label: '数据分析' },
-  { path: '/settings', icon: Settings, label: '系统设置' },
+  { path: '/', icon: Users, label: '客户列表', badge: true },
+  { path: '/customers', icon: Users, label: '客户管理', hidden: true },
+  { path: '/agent', icon: Bot, label: '机器人配置' },
+  { path: '/payments', icon: CreditCard, label: '支付记录' },
+  { path: '/settings', icon: Settings, label: '设置', hidden: true },
 ];
 
 export default function Sidebar() {
@@ -35,9 +24,12 @@ export default function Sidebar() {
         {!sidebarCollapsed && (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-white" />
+              <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-white">AI营销</span>
+            <div>
+              <span className="font-bold text-white text-sm block">LifeOS</span>
+              <span className="text-xs text-gray-500">成交机器人</span>
+            </div>
           </div>
         )}
         <button
@@ -54,7 +46,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="p-2 space-y-1">
-        {navItems.map((item) => (
+        {navItems.filter((item) => !item.hidden).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -67,7 +59,16 @@ export default function Sidebar() {
             }
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && <span className="text-sm">{item.label}</span>}
+            {!sidebarCollapsed && (
+              <>
+                <span className="text-sm flex-1">{item.label}</span>
+                {item.badge && (
+                  <span className="px-1.5 py-0.5 bg-accent-500/30 text-accent-300 text-xs rounded-full">
+                    42
+                  </span>
+                )}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -76,9 +77,19 @@ export default function Sidebar() {
       {!sidebarCollapsed && (
         <div className="absolute bottom-4 left-4 right-4">
           <div className="bg-dark-50 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span className="text-xs text-gray-400">AI智能体运行中</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                <span className="text-xs text-gray-400">微信已连接</span>
+              </div>
+              <span className="text-xs text-success">监控中</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
+                <span className="text-xs text-gray-400">AI成交机器人</span>
+              </div>
+              <span className="text-xs text-primary-300">运行中</span>
             </div>
           </div>
         </div>
