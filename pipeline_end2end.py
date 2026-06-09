@@ -122,10 +122,12 @@ def step_generate(products_json_path: str, top_n: int = 10) -> List[Dict[str, An
 
         try:
             recomposer.download_assets(image_urls=img_urls)
-            img_paths = [str(p) for p in (Config.DATA_DIR / "images" / f"product_{product.id}").rglob("*.jpg")
-                         if p.is_file()][:6]
-            if not img_paths and Path(recomposer.image_recomposer_dir).exists():
-                pass
+            img_paths = []
+            out_dir = ensure_dir(Config.IMAGE_DIR / f"product_{product.id}")
+            if out_dir.exists():
+                img_paths = sorted(out_dir.rglob("*.jpg")) + sorted(out_dir.rglob("*.png"))
+                img_paths = [str(p) for p in img_paths if p.is_file()][:9]
+            # 没下载到图也没关系（后续可以手放图）
         except Exception as e:
             logger.warning(f"下载/合成图片失败: {e}")
             img_paths = []
