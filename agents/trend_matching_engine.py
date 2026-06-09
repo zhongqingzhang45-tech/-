@@ -33,10 +33,20 @@ class TrendMatcher:
         return list(dict.fromkeys(tokens))
 
     def _get_selling_points(self, product: Product) -> List[str]:
-        """从 ProductAnalysis 或 extra 中取卖点"""
-        analysis = getattr(product, "analysis", None)
-        if analysis and getattr(analysis, "selling_points", None):
-            return list(analysis.selling_points)
+        """从 ProductAnalysis 或 extra 中取卖点。避免访问懒加载关系"""
+        # 方案 1：查 DB（不受 detached session 限制）
+        try:
+            from db import get_db
+            with get_db() as db:
+                pa = db.query(ProductAnalysis).filter(
+                    ProductAnalysis.product_id == product.id
+                ).first()
+                if pa and pa.selling_points:
+                    return list(pa.selling_points)
+        except Exception as e:
+            logger.debug(f"_get_selling_points DB 读取异常: {e}")
+
+        # 方案 2：从 extra 中兜底
         extra = product.extra or {}
         sp = extra.get("selling_points")
         if isinstance(sp, list):
@@ -46,9 +56,17 @@ class TrendMatcher:
         return []
 
     def _get_use_scenarios(self, product: Product) -> List[str]:
-        analysis = getattr(product, "analysis", None)
-        if analysis and getattr(analysis, "use_scenarios", None):
-            return list(analysis.use_scenarios)
+        try:
+            from db import get_db
+            with get_db() as db:
+                pa = db.query(ProductAnalysis).filter(
+                    ProductAnalysis.product_id == product.id
+                ).first()
+                if pa and pa.use_scenarios:
+                    return list(pa.use_scenarios)
+        except Exception as e:
+            logger.debug(f"_get_use_scenarios DB 读取异常: {e}")
+
         extra = product.extra or {}
         sc = extra.get("use_scenarios")
         if isinstance(sc, list):
