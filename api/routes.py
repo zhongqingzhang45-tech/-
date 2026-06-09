@@ -489,6 +489,101 @@ def run_pipeline(
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+# ---------- POST /api/actions/crawl_today_hot_list ----------
+
+@api_router.post("/actions/crawl_today_hot_list")
+def crawl_today_hot_list(top_n: int = Query(100, ge=1, le=500)):
+    """触发『今日热榜』热点抓取（多平台聚合：微博/抖音/知乎/百度/B站/新闻）"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from agents.scrapers.today_hot_list import run_today_hot_list
+        logger.info("触发今日热榜抓取...")
+        items = run_today_hot_list(top_n=top_n)
+        return {
+            "success": True,
+            "count": len(items),
+            "top_3": [{"keyword": i.get("keyword"), "heat": i.get("heat_value")} for i in items[:3]],
+        }
+    except Exception as e:
+        logger.error(f"crawl_today_hot_list failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ---------- POST /api/actions/crawl_douyin_mall ----------
+
+@api_router.post("/actions/crawl_douyin_mall")
+def crawl_douyin_mall(n_per_category: int = Query(20, ge=1, le=100)):
+    """触发『抖音商城热卖榜』商品抓取（8 大分类）"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from agents.scrapers.douyin_mall_hot import run_douyin_mall_hot
+        logger.info("触发抖音商城热卖榜抓取...")
+        items = run_douyin_mall_hot(n_per_category=n_per_category)
+        return {
+            "success": True,
+            "count": len(items),
+            "top_3": [{"title": i.get("title"), "price": i.get("price")} for i in items[:3]],
+        }
+    except Exception as e:
+        logger.error(f"crawl_douyin_mall failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ---------- POST /api/actions/crawl_wechat_affiliate ----------
+
+@api_router.post("/actions/crawl_wechat_affiliate")
+def crawl_wechat_affiliate(n_per_category: int = Query(20, ge=1, le=100)):
+    """触发『视频号优选联盟』商品抓取（8 大分类）"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from agents.scrapers.wechat_affiliate_hot import run_wechat_affiliate_hot
+        logger.info("触发视频号优选联盟抓取...")
+        items = run_wechat_affiliate_hot(n_per_category=n_per_category)
+        return {
+            "success": True,
+            "count": len(items),
+            "top_3": [{"title": i.get("title"), "price": i.get("price")} for i in items[:3]],
+        }
+    except Exception as e:
+        logger.error(f"crawl_wechat_affiliate failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ---------- POST /api/actions/crawl_all ----------
+
+@api_router.post("/actions/crawl_all")
+def crawl_all(
+    top_hot_n: int = Query(100, ge=1, le=500),
+    n_per_category: int = Query(20, ge=1, le=100),
+):
+    """一键拉取：今日热榜 + 抖音商城 + 视频号优选联盟（三大数据源聚合）"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from agents.scrapers.today_hot_list import run_today_hot_list
+        from agents.scrapers.douyin_mall_hot import run_douyin_mall_hot
+        from agents.scrapers.wechat_affiliate_hot import run_wechat_affiliate_hot
+
+        logger.info("一键拉取：今日热榜...")
+        hot_items = run_today_hot_list(top_n=top_hot_n)
+
+        logger.info("一键拉取：抖音商城...")
+        dy_items = run_douyin_mall_hot(n_per_category=n_per_category)
+
+        logger.info("一键拉取：视频号优选联盟...")
+        wx_items = run_wechat_affiliate_hot(n_per_category=n_per_category)
+
+        return {
+            "success": True,
+            "hot_topics_count": len(hot_items),
+            "douyin_products_count": len(dy_items),
+            "wechat_products_count": len(wx_items),
+            "total": len(hot_items) + len(dy_items) + len(wx_items),
+        }
+    except Exception as e:
+        logger.error(f"crawl_all failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 # ---------- GET /api/logs ----------
 
 @api_router.get("/logs")
