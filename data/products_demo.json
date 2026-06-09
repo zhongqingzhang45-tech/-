@@ -1,0 +1,28 @@
+[
+  {
+    "title": "夏季防晒衣女2024新款冰丝外套",
+    "price": 59.9,
+    "commission_rate": 20.0,
+    "commission_amount": 11.98,
+    "sales_count": 15000,
+    "creator_count": 580,
+    "rating": 4.8,
+    "main_image_url": "",
+    "detail_url": "https://example.com/item/1",
+    "platform": "douyin_juliang",
+    "category": "女装"
+  },
+  {
+    "title": "挂脖小风扇USB可充电静音",
+    "price": 29.9,
+    "commission_rate": 25.0,
+    "commission_amount": 7.48,
+    "sales_count": 8800,
+    "creator_count": 320,
+    "rating": 4.7,
+    "main_image_url": "",
+    "detail_url": "https://example.com/item/2",
+    "platform": "douyin_juliang",
+    "category": "数码"
+  }
+]
