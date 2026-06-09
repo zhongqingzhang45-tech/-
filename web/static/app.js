@@ -142,9 +142,36 @@
       + '<div class="text-slate-400 text-sm">' + esc(text || "暂无数据") + '</div></div>';
   }
 
+  // ---------- 平台样式辅助函数 ----------
+  function _platformStyle(platform) {
+    var key = String(platform || "").toLowerCase();
+    var map = {
+      douyin:       { label: "🎵 抖音",    color: "text-rose-400 bg-rose-500/10",    icon: "🎵" },
+      "抖音":       { label: "🎵 抖音",    color: "text-rose-400 bg-rose-500/10",    icon: "🎵" },
+      wechat:       { label: "💚 视频号",  color: "text-emerald-400 bg-emerald-500/10", icon: "💚" },
+      weixin:       { label: "💚 视频号",  color: "text-emerald-400 bg-emerald-500/10", icon: "💚" },
+      "视频号":     { label: "💚 视频号",  color: "text-emerald-400 bg-emerald-500/10", icon: "💚" },
+      xiaohongshu:  { label: "📕 小红书",  color: "text-rose-400 bg-rose-500/10",    icon: "📕" },
+      xhs:          { label: "📕 小红书",  color: "text-rose-400 bg-rose-500/10",    icon: "📕" },
+      "小红书":     { label: "📕 小红书",  color: "text-rose-400 bg-rose-500/10",    icon: "📕" },
+      kuaishou:     { label: "⚡ 快手",    color: "text-orange-400 bg-orange-500/10", icon: "⚡" },
+      "快手":       { label: "⚡ 快手",    color: "text-orange-400 bg-orange-500/10", icon: "⚡" },
+      bilibili:     { label: "📺 B站",    color: "text-sky-400 bg-sky-500/10",       icon: "📺" },
+      "b站":        { label: "📺 B站",    color: "text-sky-400 bg-sky-500/10",       icon: "📺" },
+      weibo:        { label: "🔴 微博",    color: "text-rose-500 bg-rose-500/10",    icon: "🔴" },
+      "微博":       { label: "🔴 微博",    color: "text-rose-500 bg-rose-500/10",    icon: "🔴" },
+      baidu:        { label: "🔍 百度",    color: "text-blue-400 bg-blue-500/10",    icon: "🔍" },
+      zhihu:        { label: "💡 知乎",    color: "text-blue-500 bg-blue-500/10",    icon: "💡" },
+      "知乎":       { label: "💡 知乎",    color: "text-blue-500 bg-blue-500/10",    icon: "💡" }
+    };
+    return map[key] || { label: (platform || "🌐 其它"), color: "text-slate-300 bg-slate-700/40", icon: "🌐" };
+  }
+
   /* ============================================================
    * 2. 全局状态
    * ============================================================ */
+
+  var _typewriterTimer = null;
 
   var STATE = {
     currentTab: "dashboard",
@@ -950,7 +977,21 @@
     if (regenBtn) regenBtn.onclick = generateContent;
 
     var saveBtn = $("btnSaveDraft");
-    if (saveBtn) saveBtn.onclick = function () { toast("草稿已保存到浏览器", "success"); };
+    if (saveBtn) saveBtn.onclick = function () {
+      var draft = {
+        sourceId: STATE.contentFactory.sourceId,
+        contentType: STATE.contentFactory.contentType,
+        prompt: $("contentPrompt") ? $("contentPrompt").value : "",
+        body: $("aiGeneratedContent") ? $("aiGeneratedContent").innerText : "",
+        savedAt: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem("ma_draft_" + Date.now(), JSON.stringify(draft));
+        toast("草稿已保存到浏览器", "success");
+      } catch (e) {
+        toast("草稿保存失败: " + e.message, "error");
+      }
+    };
 
     var sendBtn = $("btnSendToVideo");
     if (sendBtn) sendBtn.onclick = function () {
@@ -1082,6 +1123,11 @@
   }
 
   function typeWriter(el, text, speed) {
+    if (_typewriterTimer) {
+      clearTimeout(_typewriterTimer);
+      _typewriterTimer = null;
+    }
+    el.innerHTML = "";
     var i = 0;
     var container = document.createElement("div");
     container.style.whiteSpace = "pre-wrap";
@@ -1094,7 +1140,9 @@
       if (i < text.length) {
         container.textContent += text.charAt(i);
         i++;
-        setTimeout(type, speed);
+        _typewriterTimer = setTimeout(type, speed);
+      } else {
+        _typewriterTimer = null;
       }
     }
     type();
@@ -1258,6 +1306,60 @@
     var totalEl = $("videoTotal"); if (totalEl) totalEl.textContent = total;
     var successEl = $("videoSuccess"); if (successEl) successEl.textContent = success;
     var failEl = $("videoFail"); if (failEl) failEl.textContent = failed;
+  }
+
+  function renderVideoKanban(tasks) {
+    var container = $("videoKanban");
+    if (!container) return;
+    var statusList = [
+      { key: "wait",    label: "等待处理", dot: "bg-slate-400",  border: "border-slate-500/30" },
+      { key: "running", label: "处理中",   dot: "bg-blue-400",   border: "border-blue-500/30" },
+      { key: "done",    label: "已完成",   dot: "bg-emerald-400", border: "border-emerald-500/30" },
+      { key: "failed",  label: "失败",     dot: "bg-rose-400",    border: "border-rose-500/30" }
+    ];
+    var grouped = {};
+    statusList.forEach(function (s) { grouped[s.key] = []; });
+    (tasks || []).forEach(function (t) {
+      var k = t.status || "wait";
+      if (!grouped[k]) grouped[k] = [];
+      grouped[k].push(t);
+    });
+
+    container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4";
+    container.innerHTML = statusList.map(function (col) {
+      var list = grouped[col.key] || [];
+      var body = list.length ? list.map(function (t) {
+        var pct = typeof t.progress === "number" ? t.progress : 0;
+        var barCls = col.key === "failed" ? "from-rose-400 to-rose-500"
+                  : col.key === "done" ? "from-emerald-400 to-emerald-500"
+                  : col.key === "running" ? "from-blue-400 to-blue-500"
+                  : "from-slate-400 to-slate-500";
+        return '<div class="card-tech p-3 mb-3 border ' + col.border + ' hover:border-slate-500/60 transition-colors">'
+          + '<div class="flex items-start justify-between mb-2">'
+          + '<div class="text-xs font-medium text-white truncate">' + esc(t.title || "视频任务") + '</div>'
+          + '</div>'
+          + '<div class="flex items-center justify-between text-[10px] text-slate-400 mb-2">'
+          + '<span>时长: ' + esc(t.duration || "-") + '</span>'
+          + '<span>' + esc(t.created_at ? fmtRelative(t.created_at) : "") + '</span>'
+          + '</div>'
+          + '<div class="h-1.5 bg-slate-700/80 rounded-full overflow-hidden">'
+          + '<div class="h-full bg-gradient-to-r ' + barCls + ' transition-all duration-500" style="width:' + pct + '%"></div>'
+          + '</div>'
+          + '<div class="text-[10px] text-slate-400 mt-1 text-right">' + pct + '%</div>'
+          + '</div>';
+      }).join("") : '<div class="text-center text-slate-500 text-xs py-8">暂无任务</div>';
+
+      return '<div class="card-tech p-4 border border-slate-700/40">'
+        + '<div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/40">'
+        + '<div class="flex items-center gap-2">'
+        + '<span class="w-2 h-2 rounded-full ' + col.dot + '"></span>'
+        + '<span class="text-xs font-semibold text-white">' + col.label + '</span>'
+        + '</div>'
+        + '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono">' + list.length + '</span>'
+        + '</div>'
+        + body
+        + '</div>';
+    }).join("");
   }
 
   /* ============================================================
@@ -1485,11 +1587,12 @@
     $$(".delete-account-btn", el).forEach(function (b) {
       b.addEventListener("click", function () {
         var id = b.dataset.accountId;
-        if (!confirm("确定要删除该账号吗？此操作不可撤销。")) return;
-        fetch("/api/accounts/" + id, { method: "DELETE", headers: { "Accept": "application/json" } })
-          .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
-          .then(function () { toast("账号已删除", "success"); loadAccounts(); })
-          .catch(function (err) { toast("删除失败：" + err.message, "error"); });
+        showConfirmModal("确认删除", "确定要删除该账号吗？此操作不可撤销。", function () {
+          fetch("/api/accounts/" + encodeURIComponent(id), { method: "DELETE", headers: { "Accept": "application/json" } })
+            .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+            .then(function () { toast("账号已删除", "success"); loadAccounts(); })
+            .catch(function (err) { toast("删除失败：" + err.message, "error"); });
+        });
       });
     });
   }
@@ -1723,6 +1826,33 @@
    * 12. 系统设置
    * ============================================================ */
 
+  function maskSensitive(val) {
+    if (!val || typeof val !== "string") return val;
+    if (val.length <= 8) return "****";
+    return val.slice(0, 4) + "-****-" + val.slice(-4);
+  }
+
+  function maskConfig(config) {
+    if (!config || typeof config !== "object") return config;
+    var copy = JSON.parse(JSON.stringify(config));
+    function walk(obj) {
+      if (!obj || typeof obj !== "object") return;
+      Object.keys(obj).forEach(function (k) {
+        var key = String(k).toLowerCase();
+        if (typeof obj[k] === "string" &&
+            (key.indexOf("api_key") >= 0 || key.indexOf("apikey") >= 0 ||
+             key.indexOf("secret") >= 0 || key.indexOf("token") >= 0 ||
+             key.indexOf("password") >= 0)) {
+          obj[k] = maskSensitive(obj[k]);
+        } else if (typeof obj[k] === "object" && obj[k] !== null) {
+          walk(obj[k]);
+        }
+      });
+    }
+    walk(copy);
+    return copy;
+  }
+
   async function loadSettings() {
     try {
       var config = await apiGet("/api/config").catch(function () {
@@ -1736,7 +1866,8 @@
         };
       });
       STATE.config = config;
-      renderSettingsForm(config);
+      var displayConfig = maskConfig(config);
+      renderSettingsForm(displayConfig);
       bindSettingsActions();
     } catch (e) {
       console.error(e);
@@ -1765,17 +1896,39 @@
   function bindSettingsActions() {
     var btns = document.querySelectorAll("#tab-settings .btn-primary, #tab-settings [data-action]");
     btns.forEach(function (btn) {
-      btn.onclick = function () {
+      btn.onclick = async function () {
         var form = btn.closest(".setting-card") || btn.closest("form");
         var inputs = form ? form.querySelectorAll("input, select, textarea") : [];
-        var payload = {};
+        var flat = {};
+        var sectionData = {};
         inputs.forEach(function (inp) {
           if (!inp.name) return;
           var v = inp.type === "checkbox" ? inp.checked : inp.value;
-          payload[inp.name] = v;
+          flat[inp.name] = v;
+          var parts = inp.name.split(".");
+          var section = parts[0];
+          if (!sectionData[section]) sectionData[section] = {};
+          if (parts.length === 1) {
+            sectionData[section] = v;
+          } else {
+            sectionData[section][parts.slice(1).join(".")] = v;
+          }
         });
-        toast("配置已保存", "success");
-        console.log("Saving config:", payload);
+        var sectionName = (form && form.dataset && form.dataset.section)
+          ? form.dataset.section
+          : (btn.dataset && btn.dataset.section ? btn.dataset.section : "settings");
+        var body = {
+          key: sectionName,
+          value: sectionData[sectionName] || flat
+        };
+        try {
+          await apiPost("/api/config", body);
+          toast("配置已保存", "success");
+          console.log("Saving config:", body);
+        } catch (e) {
+          console.error(e);
+          toast("保存失败: " + e.message, "error");
+        }
       };
     });
   }
@@ -1962,6 +2115,165 @@
     });
   }
 
+  // ---------- 通用 Modal 工具 ----------
+  function openModal(modalId) {
+    var el = $(modalId);
+    if (!el) return;
+    el.style.display = "flex";
+  }
+  function closeModal(modalId) {
+    var el = $(modalId);
+    if (!el) return;
+    el.style.display = "none";
+  }
+
+  function showConfirmModal(title, message, onConfirm) {
+    var id = "genericConfirmModal";
+    var el = $(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      el.className = "fixed inset-0 z-[60] items-center justify-center";
+      el.style.cssText = "display:none; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px);";
+      el.innerHTML = '<div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-slate-700">'
+        + '<div class="p-6 border-b border-slate-700/60">'
+        + '<h3 class="text-lg font-bold text-white" id="gcm-title">确认操作</h3>'
+        + '<p class="text-sm text-slate-400 mt-2" id="gcm-message">确定要继续吗？</p></div>'
+        + '<div class="flex items-center justify-end gap-3 p-5">'
+        + '<button id="gcm-cancel" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-300 bg-slate-700/60 hover:bg-slate-700 transition-colors">取消</button>'
+        + '<button id="gcm-ok" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 transition-all">确认</button>'
+        + '</div></div>';
+      document.body.appendChild(el);
+    }
+    $("gcm-title").textContent = title || "确认操作";
+    $("gcm-message").textContent = message || "确定要继续吗？";
+    el.style.display = "flex";
+    var okBtn = $("gcm-ok");
+    var cancelBtn = $("gcm-cancel");
+    var cleanup = function () {
+      el.style.display = "none";
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+    };
+    okBtn.onclick = function () { cleanup(); if (onConfirm) onConfirm(); };
+    cancelBtn.onclick = cleanup;
+  }
+
+  // ---------- 绑定新账号 Modal ----------
+  function bindAccountModalLogic() {
+    var openBtn = $("bindAccountBtn");
+    var closeBtn = $("modalCloseBtn");
+    var cancelBtn = $("modalCancelBtn");
+    var submitBtn = $("modalSubmitBtn");
+    var modal = $("bindAccountModal");
+
+    if (openBtn) openBtn.onclick = function () {
+      if (modal) modal.style.display = "flex";
+    };
+    if (closeBtn) closeBtn.onclick = function () { if (modal) modal.style.display = "none"; };
+    if (cancelBtn) cancelBtn.onclick = function () { if (modal) modal.style.display = "none"; };
+
+    if (submitBtn) {
+      submitBtn.onclick = async function () {
+        var platform = $("bindPlatform") ? $("bindPlatform").value : "";
+        var accountName = $("bindAccountName") ? $("bindAccountName").value.trim() : "";
+        var cookie = $("bindCookie") ? $("bindCookie").value.trim() : "";
+        var note = $("bindNote") ? $("bindNote").value.trim() : "";
+        if (!accountName) { toast("请填写账号名", "warn"); return; }
+        try {
+          var res = await apiPost("/api/accounts", {
+            platform: platform,
+            account_name: accountName,
+            cookie_string: cookie,
+            username: accountName,
+            note: note
+          });
+          toast("账号绑定成功", "success");
+          if (modal) modal.style.display = "none";
+          loadAccounts();
+        } catch (e) {
+          console.error(e);
+          toast("账号绑定失败: " + e.message, "error");
+        }
+      };
+    }
+  }
+
+  // ---------- 新建发布 Modal ----------
+  function bindNewPublishModal() {
+    var openBtn = $("newPublishBtn");
+    if (!openBtn) return;
+
+    openBtn.onclick = function () {
+      var id = "newPublishModal";
+      var el = $(id);
+      if (!el) {
+        el = document.createElement("div");
+        el.id = id;
+        el.className = "fixed inset-0 z-[55] items-center justify-center";
+        el.style.cssText = "display:none; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);";
+        var optionsHtml = (STATE.products.items && STATE.products.items.length)
+          ? STATE.products.items.slice(0, 50).map(function (p) {
+              return '<option value="' + (p.id || "") + '">' + esc((p.title || p.name || "商品") + "") + '</option>';
+            }).join("")
+          : '<option value="">请先加载商品数据</option>';
+        el.innerHTML = '<div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 border border-slate-700 max-h-[90vh] overflow-y-auto">'
+          + '<div class="flex items-center justify-between p-6 border-b border-slate-700/60">'
+          + '<div><h3 class="text-xl font-bold text-white">🚀 新建发布</h3>'
+          + '<p class="text-xs text-slate-400 mt-1">选择商品并填写发布信息</p></div>'
+          + '<button id="npm-close" class="w-9 h-9 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-white flex items-center justify-center text-lg transition-colors">✕</button></div>'
+          + '<div class="p-6 space-y-4">'
+          + '<div><label class="block text-xs font-semibold text-slate-300 mb-2">商品 <span class="text-rose-400">*</span></label>'
+          + '<select id="npm-product" class="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm focus:border-blue-500 focus:outline-none">'
+          + '<option value="">请选择商品</option>' + optionsHtml + '</select></div>'
+          + '<div><label class="block text-xs font-semibold text-slate-300 mb-2">发布平台 <span class="text-rose-400">*</span></label>'
+          + '<select id="npm-platform" class="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm focus:border-blue-500 focus:outline-none">'
+          + '<option value="xiaohongshu">小红书</option>'
+          + '<option value="douyin">抖音</option>'
+          + '<option value="wechat">视频号</option>'
+          + '<option value="kuaishou">快手</option>'
+          + '<option value="bilibili">B 站</option></select></div>'
+          + '<div><label class="block text-xs font-semibold text-slate-300 mb-2">内容类型</label>'
+          + '<select id="npm-content-type" class="w-full px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm focus:border-blue-500 focus:outline-none">'
+          + '<option value="image_text">图文种草</option>'
+          + '<option value="script">口播脚本</option>'
+          + '<option value="video">视频发布</option></select></div>'
+          + '<div><label class="block text-xs font-semibold text-slate-300 mb-2">正文内容</label>'
+          + '<textarea id="npm-body" rows="6" placeholder="填写发布内容..." class="w-full px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-500 focus:border-blue-500 focus:outline-none resize-y"></textarea></div>'
+          + '</div>'
+          + '<div class="flex items-center justify-end gap-3 p-6 border-t border-slate-700/60">'
+          + '<button id="npm-cancel" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-300 bg-slate-700/60 hover:bg-slate-700 transition-colors">取消</button>'
+          + '<button id="npm-submit" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 transition-all">提交发布</button>'
+          + '</div></div>';
+        document.body.appendChild(el);
+      }
+      el.style.display = "flex";
+      $("npm-close").onclick = function () { el.style.display = "none"; };
+      $("npm-cancel").onclick = function () { el.style.display = "none"; };
+      $("npm-submit").onclick = async function () {
+        var productId = $("npm-product").value;
+        var platform = $("npm-platform").value;
+        var contentType = $("npm-content-type").value;
+        var body = $("npm-body").value.trim();
+        if (!productId) { toast("请选择商品", "warn"); return; }
+        try {
+          await apiPost("/api/actions/publish", {
+            product_id: productId,
+            platform: platform,
+            content_type: contentType,
+            body: body
+          });
+          toast("发布任务已提交", "success");
+          el.style.display = "none";
+          loadPublish();
+        } catch (e) {
+          console.error(e);
+          toast("发布失败: " + e.message, "error");
+        }
+      };
+    };
+  }
+
   function bindHotPlatformTabs() {
     $$(".platform-tab").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1971,6 +2283,7 @@
         });
         btn.classList.add("bg-slate-700/60", "text-white");
         btn.classList.remove("text-slate-400", "hover:text-white");
+        STATE.hot.platform = btn.dataset.platform || "";
         if (STATE.hot.items && STATE.hot.items.length) {
           renderHotGrid(STATE.hot.items, STATE.hot.platform);
         }
@@ -1987,6 +2300,7 @@
         });
         btn.classList.add("bg-slate-700/60", "text-white");
         btn.classList.remove("text-slate-400", "hover:text-white");
+        STATE.publish.platform = btn.dataset.platform || "";
         loadPublish();
       });
     });
@@ -2005,6 +2319,8 @@
     bindHotPlatformTabs();
     bindPublishPlatformTabs();
     bindDataSubTabs();
+    bindAccountModalLogic();
+    bindNewPublishModal();
 
     // 搜索框
     var search = $("productSearch");

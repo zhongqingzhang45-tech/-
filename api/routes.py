@@ -27,8 +27,24 @@ from db import (
 
 api_router = APIRouter(prefix="/api", tags=["api"])
 
+_CONFIG_JSON_PATH = Path("/workspace/config.json")
+
 
 # ---------- 辅助函数 ----------
+
+def escape_text(text) -> str:
+    """对输出到客户端的文本做 HTML 转义，防止 XSS。非字符串会先 str()。"""
+    if text is None:
+        return ""
+    s = str(text)
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
 
 def _row_to_dict(row) -> dict:
     """把 SQLAlchemy Model 实例转成 dict，datetime 转 ISO 字符串"""
@@ -40,6 +56,16 @@ def _row_to_dict(row) -> dict:
         else:
             d[col.name] = v
     return d
+
+
+def _truncate_body(body_text, max_len: int = 200) -> str:
+    """截断超长 body 用于列表预览"""
+    if not body_text:
+        return ""
+    s = str(body_text)
+    if len(s) <= max_len:
+        return s
+    return s[:max_len] + "..."
 
 
 def _image_url_from_path(local_path: Optional[str]) -> Optional[str]:
@@ -161,7 +187,7 @@ def get_products(
 
             # 附加图片 URL
             for item in result["items"]:
-                # 默认返回第一张可用图片的 URL，给前端做封面
+                item["title"] = escape_text(item.get("title"))
                 pid = item.get("id")
                 with get_db() as db2:
                     img = (
@@ -216,8 +242,16 @@ def get_product_detail(product_id: int):
             )
 
         product_dict = _row_to_dict(product)
+        product_dict["title"] = escape_text(product_dict.get("title"))
         product_dict["analysis"] = _row_to_dict(analysis) if analysis else None
-        product_dict["contents"] = [_row_to_dict(c) for c in contents]
+        _content_list = []
+        for c in contents:
+            cd = _row_to_dict(c)
+            cd["title"] = escape_text(cd.get("title"))
+            cd["body_preview"] = escape_text(_truncate_body(cd.get("body")))
+            cd["body"] = escape_text(cd.get("body"))
+            _content_list.append(cd)
+        product_dict["contents"] = _content_list
         product_dict["images"] = []
         for img in images:
             img_dict = _row_to_dict(img)
@@ -268,7 +302,12 @@ def get_contents(
             if keyword:
                 q = q.filter(Content.title.like(f"%{keyword}%"))
             q = q.order_by(Content.created_at.desc())
-            return _paginate(q, page, page_size)
+            result = _paginate(q, page, page_size)
+            for item in result["items"]:
+                item["title"] = escape_text(item.get("title"))
+                item["body_preview"] = escape_text(_truncate_body(item.get("body")))
+                item["body"] = escape_text(item.get("body"))
+            return result
     except Exception as e:
         logger.error(f"get_contents failed: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})
@@ -285,12 +324,15 @@ def get_content_detail(content_id: int):
             if not c:
                 raise HTTPException(status_code=404, detail={"error": "内容不存在"})
             d = _row_to_dict(c)
+            d["title"] = escape_text(d.get("title"))
+            d["body"] = escape_text(d.get("body"))
+            d["body_preview"] = escape_text(_truncate_body(d.get("body")))
             # 关联商品简要
             prod = db.query(Product).filter(Product.id == c.product_id).first()
             if prod:
                 d["product"] = {
                     "id": prod.id,
-                    "title": prod.title,
+                    "title": escape_text(prod.title),
                     "price": prod.price,
                     "main_image_url": prod.main_image_url,
                 }
@@ -899,7 +941,7 @@ def get_accounts(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
 ):
-    """读取 accounts 表，缺 followers 字段时从 extra JSON 模拟"""
+    """读取 accounts 表，返回 items/total/page/page_size，items 含 id/platform/account_name/username/status/followers/last_published_at/cookie_set"""
     try:
         from db import Account
 
@@ -931,10 +973,10 @@ def get_accounts(
                         last_published = None
                 items.append({
                     "id": r.id,
-                    "platform": r.platform,
-                    "account_name": r.account_name,
-                    "username": r.username,
-                    "status": r.status,
+                    "platform": escape_text(r.platform),
+                    "account_name": escape_text(r.account_name),
+                    "username": escape_text(r.username),
+                    "status": escape_text(r.status or "active"),
                     "followers": followers,
                     "last_published_at": last_published,
                     "cookie_set": bool(r.cookie_path),
@@ -946,38 +988,42 @@ def get_accounts(
                     {
                         "id": 1,
                         "platform": "xhs",
-                        "account_name": "小红书好物种草菌",
+                        "account_name": escape_text("小红书好物种草菌"),
                         "username": "goodlife_2026",
                         "status": "active",
                         "followers": 18650,
                         "last_published_at": datetime.utcnow().isoformat(),
+                        "cookie_set": True,
                     },
                     {
                         "id": 2,
                         "platform": "douyin",
-                        "account_name": "抖音省钱小达人",
+                        "account_name": escape_text("抖音省钱小达人"),
                         "username": "save_money_daily",
                         "status": "active",
                         "followers": 45230,
                         "last_published_at": datetime.utcnow().isoformat(),
+                        "cookie_set": True,
                     },
                     {
                         "id": 3,
                         "platform": "wechat",
-                        "account_name": "视频号测评官",
+                        "account_name": escape_text("视频号测评官"),
                         "username": "review_official",
                         "status": "active",
                         "followers": 7890,
                         "last_published_at": None,
+                        "cookie_set": False,
                     },
                     {
                         "id": 4,
                         "platform": "kuaishou",
-                        "account_name": "快手老铁福利社",
+                        "account_name": escape_text("快手老铁福利社"),
                         "username": "kuaishou_welfare",
                         "status": "warning",
                         "followers": 32100,
                         "last_published_at": None,
+                        "cookie_set": False,
                     },
                 ]
                 total = len(items)
@@ -991,62 +1037,122 @@ def get_accounts(
 
 @api_router.get("/config")
 def get_config():
-    """返回完整配置（从 Config 读取，mock 合理值填充缺失项）"""
+    """返回完整配置（从 Config 读取，mock 合理值填充缺失项），
+    结构：model / proxy / database / task / notification / logging / models / agents / version
+    """
     try:
+        # 从 JSON 配置文件合并（若存在）
+        file_cfg = {}
+        try:
+            if _CONFIG_JSON_PATH.exists():
+                import json as _json
+                with open(_CONFIG_JSON_PATH, "r", encoding="utf-8") as _f:
+                    file_cfg = _json.load(_f) or {}
+        except Exception as _e:
+            logger.warning(f"读取 {_CONFIG_JSON_PATH} 失败: {_e}")
+            file_cfg = {}
+
+        def _merge(key, default):
+            if isinstance(file_cfg.get(key), dict) and isinstance(default, dict):
+                merged = dict(default)
+                merged.update(file_cfg[key])
+                return merged
+            return file_cfg.get(key, default)
+
+        # Agent 状态（从 DB 轻量读取）
+        try:
+            with get_db() as db:
+                from db import Account
+                acc_count = db.query(func.count(Account.id)).scalar() or 0
+                pub_count = db.query(func.count(PublishRecord.id)).scalar() or 0
+                content_count = db.query(func.count(Content.id)).scalar() or 0
+                hot_count = db.query(func.count(HotTopic.id)).scalar() or 0
+                prod_count = db.query(func.count(Product.id)).scalar() or 0
+            agents = [
+                {"name": "product_radar", "status": "running" if prod_count > 0 else "idle",
+                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(prod_count)},
+                {"name": "hot_topics_radar", "status": "running" if hot_count > 0 else "idle",
+                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(hot_count)},
+                {"name": "content_factory", "status": "running" if content_count > 0 else "idle",
+                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(content_count)},
+                {"name": "publish_engine", "status": "running" if pub_count > 0 else "idle",
+                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(pub_count)},
+                {"name": "account_manager", "status": "running" if acc_count > 0 else "idle",
+                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(acc_count)},
+            ]
+        except Exception:
+            agents = [
+                {"name": "product_radar", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
+                {"name": "hot_topics_radar", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
+                {"name": "content_factory", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
+                {"name": "publish_engine", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
+                {"name": "account_manager", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
+            ]
+
+        model_default = {
+            "provider": "deepseek",
+            "model_name": getattr(Config, "DEEPSEEK_MODEL", "deepseek-chat"),
+            "base_url": getattr(Config, "DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            "api_key_set": bool(getattr(Config, "DEEPSEEK_API_KEY", None)),
+            "temperature": float(getattr(Config, "DEEPSEEK_TEMPERATURE", 0.7)),
+            "max_tokens": int(getattr(Config, "DEEPSEEK_MAX_TOKENS", 2048)),
+        }
+        proxy_default = {
+            "http": getattr(Config, "PROXY_HTTP", "") or "",
+            "https": getattr(Config, "PROXY_HTTPS", "") or "",
+            "enabled": bool(getattr(Config, "PROXY_HTTP", "") or getattr(Config, "PROXY_HTTPS", "")),
+        }
+        database_default = {
+            "url": getattr(Config, "DATABASE_URL", "sqlite:///app.db"),
+            "type": "sqlite",
+        }
+        task_default = {
+            "auto_crawl_hot_topics": True,
+            "hot_topics_cron": "0 */2 * * *",
+            "auto_crawl_products": True,
+            "products_cron": "0 */4 * * *",
+            "auto_generate_content": False,
+            "auto_publish": False,
+            "auto_publish_cron": "0 9,12,18,21 * * *",
+            "max_publish_per_day": 20,
+        }
+        notification_default = {
+            "enabled": False,
+            "channel": "email",
+            "email": "",
+            "notify_on_failure": True,
+            "notify_on_daily_report": True,
+        }
+        logging_default = {
+            "level": getattr(Config, "LOG_LEVEL", "INFO"),
+            "log_dir": str(getattr(Config, "LOG_DIR", "./logs")),
+            "retention_days": 30,
+        }
+        models_default = [
+            {"name": "deepseek-chat",         "provider": "DeepSeek", "desc": "DeepSeek V3，日常文案首选"},
+            {"name": "deepseek-reasoner",     "provider": "DeepSeek", "desc": "DeepSeek R1，推理/长文总结"},
+            {"name": "gpt-4o",                "provider": "OpenAI",   "desc": "GPT-4o，多模态生成"},
+            {"name": "gpt-4o-mini",           "provider": "OpenAI",   "desc": "GPT-4o-mini，轻量快速"},
+            {"name": "gpt-4.1-mini",          "provider": "OpenAI",   "desc": "GPT-4.1 mini"},
+            {"name": "claude-3.5-sonnet",     "provider": "Anthropic","desc": "Claude 3.5 Sonnet，内容型"},
+            {"name": "claude-3-opus",         "provider": "Anthropic","desc": "Claude 3 Opus，最高质量"},
+            {"name": "gemini-2.0-flash",      "provider": "Google",   "desc": "Gemini 2.0 Flash，多模态"},
+            {"name": "qwen-plus",             "provider": "通义千问",  "desc": "Qwen Plus，中文优化"},
+            {"name": "qwen-max",              "provider": "通义千问",  "desc": "Qwen Max，最强模型"},
+            {"name": "glm-4-plus",            "provider": "智谱",      "desc": "GLM-4 Plus，中文强"},
+            {"name": "doubao-pro-32k",        "provider": "字节",      "desc": "豆包 Pro 32K"},
+        ]
+
         cfg = {
-            "model": {
-                "provider": "deepseek",
-                "model_name": Config.DEEPSEEK_MODEL,
-                "base_url": Config.DEEPSEEK_BASE_URL,
-                "api_key_set": bool(Config.DEEPSEEK_API_KEY),
-                "temperature": Config.DEEPSEEK_TEMPERATURE,
-                "max_tokens": Config.DEEPSEEK_MAX_TOKENS,
-            },
-            "proxy": {
-                "http": Config.PROXY_HTTP or "",
-                "https": Config.PROXY_HTTPS or "",
-                "enabled": bool(Config.PROXY_HTTP or Config.PROXY_HTTPS),
-            },
-            "database": {
-                "url": Config.DATABASE_URL,
-                "type": "sqlite",
-            },
-            "task": {
-                "auto_crawl_hot_topics": True,
-                "hot_topics_cron": "0 */2 * * *",
-                "auto_crawl_products": True,
-                "products_cron": "0 */4 * * *",
-                "auto_generate_content": False,
-                "auto_publish": False,
-                "auto_publish_cron": "0 9,12,18,21 * * *",
-                "max_publish_per_day": 20,
-            },
-            "notification": {
-                "enabled": False,
-                "channel": "email",
-                "email": "",
-                "notify_on_failure": True,
-                "notify_on_daily_report": True,
-            },
-            "logging": {
-                "level": Config.LOG_LEVEL,
-                "log_dir": str(Config.LOG_DIR),
-                "retention_days": 30,
-            },
-            "models": [
-                {"name": "deepseek-chat",         "provider": "DeepSeek", "desc": "DeepSeek V3，日常文案首选"},
-                {"name": "deepseek-reasoner",     "provider": "DeepSeek", "desc": "DeepSeek R1，推理/长文总结"},
-                {"name": "gpt-4o",                "provider": "OpenAI",   "desc": "GPT-4o，多模态生成"},
-                {"name": "gpt-4o-mini",           "provider": "OpenAI",   "desc": "GPT-4o-mini，轻量快速"},
-                {"name": "gpt-4.1-mini",          "provider": "OpenAI",   "desc": "GPT-4.1 mini"},
-                {"name": "claude-3.5-sonnet",     "provider": "Anthropic","desc": "Claude 3.5 Sonnet，内容型"},
-                {"name": "claude-3-opus",         "provider": "Anthropic","desc": "Claude 3 Opus，最高质量"},
-                {"name": "gemini-2.0-flash",      "provider": "Google",   "desc": "Gemini 2.0 Flash，多模态"},
-                {"name": "qwen-plus",             "provider": "通义千问",  "desc": "Qwen Plus，中文优化"},
-                {"name": "qwen-max",              "provider": "通义千问",  "desc": "Qwen Max，最强模型"},
-                {"name": "glm-4-plus",            "provider": "智谱",      "desc": "GLM-4 Plus，中文强"},
-                {"name": "doubao-pro-32k",        "provider": "字节",      "desc": "豆包 Pro 32K"},
-            ],
+            "model": _merge("model", model_default),
+            "proxy": _merge("proxy", proxy_default),
+            "database": _merge("database", database_default),
+            "task": _merge("task", task_default),
+            "notification": _merge("notification", notification_default),
+            "logging": _merge("logging", logging_default),
+            "models": file_cfg.get("models", models_default),
+            "agents": agents,
+            "version": "1.0.0",
         }
         return cfg
     except Exception as e:
@@ -1058,31 +1164,63 @@ def get_config():
 
 @api_router.post("/accounts")
 def create_account(body: dict):
-    """绑定新账号：{platform, account_name, cookie_string, note, username}"""
+    """绑定新账号：{platform, account_name, cookie_string, username, note}
+    字段映射：cookie_string -> Account.cookie_path，其余存入 extra
+    """
     try:
         from db import Account
-        platform = body.get("platform") or ""
-        account_name = body.get("account_name") or ""
-        cookie_string = body.get("cookie_string") or ""
-        note = body.get("note") or ""
-        username = body.get("username") or account_name
+        from sqlalchemy.exc import IntegrityError
+
+        if not body:
+            raise HTTPException(status_code=400, detail={"error": "请求体不能为空"})
+
+        platform = (body.get("platform") or "").strip()
+        account_name = (body.get("account_name") or "").strip()
         if not platform or not account_name:
             raise HTTPException(status_code=400, detail={"error": "platform 和 account_name 必填"})
+
+        cookie_string = body.get("cookie_string") or body.get("cookie_path") or body.get("cookie") or ""
+        username = (body.get("username") or account_name).strip()
+        note = body.get("note") or ""
+
+        extra = {
+            "note": note,
+            "cookie_raw": cookie_string[:2048] if cookie_string else "",
+        }
+
         acc = Account(
-            platform=platform,
-            account_name=account_name,
-            username=username,
+            platform=platform[:32],
+            account_name=account_name[:128],
+            username=username[:256],
             status="active",
             cookie_path=cookie_string[:512],
-            extra={"note": note, "cookie_raw": cookie_string},
+            extra=extra,
             created_at=datetime.utcnow(),
         )
         with get_db() as db:
-            db.add(acc)
-            db.commit()
-            db.refresh(acc)
-        logger.info(f"[account] 新增账号: {platform} / {account_name}")
-        return {"success": True, "id": acc.id, "platform": acc.platform, "account_name": acc.account_name}
+            try:
+                db.add(acc)
+                db.commit()
+                db.refresh(acc)
+            except IntegrityError as ie:
+                db.rollback()
+                logger.error(f"[account] 新增账号唯一性冲突: {ie}")
+                raise HTTPException(status_code=409, detail={"error": "账号已存在或数据冲突"})
+        logger.info(f"[account] 新增账号: {platform} / {account_name} (id={acc.id})")
+        return {
+            "success": True,
+            "id": acc.id,
+            "account": {
+                "id": acc.id,
+                "platform": escape_text(acc.platform),
+                "account_name": escape_text(acc.account_name),
+                "username": escape_text(acc.username),
+                "status": escape_text(acc.status),
+                "cookie_set": bool(acc.cookie_path),
+                "followers": 0,
+                "last_published_at": None,
+            },
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -1092,16 +1230,24 @@ def create_account(body: dict):
 
 @api_router.delete("/accounts/{account_id}")
 def delete_account(account_id: int):
-    """删除账号"""
+    """删除账号，返回 deleted=account_name"""
     try:
         from db import Account
+        from sqlalchemy.exc import IntegrityError
         with get_db() as db:
             acc = db.query(Account).filter(Account.id == account_id).first()
             if not acc:
                 raise HTTPException(status_code=404, detail={"error": "账号不存在"})
-            db.delete(acc)
-            db.commit()
-        return {"success": True, "id": account_id}
+            deleted_name = acc.account_name
+            try:
+                db.delete(acc)
+                db.commit()
+            except IntegrityError as ie:
+                db.rollback()
+                logger.error(f"[account] 删除账号外键冲突: {ie}")
+                raise HTTPException(status_code=409, detail={"error": "该账号存在关联记录，无法删除"})
+        logger.info(f"[account] 删除账号: {deleted_name} (id={account_id})")
+        return {"success": True, "id": account_id, "deleted": escape_text(deleted_name)}
     except HTTPException:
         raise
     except Exception as e:
@@ -1134,10 +1280,14 @@ def update_account_status(account_id: int, body: dict):
 @api_router.post("/config")
 def update_config(body: dict):
     """
-    简化版配置更新：接收 key/value 或整段配置，返回 success。
-    实际生产环境中应写入 .env 文件或持久化到数据库，此处仅做入参校验与回显。
+    配置更新：
+    - 支持 {key, value} 形式（单个键值更新）
+    - 支持整段 config dict 形式（批量更新）
+    - 持久化到 /workspace/config.json
     """
     try:
+        import json as _json
+
         if not body:
             raise HTTPException(status_code=400, detail={"error": "请求体不能为空"})
 
@@ -1148,18 +1298,45 @@ def update_config(body: dict):
         if key and value is not None:
             updated[key] = value
         else:
-            # 批量更新模式
+            # 批量更新模式：保留已知顶级 key
+            allowed = {"model", "proxy", "database", "task", "notification", "logging", "models"}
             for k, v in body.items():
-                if k in ("model", "proxy", "database", "task", "notification", "logging"):
+                if k in allowed:
                     updated[k] = v
                 else:
                     updated[k] = v
 
-        logger.info(f"[config] 配置更新: {updated}")
+        # 合并到现有文件（如存在）
+        current = {}
+        try:
+            if _CONFIG_JSON_PATH.exists():
+                with open(_CONFIG_JSON_PATH, "r", encoding="utf-8") as _f:
+                    current = _json.load(_f) or {}
+        except Exception as _e:
+            logger.warning(f"读取 {_CONFIG_JSON_PATH} 失败: {_e}")
+            current = {}
+
+        for k, v in updated.items():
+            if isinstance(v, dict) and isinstance(current.get(k), dict):
+                _merged = dict(current[k])
+                _merged.update(v)
+                current[k] = _merged
+            else:
+                current[k] = v
+
+        try:
+            _CONFIG_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(_CONFIG_JSON_PATH, "w", encoding="utf-8") as _f:
+                _json.dump(current, _f, ensure_ascii=False, indent=2)
+        except Exception as _e:
+            logger.error(f"写入 {_CONFIG_JSON_PATH} 失败: {_e}")
+            raise HTTPException(status_code=500, detail={"error": "配置文件写入失败"})
+
+        logger.info(f"[config] 配置更新: {updated} -> {_CONFIG_JSON_PATH}")
         return {
             "success": True,
+            "saved": True,
             "updated": updated,
-            "note": "配置已收到，当前为内存模式，重启后恢复默认。生产环境请写入 .env 或数据库持久化。",
         }
     except HTTPException:
         raise
@@ -1390,32 +1567,38 @@ def generate_content_action(body: dict):
                 _tags_out = _tags
             else:
                 _tags_out = local_result["tags"] if used_local_fallback and local_result else ["#推荐"]
+            _title = escape_text(getattr(content_obj, "title", None) or (local_result["title"] if used_local_fallback and local_result else ""))
+            _body = escape_text(getattr(content_obj, "body", None) or (local_result["body"] if used_local_fallback and local_result else ""))
             return {
                 "success": True,
                 "used_local_fallback": used_local_fallback,
                 "llm_error": llm_error,
                 "content": {
                     "id": getattr(content_obj, "id", None),
-                    "title": getattr(content_obj, "title", None) or (local_result["title"] if used_local_fallback and local_result else ""),
-                    "body": getattr(content_obj, "body", None) or (local_result["body"] if used_local_fallback and local_result else ""),
+                    "title": _title,
+                    "body": _body,
+                    "body_preview": _truncate_body(_body),
                     "platform": getattr(content_obj, "platform", "xhs"),
                     "content_type": getattr(content_obj, "content_type", content_type),
                     "tags": _tags_out,
-                    "call_to_action": local_result.get("call_to_action") if used_local_fallback and local_result else None,
-                    "cart_text": local_result.get("cart_text") if used_local_fallback and local_result else None,
+                    "call_to_action": escape_text(local_result.get("call_to_action")) if used_local_fallback and local_result else None,
+                    "cart_text": escape_text(local_result.get("cart_text")) if used_local_fallback and local_result else None,
                 },
             }
         else:
             used_local_fallback = True
             local_result = ContentGenerator.generate(product, content_type, extra_prompt)
+            _title = escape_text(local_result["title"])
+            _body = escape_text(local_result["body"])
             return {
                 "success": True,
                 "used_local_fallback": used_local_fallback,
                 "llm_error": llm_error,
                 "content": {
-                    "id": None, "title": local_result["title"], "body": local_result["body"],
+                    "id": None, "title": _title, "body": _body, "body_preview": _truncate_body(_body),
                     "platform": "xhs", "content_type": content_type, "tags": local_result["tags"],
-                    "call_to_action": local_result["call_to_action"], "cart_text": local_result["cart_text"],
+                    "call_to_action": escape_text(local_result["call_to_action"]),
+                    "cart_text": escape_text(local_result["cart_text"]),
                 },
             }
     except HTTPException:
@@ -1509,4 +1692,107 @@ def generate_video_action(body: dict):
         raise
     except Exception as e:
         logger.error("generate_video_action failed: " + str(e))
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ---------- POST /api/actions/publish ----------
+
+@api_router.post("/actions/publish")
+def create_publish(body: dict):
+    """创建发布任务
+    body: { product_id, title, body, content_type, platform, account_id(可选), scheduled_at(可选) }
+    """
+    try:
+        from sqlalchemy.exc import IntegrityError
+
+        if not body:
+            raise HTTPException(status_code=400, detail={"error": "请求体不能为空"})
+
+        product_id = body.get("product_id")
+        title_raw = body.get("title") or ""
+        body_text = body.get("body") or ""
+        platform = (body.get("platform") or "xhs").strip()
+        content_type = (body.get("content_type") or "image_text").strip()
+        account_id = body.get("account_id")
+        scheduled_at_raw = body.get("scheduled_at")
+
+        # 必填校验
+        if not title_raw:
+            raise HTTPException(status_code=400, detail={"error": "title 必填"})
+        if not body_text:
+            raise HTTPException(status_code=400, detail={"error": "body 必填"})
+
+        # product_id 可选；若传则校验
+        if product_id is not None:
+            try:
+                product_id = int(product_id)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail={"error": "product_id 必须为整数"})
+            with get_db() as db:
+                prod = db.query(Product).filter(Product.id == product_id).first()
+            if not prod:
+                raise HTTPException(status_code=404, detail={"error": f"商品 #{product_id} 不存在"})
+
+        if account_id is not None:
+            try:
+                account_id = int(account_id)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail={"error": "account_id 必须为整数"})
+
+        scheduled_at = None
+        if scheduled_at_raw:
+            try:
+                if isinstance(scheduled_at_raw, datetime):
+                    scheduled_at = scheduled_at_raw
+                else:
+                    scheduled_at = datetime.fromisoformat(str(scheduled_at_raw).replace("Z", "+00:00"))
+            except Exception:
+                raise HTTPException(status_code=400, detail={"error": "scheduled_at 格式错误（ISO8601）"})
+
+        title_safe = escape_text(title_raw)[:512]
+        body_safe = escape_text(body_text)
+
+        rec = PublishRecord(
+            account_id=account_id,
+            product_id=product_id,
+            platform=platform[:32],
+            title=title_safe,
+            body=body_safe,
+            publish_type=content_type[:32],
+            status="pending",
+            scheduled_at=scheduled_at,
+            created_at=datetime.utcnow(),
+        )
+
+        with get_db() as db:
+            try:
+                db.add(rec)
+                db.commit()
+                db.refresh(rec)
+            except IntegrityError as ie:
+                db.rollback()
+                logger.error(f"[publish] 创建发布任务数据冲突: {ie}")
+                raise HTTPException(status_code=409, detail={"error": "数据冲突"})
+
+        logger.info(f"[publish] 创建发布任务 id={rec.id} platform={platform}")
+        return {
+            "success": True,
+            "id": rec.id,
+            "publish": {
+                "id": rec.id,
+                "product_id": rec.product_id,
+                "account_id": rec.account_id,
+                "platform": escape_text(rec.platform),
+                "title": escape_text(rec.title),
+                "body_preview": escape_text(_truncate_body(rec.body)),
+                "publish_type": escape_text(rec.publish_type),
+                "status": escape_text(rec.status),
+                "scheduled_at": rec.scheduled_at.isoformat() if rec.scheduled_at else None,
+                "created_at": rec.created_at.isoformat() if rec.created_at else None,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"create_publish failed: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})
