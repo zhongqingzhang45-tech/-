@@ -30,12 +30,30 @@ from agents.content_factory import ContentFactory
 from agents.image_recomposer import ImageRecomposer
 from agents.publishers.xiaohongshu import XiaohongshuPublisher
 from agents.scrapers.juliang_baiying import run_crawl
+from agents.scrapers.douyin_openapi_cli import crawl_via_openapi
 from utils.common import ensure_dir
 
-# ---------- Step 1: 抓取 ----------
+# ---------- Step 1a: 浏览器方式抓（Playwright，老方案保留） ----------
 def step_crawl(n: int, output: Optional[str] = None) -> Path:
     out = run_crawl(n=n, output_path=output)
     return out
+
+# ---------- Step 1b: OpenAPI 方式抓（新方案，推荐） ----------
+def step_crawl_api(
+    n: int,
+    title: str = "",
+    sort_type: str = "sales",
+    access_token: str = "",
+    output: Optional[str] = None,
+) -> Path:
+    items = crawl_via_openapi(
+        access_token=access_token,
+        title=title,
+        sort_type=sort_type,
+        n=n,
+        output_file=output,
+    )
+    return Path(output) if output else Config.DATA_DIR / "products.json"
 
 
 # ---------- Step 2: 从 products.json 生成内容 + 图片 ----------
@@ -230,8 +248,20 @@ def main():
     parser = argparse.ArgumentParser(description="巨量百应 → 小红书 全自动流水线")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sp = sub.add_parser("crawl")
+    sp = sub.add_parser("crawl", help="[Playwright 老方案] 浏览器抓取（需本地 Chrome 扫码登录）")
     sp.add_argument("-n", "--num", type=int, default=100)
+    sp.add_argument("-o", "--output", type=str, default=None)
+
+    sp = sub.add_parser(
+        "crawl_api",
+        help="[OpenAPI 新方案，推荐] 通过抖音电商开放平台抓取（需要 access_token）",
+    )
+    sp.add_argument("-n", "--num", type=int, default=100, help="要抓取的商品总数")
+    sp.add_argument("--title", type=str, default="", help="搜索关键词，如 '防晒衣'")
+    sp.add_argument("--sort", type=str, default="sales",
+                    choices=["sales", "commission", "ratio", "price_asc", "default"],
+                    help="排序方式")
+    sp.add_argument("--token", type=str, default="", help="access_token；也可通过 DOUYIN_ACCESS_TOKEN 环境变量")
     sp.add_argument("-o", "--output", type=str, default=None)
 
     sp = sub.add_parser("generate")
@@ -251,6 +281,15 @@ def main():
 
     if args.cmd == "crawl":
         p = step_crawl(args.num, args.output)
+        print(f"输出文件: {p}")
+    elif args.cmd == "crawl_api":
+        p = step_crawl_api(
+            n=args.num,
+            title=args.title,
+            sort_type=args.sort,
+            access_token=args.token,
+            output=args.output,
+        )
         print(f"输出文件: {p}")
     elif args.cmd == "generate":
         step_generate(args.json, top_n=args.top)
