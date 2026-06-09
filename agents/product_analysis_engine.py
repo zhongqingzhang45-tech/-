@@ -18,11 +18,11 @@ class AnalysisEngine:
                 ProductAnalysis.product_id == product.id
             ).first()
             if existing:
-                logger.info(f"[{product.title[:30}... 已有分析结果，跳过")
+                logger.info(f"[{product.title[:30]}... 已有分析结果，跳过")
                 return existing
 
             extra = product.extra or {}
-            extra_str = "\n".join(f"{k}: {v}" for k, v in extra.items()) or "（无额外信息）
+            extra_str = "\n".join(f"{k}: {v}" for k, v in extra.items()) or "（无额外信息）"
 
             user_prompt = prompts.PROMPT_ANALYZE_PRODUCT.format(
                 title=product.title,
@@ -52,7 +52,7 @@ class AnalysisEngine:
             db.add(analysis)
             db.commit()
             db.refresh(analysis)
-            logger.success(f"商品分析完成: {len(analysis.selling_points or [])[:3]}个卖点")
+            logger.success(f"商品分析完成: {len(analysis.selling_points or [])}个卖点")
             return analysis
 
     def to_dict(self, analysis: Optional[ProductAnalysis]) -> Dict[str, Any]:

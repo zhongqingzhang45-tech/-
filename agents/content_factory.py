@@ -56,7 +56,7 @@ class ContentFactory:
             db.add(content)
             db.commit()
             db.refresh(content)
-        logger.success(f"小红书文案生成完成: {content.title or '(无标题)")
+        logger.success(f"小红书文案生成完成: {content.title or '(无标题)'}")
         return content
 
     # ---- 短视频脚本 ----
