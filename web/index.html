@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marketing Agent · 运营后台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: { 500: '#10b981' } } } }
+    }
+  </script>
+  <link rel="stylesheet" href="static/style.css" />
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+<div class="flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar-expanded">
+    <div class="p-4 border-b border-slate-700/60 flex items-center justify-between">
+      <div class="sidebar-logo-expanded text-visible flex items-center gap-2">
+        <span class="text-2xl">🤖</span>
+        <span class="font-bold text-lg tracking-wide bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Marketing Agent</span>
+      </div>
+      <button id="sidebarToggle" class="text-slate-400 hover:text-emerald-400 transition-colors text-xl" title="折叠/展开">☰</button>
+    </div>
+    <nav class="p-2 space-y-1">
+      <a class="menu-item active" data-tab="dashboard" href="#"><span class="menu-icon">📊</span><span class="menu-label">仪表盘</span></a>
+      <a class="menu-item" data-tab="products" href="#"><span class="menu-icon">📦</span><span class="menu-label">商品库</span></a>
+      <a class="menu-item" data-tab="contents" href="#"><span class="menu-icon">✍️</span><span class="menu-label">内容库</span></a>
+      <a class="menu-item" data-tab="hot" href="#"><span class="menu-icon">🔥</span><span class="menu-label">热点 Radar</span></a>
+      <a class="menu-item" data-tab="publish" href="#"><span class="menu-icon">🚀</span><span class="menu-label">发布记录</span></a>
+      <a class="menu-item" data-tab="rankings" href="#"><span class="menu-icon">🏆</span><span class="menu-label">排行榜</span></a>
+      <a class="menu-item" data-tab="logs" href="#"><span class="menu-icon">📝</span><span class="menu-label">日志</span></a>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col min-w-0">
+
+    <!-- Top nav -->
+    <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-700/60">
+      <div class="flex items-center justify-between px-6 py-3 flex-wrap gap-3">
+        <div>
+          <h1 id="pageTitle" class="text-xl font-semibold">📊 仪表盘</h1>
+          <p class="text-xs text-slate-400 mt-0.5" id="todayDate"></p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btnSmoke" class="btn-action btn-action-emerald">🚀 触发冒烟测试</button>
+          <button id="btnPipeline" class="btn-action btn-action-amber">⚡ 触发全流程</button>
+          <div id="actionResult" class="text-xs text-slate-300 hidden px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 max-w-xs"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content area -->
+    <div class="p-6 flex-1 overflow-auto">
+
+      <!-- Dashboard -->
+      <section id="tab-dashboard" class="tab-panel">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="statsCards"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          <div class="card lg:col-span-2">
+            <div class="card-header">🔥 热销商品 TOP 5</div>
+            <div id="topProductsChart" class="p-5 space-y-3"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">🌐 发布平台分布</div>
+            <div class="p-5 flex items-center gap-6">
+              <div id="platformDonut" class="donut shrink-0"></div>
+              <div id="platformLegend" class="space-y-2 text-sm flex-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">📋 最近 5 条发布记录</div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr><th>商品</th><th>平台</th><th>状态</th><th>时间</th></tr>
+              </thead>
+              <tbody id="recentPublishTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Products -->
+      <section id="tab-products" class="tab-panel hidden">
+        <div class="card">
+          <div class="flex items-center justify-between flex-wrap gap-3 p-5 border-b border-slate-700/60">
+            <div class="card-header !border-0 !p-0">📦 商品库</div>
+            <div class="flex items-center gap-2">
+              <input id="productSearch" type="text" placeholder="🔍 搜索商品标题..." class="input-search" />
+              <button class="btn-action btn-action-sm" onclick="productsState.refresh()">查询</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>标题</th><th>平台</th><th>价格</th><th>佣金</th>
+                  <th>销量</th><th>评分</th><th>爆品</th><th>创建时间</th>
+                </tr>
+              </thead>
+              <tbody id="productsTable"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="productsPager"></div>
+        </div>
+      </section>
+
+      <!-- Contents -->
+      <section id="tab-contents" class="tab-panel hidden">
+        <div class="card">
+          <div class="flex items-center justify-between flex-wrap gap-3 p-5 border-b border-slate-700/60">
+            <div class="card-header !border-0 !p-0">✍️ 内容库</div>
+            <div class="flex flex-wrap gap-2 items-center">
+              <select id="filterPlatform" class="input-search !py-1.5">
+                <option value="">全部平台</option>
+                <option value="xhs">小红书</option>
+                <option value="douyin">抖音</option>
+                <option value="kuaishou">快手</option>
+                <option value="wechat">微信</option>
+              </select>
+              <select id="filterContentType" class="input-search !py-1.5">
+                <option value="">全部类型</option>
+                <option value="image_text">图文</option>
+                <option value="script">脚本</option>
+                <option value="copywriting">文案</option>
+                <option value="review">测评</option>
+                <option value="plot_script">剧情脚本</option>
+                <option value="compare">对比</option>
+              </select>
+              <select id="filterStatus" class="input-search !py-1.5">
+                <option value="">全部状态</option>
+                <option value="draft">草稿</option>
+                <option value="used">已使用</option>
+                <option value="archived">归档</option>
+              </select>
+              <button class="btn-action btn-action-sm" onclick="contentsState.refresh()">查询</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>商品标题</th><th>平台</th><th>类型</th>
+                  <th>标题</th><th>状态</th><th>创建时间</th>
+                </tr>
+              </thead>
+              <tbody id="contentsTable"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="contentsPager"></div>
+        </div>
+      </section>
+
+      <!-- Hot topics -->
+      <section id="tab-hot" class="tab-panel hidden">
+        <div class="card">
+          <div class="card-header">🔥 热点 Radar</div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>关键词</th><th>来源</th><th>热度值</th>
+                  <th>增长</th><th>分类</th><th>排名</th><th>时间</th>
+                </tr>
+              </thead>
+              <tbody id="hotTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Publish records -->
+      <section id="tab-publish" class="tab-panel hidden">
+        <div class="card">
+          <div class="card-header">🚀 发布记录</div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr><th>商品</th><th>平台</th><th>标题</th><th>状态</th><th>发布时间</th></tr>
+              </thead>
+              <tbody id="publishTable"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="publishPager"></div>
+        </div>
+      </section>
+
+      <!-- Rankings -->
+      <section id="tab-rankings" class="tab-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="card">
+            <div class="card-header">🏆 爆品榜（按佣金）</div>
+            <ol id="rankProducts" class="p-5 space-y-2 text-sm"></ol>
+          </div>
+          <div class="card">
+            <div class="card-header">✍️ 内容榜（按互动）</div>
+            <ol id="rankContents" class="p-5 space-y-2 text-sm"></ol>
+          </div>
+          <div class="card">
+            <div class="card-header">🔥 热点榜</div>
+            <ol id="rankHot" class="p-5 space-y-2 text-sm"></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- Logs -->
+      <section id="tab-logs" class="tab-panel hidden">
+        <div class="card">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700/60">
+            <div class="card-header !border-0 !p-0">📝 日志（最近 200 行）</div>
+            <button class="btn-action btn-action-sm" onclick="loadLogs()">🔄 刷新</button>
+          </div>
+          <pre id="logsArea" class="log-area">加载中...</pre>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modalWrap" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center">
+  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-11/12 max-w-3xl max-h-[85vh] overflow-auto">
+    <div class="flex items-center justify-between p-4 border-b border-slate-700 sticky top-0 bg-slate-800 z-10">
+      <h3 id="modalTitle" class="font-semibold text-emerald-400">详情</h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none w-6 h-6 flex items-center justify-center">✕</button>
+    </div>
+    <div id="modalBody" class="p-5 text-sm"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed top-4 right-4 z-50 hidden px-4 py-2 rounded-lg text-sm shadow-lg"></div>
+
+<script src="static/app.js"></script>
+</body>
+</html>
