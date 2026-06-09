@@ -49,6 +49,11 @@ app.mount("/static", StaticFiles(directory=str(WEB_STATIC_DIR)), name="static")
 # /images -> /workspace/output/images
 app.mount("/images", StaticFiles(directory=str(Config.IMAGE_DIR)), name="images")
 
+# /videos -> /workspace/output/videos
+VIDEO_DIR = BASE_DIR / "output" / "videos"
+VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/videos", StaticFiles(directory=str(VIDEO_DIR)), name="videos")
+
 # ---------- 挂载 API 路由 ----------
 app.include_router(api_router)
 

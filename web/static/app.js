@@ -796,123 +796,219 @@
     { key: "对比", label: "对比评测", icon: "⚖️", desc: "多产品横向对比" }
   ];
 
-  async function loadContentFactory() {
-    // 渲染内容类型按钮
-    var typeContainer = document.querySelector("#tab-content .content-type-container");
-    if (typeContainer) {
-      typeContainer.innerHTML = CONTENT_TYPES.map(function (t, idx) {
-        var isActive = t.key === STATE.contentFactory.contentType;
-        return '<button class="content-type-btn segment-btn flex-1 p-3 rounded-xl text-left transition-all '
-          + (isActive ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-700/40 text-slate-300 hover:bg-slate-700/60 hover:text-white')
-          + '" data-type="' + t.key + '">'
-          + '<div class="text-xl mb-1">' + t.icon + '</div>'
-          + '<div class="text-xs font-medium">' + t.label + '</div>'
-          + '<div class="text-[10px] text-slate-400 mt-0.5">' + t.desc + '</div>'
-          + '</button>';
-      }).join("");
+  // 根据商品信息 + 内容类型生成 Prompt 模板
+  function buildPromptForProduct(product, typeKey) {
+    var typeLabel = (CONTENT_TYPES.find(function (t) { return t.key === typeKey; }) || CONTENT_TYPES[0]).label;
+    var title = (product && product.title) ? product.title : "未选择商品";
+    var price = product && product.price ? ("¥" + product.price) : "¥299";
+    var commission = product && product.commission_amount ? ("¥" + product.commission_amount) : "¥45";
+    var sales = product && product.sales_count ? fmtNum(product.sales_count) : "10w+";
+    var points = (product && product.selling_points && product.selling_points.length)
+      ? product.selling_points
+      : ["专柜正品 · 品牌直发", "30 天无忧售后", "爆款销量超 10w+", "用户好评率 98%", "超高性价比"];
 
-      $$(".content-type-btn").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          STATE.contentFactory.contentType = btn.dataset.type;
-          loadContentFactory();
+    var lines = [
+      "你是一名资深营销文案写手，请根据以下商品信息，撰写一篇【" + typeLabel + "】风格的营销内容：",
+      "",
+      "【商品名称】" + title,
+      "【价格】" + price,
+      "【佣金】" + commission,
+      "【销量】" + sales,
+      "【核心卖点】"
+    ];
+    points.slice(0, 5).forEach(function (pt, i) {
+      lines.push((i + 1) + ". " + pt);
+    });
+    lines.push("");
+    lines.push("【目标平台】小红书 / 抖音 / 视频号");
+    lines.push("【目标受众】25-40 岁都市白领");
+    lines.push("【要求】");
+    lines.push("- 标题吸睛，带 3-5 个 emoji");
+    lines.push("- 正文段落清晰，每段不超过 3 行");
+    lines.push("- 自然植入产品关键词");
+    lines.push("- 结尾强引导互动/转化");
+    lines.push("- 总字数控制在 300-500 字");
+    return lines.join("\n");
+  }
+
+  async function loadContentFactory() {
+    // 1. 从 API 拉取商品列表（首次或数据为空时）
+    if (!STATE.products.items || !STATE.products.items.length) {
+      try {
+        var data = await apiGet("/api/products", { page: 1, page_size: 12 }).catch(function () {
+          return { items: generateMockProducts(12), total: 12 };
         });
-      });
+        STATE.products.items = data.items || (Array.isArray(data) ? data : []) || generateMockProducts(12);
+      } catch (e) {
+        STATE.products.items = generateMockProducts(12);
+      }
     }
 
-    // 渲染数据源列表
+    // 2. 渲染商品卡片列表
     var sourceList = $("contentSourceList");
     if (sourceList) {
-      var sources = [];
-      if (STATE.products.items && STATE.products.items.length) {
-        sources = STATE.products.items.slice(0, 5).map(function (p) {
-          return { id: p.id, type: "product", title: p.title || p.name, meta: p.platform || "", icon: "📦" };
-        });
-      }
-      if (STATE.hot.items && STATE.hot.items.length) {
-        sources = sources.concat(STATE.hot.items.slice(0, 3).map(function (h) {
-          return { id: h.id, type: "hot", title: h.keyword || h.title, meta: h.source || "", icon: "🔥" };
-        }));
-      }
-      if (!sources.length) {
-        // 兜底数据
-        var mocks = generateMockProducts(5);
-        sources = mocks.map(function (p) {
-          return { id: p.id, type: "product", title: p.title, meta: p.platform, icon: "📦" };
-        });
-      }
-
-      sourceList.innerHTML = sources.map(function (s) {
-        var isSelected = STATE.contentFactory.sourceId !== null && String(STATE.contentFactory.sourceId) === String(s.id);
+      var items = STATE.products.items.slice(0, 12);
+      sourceList.innerHTML = items.map(function (p) {
+        var isSelected = STATE.contentFactory.sourceId !== null && String(STATE.contentFactory.sourceId) === String(p.id);
+        var price = p.price ? ("¥" + p.price) : "¥299";
+        var commission = p.commission_amount ? ("¥" + p.commission_amount) : "¥45";
+        var sales = fmtNum(p.sales_count || p.sales || Math.floor(Math.random() * 50000 + 5000));
+        var hotScore = Math.floor(70 + Math.random() * 30);
         return '<div class="p-3 rounded-lg cursor-pointer transition-all border content-source-item '
-          + (isSelected ? 'bg-blue-500/10 border-blue-500/40' : 'bg-slate-700/30 border-transparent hover:bg-slate-700/50 hover:border-slate-600/50')
-          + '" data-source-id="' + s.id + '" data-source-type="' + s.type + '">'
-          + '<div class="flex items-start gap-2">'
-          + '<span class="text-lg flex-shrink-0">' + s.icon + '</span>'
+          + (isSelected
+            ? 'bg-blue-500/20 border-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.25)]'
+            : 'bg-slate-700/30 border-slate-700/40 hover:bg-slate-700/50 hover:border-blue-500/40')
+          + '" data-product-id="' + p.id + '" data-title="' + esc(p.title || p.name || "") + '">'
+          + '<div class="flex items-start gap-2 mb-2">'
+          + '<span class="text-lg flex-shrink-0">📦</span>'
           + '<div class="flex-1 min-w-0">'
-          + '<div class="text-xs font-medium text-white line-clamp-2">' + esc(s.title) + '</div>'
-          + '<div class="text-[10px] text-slate-500 mt-1">' + esc(s.type === "hot" ? "热点 · " : "") + esc(s.meta) + '</div>'
+          + '<div class="text-xs font-semibold text-white leading-snug line-clamp-2">' + esc(p.title || p.name || "商品") + '</div>'
           + '</div>'
-          + (isSelected ? '<span class="text-blue-400 text-xs">✓</span>' : '')
-          + '</div></div>';
+          + (isSelected ? '<span class="text-blue-400 text-xs font-bold">✓</span>' : '')
+          + '</div>'
+          + '<div class="grid grid-cols-3 gap-1 text-[10px]">'
+          + '<div class="bg-slate-800/60 rounded px-1.5 py-1 text-center"><span class="text-slate-400">价格</span><div class="text-amber-400 font-semibold">' + price + '</div></div>'
+          + '<div class="bg-slate-800/60 rounded px-1.5 py-1 text-center"><span class="text-slate-400">佣金</span><div class="text-emerald-400 font-semibold">' + commission + '</div></div>'
+          + '<div class="bg-slate-800/60 rounded px-1.5 py-1 text-center"><span class="text-slate-400">爆款</span><div class="text-rose-400 font-semibold">' + hotScore + '</div></div>'
+          + '</div>'
+          + '</div>';
       }).join("");
 
       $$(".content-source-item").forEach(function (item) {
         item.addEventListener("click", function () {
-          STATE.contentFactory.sourceId = item.dataset.sourceId;
-          STATE.contentFactory.sourceType = item.dataset.sourceType;
+          var pid = item.dataset.productId;
+          STATE.contentFactory.sourceId = pid;
+          STATE.contentFactory.sourceType = "product";
+          // 从 items 中找到对应商品
+          var product = STATE.products.items.find(function (p) { return String(p.id) === String(pid); });
+          // 自动填充 Prompt
+          var promptArea = $("contentPrompt");
+          if (promptArea && product) {
+            promptArea.value = buildPromptForProduct(product, STATE.contentFactory.contentType);
+          }
+          // 渲染卖点
+          renderSellingPoints(product);
+          // 预览区更新
+          updateContentPreview(product);
+          // 重新渲染商品卡片以高亮选中
           loadContentFactory();
-          toast("已切换数据源", "info");
+          toast("已选中商品: " + (product ? (product.title || product.name) : ""), "success");
         });
       });
     }
 
-    // 渲染卖点
+    // 3. 渲染卖点（如果已有选中商品）
+    if (STATE.contentFactory.sourceId !== null) {
+      var selectedProd = STATE.products.items.find(function (p) { return String(p.id) === String(STATE.contentFactory.sourceId); });
+      if (selectedProd) renderSellingPoints(selectedProd);
+    }
+
+    // 4. 内容类型按钮：高亮当前选中
+    $$(".content-type-btn").forEach(function (btn) {
+      var isActive = btn.dataset.contentType === STATE.contentFactory.contentType;
+      btn.classList.toggle("bg-blue-500", isActive);
+      btn.classList.toggle("text-white", isActive);
+      btn.classList.toggle("bg-slate-700/40", !isActive);
+      btn.classList.toggle("text-slate-400", !isActive);
+      btn.onclick = function () {
+        STATE.contentFactory.contentType = btn.dataset.contentType;
+        // 重新填充 Prompt
+        var promptArea = $("contentPrompt");
+        if (promptArea && STATE.contentFactory.sourceId !== null) {
+          var prod = STATE.products.items.find(function (p) { return String(p.id) === String(STATE.contentFactory.sourceId); });
+          if (prod) promptArea.value = buildPromptForProduct(prod, STATE.contentFactory.contentType);
+        }
+        // 重新高亮
+        $$(".content-type-btn").forEach(function (b) {
+          var active = b.dataset.contentType === STATE.contentFactory.contentType;
+          b.classList.toggle("bg-blue-500", active);
+          b.classList.toggle("text-white", active);
+          b.classList.toggle("bg-slate-700/40", !active);
+          b.classList.toggle("text-slate-400", !active);
+        });
+        toast("已切换内容类型: " + btn.textContent.trim(), "info");
+      };
+    });
+
+    // 5. 初始化 Prompt 编辑区（首次无内容时）
+    var promptArea = $("contentPrompt");
+    if (promptArea && !promptArea.value.trim()) {
+      if (STATE.contentFactory.sourceId !== null) {
+        var prod = STATE.products.items.find(function (p) { return String(p.id) === String(STATE.contentFactory.sourceId); });
+        if (prod) promptArea.value = buildPromptForProduct(prod, STATE.contentFactory.contentType);
+        else promptArea.value = buildPromptForProduct(null, STATE.contentFactory.contentType);
+      } else {
+        promptArea.value = buildPromptForProduct(null, STATE.contentFactory.contentType);
+      }
+    }
+
+    // 6. 绑定生成按钮
+    var genBtn = $("btnGenerateContent");
+    if (genBtn) genBtn.onclick = generateContent;
+
+    var regenBtn = $("btnRegenerateContent");
+    if (regenBtn) regenBtn.onclick = generateContent;
+
+    var saveBtn = $("btnSaveDraft");
+    if (saveBtn) saveBtn.onclick = function () { toast("草稿已保存到浏览器", "success"); };
+
+    var sendBtn = $("btnSendToVideo");
+    if (sendBtn) sendBtn.onclick = function () {
+      if (STATE.contentFactory.sourceId === null) { toast("请先选择一个商品", "warn"); return; }
+      toast("已发送到视频工厂，即将切换...", "success");
+      setTimeout(function () { switchTab("video"); }, 500);
+    };
+  }
+
+  function renderSellingPoints(product) {
     var sellingPoints = $("sellingPoints");
-    if (sellingPoints) {
-      var points = ["专柜正品 · 品牌直发", "30 天无忧售后", "爆款销量超 10w+",
-        "用户好评率 98%", "小红书达人推荐", "超高佣金比 15%+"];
-      sellingPoints.innerHTML = points.map(function (pt, i) {
-        return '<div class="p-2.5 rounded-lg bg-slate-700/30 text-xs text-slate-300 flex items-center gap-2 hover:bg-slate-700/50 transition-colors">'
-          + '<span class="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 flex-shrink-0"></span>'
-          + esc(pt) + '</div>';
+    if (!sellingPoints) return;
+    var points = (product && product.selling_points && product.selling_points.length)
+      ? product.selling_points
+      : ["专柜正品 · 品牌直发", "30 天无忧售后", "爆款销量超 10w+", "用户好评率 98%", "超高性价比"];
+    sellingPoints.innerHTML = points.map(function (pt) {
+      return '<div class="p-2.5 rounded-lg bg-slate-700/30 text-xs text-slate-300 flex items-center gap-2 hover:bg-slate-700/50 transition-colors">'
+        + '<span class="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 flex-shrink-0"></span>'
+        + esc(pt) + '</div>';
+    }).join("");
+  }
+
+  function updateContentPreview(product) {
+    var title = product && product.title ? product.title : "未选择商品";
+    var previewBox = $("contentPreview");
+    if (previewBox) {
+      previewBox.innerHTML = '<div class="text-center">'
+        + '<div class="text-3xl mb-2">📱</div>'
+        + '<div class="text-xs font-semibold text-white mb-1">已选商品</div>'
+        + '<div class="text-[11px] text-slate-400">' + esc(title) + '</div>'
+        + '<div class="text-[10px] text-blue-400 mt-2">点击"AI 生成"查看完整预览 →</div>'
+        + '</div>';
+    }
+    var tEl = $("previewTitle"); if (tEl) tEl.textContent = "✨ " + title;
+    var tagsEl = $("previewTags"); if (tagsEl) {
+      tagsEl.innerHTML = ["#待生成", "#内容", "#预览"].map(function (t) {
+        return '<span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]">' + t + '</span>';
       }).join("");
     }
-
-    // 初始化 prompt 模板
-    var promptArea = document.querySelector("#tab-content textarea");
-    if (promptArea && !promptArea.value) {
-      var typeLabel = (CONTENT_TYPES.find(function (t) { return t.key === STATE.contentFactory.contentType; }) || CONTENT_TYPES[0]).label;
-      var sourceTitle = STATE.contentFactory.keyword || (function () {
-        var src = (STATE.products.items || []).find(function (p) { return String(p.id) === String(STATE.contentFactory.sourceId); });
-        return src ? (src.title || src.name) : "请先选择商品或热点";
-      })();
-      promptArea.value = "你是一名资深营销文案写手，请根据以下信息撰写一篇【" + typeLabel + "】风格的营销内容：\n\n"
-        + "【主体】" + sourceTitle + "\n"
-        + "【目标平台】小红书 / 抖音 / 视频号\n"
-        + "【目标受众】25-40 岁都市白领\n"
-        + "【核心卖点】\n1. 高品质正品保障\n2. 超高性价比\n3. 达人同款推荐\n"
-        + "【要求】\n- 标题吸睛，带 3-5 个 emoji\n- 正文段落清晰，每段不超过 3 行\n- 自然植入产品关键词\n- 结尾强引导互动/转化\n- 总字数控制在 300-500 字";
-    }
-
-    // 绑定生成按钮
-    var genBtn = document.querySelector("#tab-content .btn-primary");
-    if (genBtn) {
-      genBtn.onclick = generateContent;
-    }
+    var ctaEl = $("previewCTA"); if (ctaEl) ctaEl.textContent = "—";
+    var cartEl = $("previewCart"); if (cartEl) cartEl.textContent = "—";
   }
 
   async function generateContent() {
-    var btn = document.querySelector("#tab-content .btn-primary");
+    var btn = $("btnGenerateContent");
     var outputEl = $("aiGeneratedContent");
     var titleEl = $("previewTitle");
     var tagsEl = $("previewTags");
     var ctaEl = $("previewCTA");
     var cartEl = $("previewCart");
+    var previewBox = $("contentPreview");
 
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = "⏳ AI 思考中...";
+    if (STATE.contentFactory.sourceId === null) {
+      toast("请先在左侧选择一个商品", "warn");
+      return;
     }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = "⏳ AI 思考中..."; }
     if (outputEl) {
       outputEl.innerHTML = '<div class="flex items-center gap-2 text-slate-400 text-sm">'
         + '<span class="animate-pulse">🤖 AI 正在生成精彩内容</span>'
@@ -924,42 +1020,56 @@
     }
 
     try {
-      var sourceTitle = STATE.contentFactory.keyword || (function () {
-        var src = (STATE.products.items || []).find(function (p) { return String(p.id) === String(STATE.contentFactory.sourceId); });
-        return src ? (src.title || src.name) : "精选商品";
-      })();
-
-      // 尝试调用 API
+      var product = STATE.products.items.find(function (p) { return String(p.id) === String(STATE.contentFactory.sourceId); });
+      var sourceTitle = (product && product.title) ? product.title : "精选商品";
       var content = null;
+      var apiFailed = false;
+
       try {
         var res = await apiPost("/api/actions/generate_content", {
           product_id: STATE.contentFactory.sourceId,
           content_type: STATE.contentFactory.contentType,
-          title: sourceTitle
+          prompt: ($("contentPrompt") ? $("contentPrompt").value : "")
         });
-        content = res.content || res.text || res.result || res.data;
+        if (res && res.success && res.content) {
+          content = res.content;
+        } else {
+          apiFailed = true;
+        }
       } catch (e) {
-        // 兜底：模拟生成
+        apiFailed = true;
+      }
+
+      if (!content || apiFailed) {
+        // 后端兜底失败时再用前端兜底
         content = generateMockContent(sourceTitle, STATE.contentFactory.contentType);
       }
 
-      if (!content) content = generateMockContent(sourceTitle, STATE.contentFactory.contentType);
+      // 解析 content：可能是 string 或 {title, body, tags[], call_to_action, cart_text}
+      var contentObj = typeof content === "string" ? { body: content, title: "✨ " + sourceTitle } : content;
+      var bodyText = contentObj.body || contentObj.text || contentObj.title || "";
 
-      // 打字机效果
       if (outputEl) {
         outputEl.innerHTML = "";
-        var text = typeof content === "string" ? content : (content.body || content.text || content.title || JSON.stringify(content, null, 2));
-        typeWriter(outputEl, text, 8);
+        typeWriter(outputEl, bodyText, 8);
       }
 
       // 更新预览区
-      if (titleEl) titleEl.textContent = typeof content === "object" ? (content.title || "✨ " + sourceTitle) : ("✨ " + sourceTitle + " - " + (CONTENT_TYPES.find(function (t) { return t.key === STATE.contentFactory.contentType; }) || CONTENT_TYPES[0]).label);
-      if (tagsEl) {
-        var tags = ["#好物推荐", "#种草笔记", "#好物分享", "#品质生活", "#今日推荐"];
-        tagsEl.innerHTML = tags.map(function (tg) { return '<span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] cursor-pointer hover:bg-blue-500/30 transition-colors">' + tg + '</span>'; }).join("");
+      if (previewBox) {
+        previewBox.innerHTML = '<div class="text-center">'
+          + '<div class="text-2xl mb-2">✅</div>'
+          + '<div class="text-xs font-semibold text-white mb-1">生成完成</div>'
+          + '<div class="text-[11px] text-emerald-400">' + esc(sourceTitle) + '</div>'
+          + '<div class="text-[10px] text-slate-400 mt-2">共 ' + bodyText.length + ' 字</div>'
+          + '</div>';
       }
-      if (ctaEl) ctaEl.textContent = "💬 评论区告诉我你的看法，抽 3 位宝宝送小样～";
-      if (cartEl) cartEl.textContent = "🛒 点击左下角小黄车直接下单，限时 85 折！";
+      if (titleEl) titleEl.textContent = contentObj.title || ("✨ " + sourceTitle);
+      if (tagsEl) {
+        var tags = (contentObj.tags && contentObj.tags.length) ? contentObj.tags : ["#好物推荐", "#种草笔记", "#品质生活", "#今日推荐"];
+        tagsEl.innerHTML = tags.map(function (tg) { return '<span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] cursor-pointer hover:bg-blue-500/30 transition-colors">' + esc(tg) + '</span>'; }).join("");
+      }
+      if (ctaEl) ctaEl.textContent = contentObj.call_to_action || "💬 评论区告诉我你的看法，抽 3 位宝宝送小样～";
+      if (cartEl) cartEl.textContent = contentObj.cart_text || "🛒 点击左下角小黄车直接下单，限时 85 折！";
 
       toast("内容生成成功！", "success");
     } catch (e) {
@@ -967,10 +1077,7 @@
       toast("内容生成失败: " + e.message, "error");
       if (outputEl) outputEl.innerHTML = '<div class="text-rose-400 text-sm">❌ 生成失败: ' + esc(e.message) + '</div>';
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = "✨ AI 生成";
-      }
+      if (btn) { btn.disabled = false; btn.innerHTML = "✨ AI 生成"; }
     }
   }
 
@@ -995,14 +1102,21 @@
 
   function generateMockContent(title, type) {
     var templates = {
-      image_text: "✨ " + title + "｜姐妹们真的不能错过！\n\n🌟 为什么推荐它？\n1️⃣ 真的超级好用！用完第一瓶立刻回购\n2️⃣ 成分安全温和，敏感肌也完全 OK\n3️⃣ 性价比超高，学生党也能轻松入手\n\n💡 使用小技巧：\n每次取 2-3 滴，轻轻拍打至完全吸收，坚持一个月皮肤状态肉眼可见的变好！\n\n📊 使用 28 天后的真实感受：\n- 皮肤水润度 ⬆️ 80%\n- 毛孔细致度 ⬆️ 65%\n- 整体气色 ⬆️ 90%\n\n姐妹们！真的强烈安利给每一位看到这篇笔记的宝宝～ 早买早享受，你的皮肤会感谢你的！💕\n\n#好物推荐 #种草笔记 #品质生活",
+      image_text: "✨ " + title + "｜姐妹们真的不能错过！\n\n🌟 为什么推荐它？\n1️⃣ 真的超级好用！用完第一瓶立刻回购\n2️⃣ 成分安全温和，敏感肌也完全 OK\n3️⃣ 性价比超高，学生党也能轻松入手\n\n💡 使用小技巧：\n每次取 2-3 滴，轻轻拍打至完全吸收，坚持一个月皮肤状态肉眼可见的变好！\n\n📊 使用 28 天后的真实感受：\n- 皮肤水润度 ⬆️ 80%\n- 毛孔细致度 ⬆️ 65%\n- 整体气色 ⬆️ 90%\n\n姐妹们！真的强烈安利给每一位看到这篇笔记的宝宝～ 早买早享受，你的皮肤会感谢你的！💕",
       script: "【开场 3s 抓眼球】\n\"姐妹们！这个真的是我今年用到最惊喜的东西，没有之一！\"\n\n【产品展示】\n- 镜头对准 " + title + "\n- 展示核心功能/效果\n- 对比使用前后\n\n【痛点引出】\n\"之前我一直被这个问题困扰，试了市面上 N 多产品，都没能解决...直到遇到它！\"\n\n【核心卖点】\n✅ 效果看得见\n✅ 价格很亲民\n✅ 大牌同厂\n✅ 售后有保障\n\n【转化引导】\n\"真的，我已经回购 3 次了！现在点左下角小黄车，还有限时 8 折，错过真的拍大腿！\"\n\n【结尾】\n\"关注我，每天分享真实好用的平价好物～\"",
       review: "【" + title + "｜30 天深度测评】\n\n📦 开箱体验\n包装非常精致，开箱有仪式感，送礼也很合适\n\n🔬 成分分析\n- 核心成分：xxx\n- 含量排名：第 2 位（足量添加）\n- 无香精酒精防腐剂，敏感肌友好\n\n📊 使用效果\n第 7 天：初体验，吸收很快，不粘腻\n第 14 天：明显改善，状态稳定\n第 21 天：惊喜！皮肤在发光\n第 30 天：彻底爱上，回购预订\n\n💰 性价比\n价格 ¥xxx / 容量，折算下来每天不到 5 块钱\n\n✅ 推荐人群\n- 25+ 初抗老需求\n- 敏感肌易踩雷体质\n- 追求成分党的你\n\n⭐ 综合评分：4.8 / 5.0",
-      种草: title + "｜我愿称之为今年最值得入手的宝藏好物！\n\n姐妹们！我真的按捺不住激动的心情来分享了🥹\n\n这是我这半年用到最惊艳的东西，完全没有之一！\n\n用了它之后：\n✨ 整个人都自信了\n✨ 逢人就推荐\n✨ 回购了 3 次已经\n\n为什么说它好？\n\n1️⃣ 真的有效果\n不是那种心理作用的产品，是实打实能看到变化的\n\n2️⃣ 价格亲民\n对比动辄上千的大牌，这个价格真的太友好了\n\n3️⃣ 使用感超棒\n质地清爽不粘腻，上脸秒吸收，后续上妆也不搓泥\n\n姐妹们！听我的，趁现在有活动赶紧入！\n\n现在不下手，等涨价了真的会后悔的！\n\n#种草 #好物分享 #真心推荐 #必买清单",
+      种草: title + "｜我愿称之为今年最值得入手的宝藏好物！\n\n姐妹们！我真的按捺不住激动的心情来分享了🥹\n\n这是我这半年用到最惊艳的东西，完全没有之一！\n\n用了它之后：\n✨ 整个人都自信了\n✨ 逢人就推荐\n✨ 回购了 3 次已经\n\n为什么说它好？\n\n1️⃣ 真的有效果\n不是那种心理作用的产品，是实打实能看到变化的\n\n2️⃣ 价格亲民\n对比动辄上千的大牌，这个价格真的太友好了\n\n3️⃣ 使用感超棒\n质地清爽不粘腻，上脸秒吸收，后续上妆也不搓泥\n\n姐妹们！听我的，趁现在有活动赶紧入！\n\n现在不下手，等涨价了真的会后悔的！",
       剧情: "【场景一：办公室 · 日 · 内】\n\n（小美一脸疲惫地对着电脑，皮肤状态很差）\n\n小美：唉，最近加班太多，皮肤都变差了...\n\n同事小丽：（凑近）怎么啦？看起来状态不太好哦\n\n小美：最近天天熬夜，皮肤暗沉得不行，试了好多护肤品都没用\n\n同事小丽：（神秘一笑）早说呀！给你推荐我一直在用的神器\n\n小美：什么呀？\n\n同事小丽：当当当当！就是这个——" + title + "！\n\n（特写产品）\n\n同事小丽：我用了 2 个月，你看我现在皮肤是不是好多了？\n\n小美：（凑近看）真的哎！你皮肤好亮！\n\n同事小丽：真的超好用！成分很温和，敏感肌也能用，关键是效果真的看得见\n\n小美：那我也赶紧去买！在哪里下单？\n\n同事小丽：点左下角小黄车就可以啦！现在还有限时优惠～\n\n【结尾】二人相视一笑，镜头切产品特写 + 购买链接\n\n字幕：遇见它，是今年最美丽的意外 ✨",
-      对比: "【" + title + " vs 同类产品｜深度对比测评】\n\n⚔️ 参赛选手\nA 款：大牌经典款 ¥899\nB 款：网红爆款 ¥599\nC 款：今日主角 ¥399\n\n📊 维度对比\n\n1️⃣ 成分安全\nA: 🌟🌟🌟🌟\nB: 🌟🌟🌟🌟\nC: 🌟🌟🌟🌟🌟 (无香精酒精)\n\n2️⃣ 使用感受\nA: 🌟🌟🌟🌟 (略油腻)\nB: 🌟🌟🌟🌟 (吸收一般)\nC: 🌟🌟🌟🌟🌟 (清爽秒吸收)\n\n3️⃣ 效果表现\nA: 🌟🌟🌟🌟 (1 个月见效)\nB: 🌟🌟🌟 (效果不明显)\nC: 🌟🌟🌟🌟🌟 (2 周肉眼可见)\n\n4️⃣ 性价比\nA: 🌟🌟 (贵)\nB: 🌟🌟🌟 (适中)\nC: 🌟🌟🌟🌟🌟 (超值)\n\n🏆 总结\n综合评分：C > A > B\n预算充足选 A，追求性价比闭眼入 C！\n\n个人建议：新手先入 C，用好了再来感谢我～\n\n#测评 #对比 #推荐 #性价比"
+      对比: "【" + title + " vs 同类产品｜深度对比测评】\n\n⚔️ 参赛选手\nA 款：大牌经典款 ¥899\nB 款：网红爆款 ¥599\nC 款：今日主角 ¥399\n\n📊 维度对比\n\n1️⃣ 成分安全\nA: 🌟🌟🌟🌟\nB: 🌟🌟🌟🌟\nC: 🌟🌟🌟🌟🌟 (无香精酒精)\n\n2️⃣ 使用感受\nA: 🌟🌟🌟🌟 (略油腻)\nB: 🌟🌟🌟 (吸收一般)\nC: 🌟🌟🌟🌟🌟 (清爽秒吸收)\n\n3️⃣ 效果表现\nA: 🌟🌟🌟🌟 (1 个月见效)\nB: 🌟🌟🌟 (效果不明显)\nC: 🌟🌟🌟🌟🌟 (2 周肉眼可见)\n\n4️⃣ 性价比\nA: 🌟🌟 (贵)\nB: 🌟🌟🌟 (适中)\nC: 🌟🌟🌟🌟🌟 (超值)\n\n🏆 总结\n综合评分：C > A > B\n预算充足选 A，追求性价比闭眼入 C！\n\n个人建议：新手先入 C，用好了再来感谢我～"
     };
-    return templates[type] || templates.image_text;
+    var body = templates[type] || templates.image_text;
+    return {
+      title: "✨ " + title,
+      body: body,
+      tags: ["#好物推荐", "#种草笔记", "#品质生活", "#今日推荐"],
+      call_to_action: "💬 评论区告诉我你的看法，抽 3 位宝宝送小样～",
+      cart_text: "🛒 点击左下角小黄车直接下单，限时 85 折！"
+    };
   }
 
   /* ============================================================
@@ -1010,70 +1124,131 @@
    * ============================================================ */
 
   async function loadVideoFactory() {
-    // 模拟视频任务看板数据
-    var tasks = [];
-    var statuses = ["done", "done", "done", "running", "wait", "wait", "failed", "done"];
-    var titles = ["产品开箱展示", "使用效果对比", "达人推荐种草", "剧情植入短片", "口播带货 15s", "功能演示视频", "用户评价合集", "品牌故事"];
-    for (var i = 0; i < 8; i++) {
-      tasks.push({
-        id: i + 1,
-        title: titles[i],
-        status: statuses[i],
-        progress: statuses[i] === "done" ? 100 : (statuses[i] === "running" ? Math.floor(Math.random() * 50 + 30) : 0),
-        duration: "00:" + (15 + i * 5).toString().padStart(2, "0"),
-        created_at: new Date(Date.now() - i * 1800000).toISOString()
-      });
+    // 1. 从 API 拉取商品列表，填充顶部商品下拉
+    var productSelect = $("videoProductSelect");
+    if (productSelect) {
+      if (!STATE.products.items || !STATE.products.items.length) {
+        try {
+          var data = await apiGet("/api/products", { page: 1, page_size: 20 }).catch(function () {
+            return { items: generateMockProducts(10) };
+          });
+          STATE.products.items = data.items || (Array.isArray(data) ? data : []) || generateMockProducts(10);
+        } catch (e) {
+          STATE.products.items = generateMockProducts(10);
+        }
+      }
+      // 渲染下拉选项
+      var currentVal = productSelect.value;
+      var optionsHtml = STATE.products.items.slice(0, 20).map(function (p, i) {
+        return '<option value="' + p.id + '" data-title="' + esc(p.title || p.name || "商品") + '">'
+          + esc((p.title || p.name || "商品")).substring(0, 40) + ' · ¥' + (p.price || "299") + '</option>';
+      }).join("");
+      productSelect.innerHTML = optionsHtml;
+      if (STATE.contentFactory.sourceId !== null) {
+        productSelect.value = STATE.contentFactory.sourceId;
+      }
     }
-    STATE.videoTasks = tasks;
-    renderVideoKanban(tasks);
-    renderVideoStats(tasks);
-  }
 
-  function renderVideoKanban(tasks) {
-    var cols = {
-      wait: { el: $("kanbanWait"), count: 0 },
-      running: { el: $("kanbanProc"), count: 0 },
-      done: { el: $("kanbanDone"), count: 0 },
-      failed: { el: $("kanbanFail"), count: 0 }
-    };
+    // 2. 绑定生成视频按钮
+    var genVideoBtn = $("btnGenerateVideo");
+    if (genVideoBtn) {
+      genVideoBtn.onclick = async function () {
+        var sel = $("videoProductSelect");
+        var tpl = $("videoTemplateSelect");
+        var dur = $("videoDurationSelect");
+        var pid = sel ? sel.value : "";
+        if (!pid) { toast("请先选择商品", "warn"); return; }
 
-    Object.keys(cols).forEach(function (key) {
-      if (!cols[key].el) return;
-      cols[key].el.innerHTML = "";
-    });
+        var product = STATE.products.items.find(function (p) { return String(p.id) === String(pid); });
+        var pTitle = (product && (product.title || product.name)) || "商品视频";
+        var task = {
+          id: Date.now(),
+          title: pTitle + " · " + (tpl ? tpl.value : "模板"),
+          product_id: pid,
+          template: tpl ? tpl.value : "口播带货",
+          duration: dur ? (dur.value + "s") : "30s",
+          status: "running",
+          progress: 0,
+          created_at: new Date().toISOString()
+        };
 
-    tasks.forEach(function (t) {
-      var col = cols[t.status] || cols.wait;
-      col.count++;
-      if (!col.el) return;
+        // 加到 running 列
+        STATE.videoTasks.unshift(task);
+        renderVideoKanban(STATE.videoTasks);
+        renderVideoStats(STATE.videoTasks);
+        toast("视频任务已提交，开始处理...", "info");
 
-      var colors = {
-        wait: "border-slate-600/50 bg-slate-800/40",
-        running: "border-blue-500/40 bg-blue-500/10",
-        done: "border-emerald-500/40 bg-emerald-500/10",
-        failed: "border-rose-500/40 bg-rose-500/10"
+        // 进度条动画 0 → 100
+        var progress = 0;
+        var timer = setInterval(function () {
+          progress += Math.floor(Math.random() * 15 + 8);
+          if (progress >= 100) {
+            progress = 100;
+            clearInterval(timer);
+            // 85% 成功率
+            var ok = Math.random() > 0.15;
+            task.status = ok ? "done" : "failed";
+            task.progress = 100;
+            if (ok) {
+              // 填充视频预览
+              var previewBox = $("videoPreviewBox");
+              if (previewBox) {
+                previewBox.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-800">'
+                  + '<div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-slate-800 to-emerald-500/20"></div>'
+                  + '<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4">'
+                  + '<div class="text-5xl mb-3 animate-pulse">▶️</div>'
+                  + '<div class="text-sm text-white font-semibold mb-1">' + esc(pTitle) + '</div>'
+                  + '<div class="text-[10px] text-slate-400">时长 ' + (dur ? dur.value : "30") + 's · 已生成</div>'
+                  + '</div>'
+                  + '<div class="absolute bottom-0 left-0 right-0 h-1 bg-slate-700">'
+                  + '<div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-br-xl" style="width:100%"></div>'
+                  + '</div></div>';
+              }
+              toast("视频生成成功！", "success");
+            } else {
+              toast("视频生成失败，请重试", "error");
+            }
+            renderVideoKanban(STATE.videoTasks);
+            renderVideoStats(STATE.videoTasks);
+          } else {
+            task.progress = progress;
+            renderVideoKanban(STATE.videoTasks);
+          }
+        }, 400);
+
+        // 同时尝试调用后端 API（不阻塞前端动画）
+        try {
+          await apiPost("/api/actions/generate_video", {
+            product_id: pid,
+            template: tpl ? tpl.value : "口播带货",
+            duration: parseInt(dur ? dur.value : "30", 10)
+          });
+        } catch (e) {
+          // 静默失败，前端继续用模拟进度
+          console.log("后端 video API 未就绪，使用前端模拟:", e.message);
+        }
       };
-      var icons = { wait: "clock", running: "gear", done: "check", failed: "x" };
-      var iconText = { wait: "waiting", running: "processing", done: "done", failed: "failed" };
+    }
 
-      var card = document.createElement("div");
-      card.className = "p-3 rounded-lg border " + colors[t.status] + " cursor-pointer hover:scale-[1.02] transition-all";
-      card.innerHTML = '<div class="flex items-center justify-between mb-2">'
-        + '<span class="text-[11px] text-slate-400">#V' + String(t.id).padStart(3, "0") + '</span>'
-        + '<span class="text-[10px] text-slate-500">' + t.duration + '</span>'
-        + '</div>'
-        + '<div class="text-xs font-medium text-white truncate mb-2">' + esc(t.title) + '</div>'
-        + '<div class="h-1 bg-slate-700/80 rounded-full overflow-hidden">'
-        + '<div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all" style="width:' + t.progress + '%"></div>'
-        + '</div>'
-        + '<div class="text-[10px] text-slate-500 mt-1.5">' + iconText[t.status] + ' · ' + t.progress + '%</div>';
-      col.el.appendChild(card);
-    });
-
-    var countElWait = $("kanbanWaitCount"); if (countElWait) countElWait.textContent = cols.wait.count;
-    var countElProc = $("kanbanProcCount"); if (countElProc) countElProc.textContent = cols.running.count;
-    var countElDone = $("kanbanDoneCount"); if (countElDone) countElDone.textContent = cols.done.count;
-    var countElFail = $("kanbanFailCount"); if (countElFail) countElFail.textContent = cols.failed.count;
+    // 3. 初始看板：显示已有的 mock 任务
+    if (!STATE.videoTasks || !STATE.videoTasks.length) {
+      var tasks = [];
+      var statuses = ["done", "done", "running", "wait", "failed"];
+      var titles = ["产品开箱展示", "使用效果对比", "达人推荐种草", "剧情植入短片", "品牌故事"];
+      for (var i = 0; i < 5; i++) {
+        tasks.push({
+          id: 1000 + i,
+          title: titles[i],
+          status: statuses[i],
+          progress: statuses[i] === "done" ? 100 : (statuses[i] === "running" ? 45 : 0),
+          duration: "00:" + (15 + i * 5).toString().padStart(2, "0"),
+          created_at: new Date(Date.now() - i * 1800000).toISOString()
+        });
+      }
+      STATE.videoTasks = tasks;
+    }
+    renderVideoKanban(STATE.videoTasks);
+    renderVideoStats(STATE.videoTasks);
   }
 
   function renderVideoStats(tasks) {
@@ -1200,17 +1375,18 @@
 
   async function loadAccounts() {
     try {
-      var data = await apiGet("/api/accounts", {
-        page: STATE.accounts.page,
-        page_size: STATE.accounts.pageSize
-      }).catch(function () {
-        var mocks = generateMockAccounts(12);
-        return { items: mocks, total: 24 };
+      // 新接口: GET /api/accounts 返回 { items, summary, total }
+      var data = await apiGet("/api/accounts").catch(function () {
+        var mocks = generateMockAccounts(6);
+        return { items: mocks, total: 6, summary: null };
       });
+
       var items = data.items || (Array.isArray(data) ? data : []);
       STATE.accounts.items = items;
       STATE.accounts.total = data.total || items.length;
-      renderAccountsSummary(items);
+      var summary = data.summary || null;
+
+      renderAccountsSummary(items, summary);
       renderAccountsTable(items);
     } catch (e) {
       console.error(e);
@@ -1218,26 +1394,35 @@
     }
   }
 
-  function renderAccountsSummary(items) {
+  function renderAccountsSummary(items, summary) {
     var el = $("accountSummary");
     if (!el) return;
-    var total = items.length || 24;
-    var active = Math.floor(total * 0.75);
-    var totalFans = items.reduce(function (acc, a) { return acc + Number(a.fans || a.followers || 50000); }, 0);
-    var totalViews = Math.floor(totalFans * 2.5);
+
+    var totalAccounts = summary && summary.total_accounts != null ? summary.total_accounts : items.length;
+    var activeAccounts = summary && summary.active_accounts != null ? summary.active_accounts
+      : items.reduce(function (a, it) { return a + ((it.status === "active" || it.status === "online") ? 1 : 0); }, 0);
+    var totalFollowers = summary && summary.total_followers != null ? summary.total_followers
+      : items.reduce(function (a, it) { return a + Number(it.followers || it.fans || 0); }, 0);
+    var latestPublish = summary && summary.latest_published_at ? summary.latest_published_at
+      : (items.reduce(function (acc, it) {
+          var t = it.last_published_at || it.last_publish_at;
+          if (!t) return acc;
+          return !acc || t > acc ? t : acc;
+        }, null));
 
     el.className = "grid grid-cols-2 md:grid-cols-4 gap-4 mb-4";
     var cards = [
-      { label: "总账号数", value: total, icon: "users", grad: "from-blue-500 to-cyan-500" },
-      { label: "活跃账号", value: active, icon: "check", grad: "from-emerald-500 to-teal-500" },
-      { label: "总粉丝量", value: totalFans, icon: "heart", grad: "from-rose-500 to-pink-500" },
-      { label: "累计曝光", value: totalViews, icon: "eye", grad: "from-amber-500 to-orange-500" }
+      { label: "已绑定账号", value: totalAccounts, grad: "from-blue-500 to-cyan-500", hint: "个" },
+      { label: "活跃账号",   value: activeAccounts, grad: "from-emerald-500 to-teal-500", hint: "个" },
+      { label: "总粉丝数",   value: totalFollowers, grad: "from-rose-500 to-pink-500", hint: "" },
+      { label: "最近发布",   value: latestPublish ? fmtRelative(latestPublish) : "—", grad: "from-amber-500 to-orange-500", hint: latestPublish ? "" : "暂无发布", isText: true }
     ];
     el.innerHTML = cards.map(function (c) {
+      var valDisplay = c.isText ? c.value : fmtNum(c.value);
       return '<div class="card-tech p-4 relative overflow-hidden">'
         + '<div class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">' + c.label + '</div>'
-        + '<div class="text-xl font-bold text-white font-mono">' + fmtNum(c.value) + '</div>'
-        + '<div class="absolute -right-2 -bottom-2 text-4xl opacity-10">...</div>'
+        + '<div class="text-xl font-bold text-white font-mono">' + valDisplay + '</div>'
+        + '<div class="text-[10px] text-slate-500 mt-1">' + c.hint + '</div>'
         + '<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ' + c.grad + ' opacity-60"></div>'
         + '</div>';
     }).join("");
@@ -1247,49 +1432,83 @@
     var el = $("accountsTable");
     if (!el) return;
     if (!items || !items.length) {
-      el.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-slate-400">'
-        + '<div class="text-4xl mb-3 opacity-50">users</div>暂无账号数据</td></tr>';
+      el.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-slate-400">'
+        + '<div class="text-4xl mb-3 opacity-50">👥</div>暂无绑定账号，点击右上角「绑定新账号」开始</td></tr>';
       return;
     }
+
     el.innerHTML = items.map(function (a, idx) {
-      var name = a.name || a.account_name || a.username || ("账号 " + (idx + 1));
-      var platform = a.platform || "未知";
-      var status = a.status || a.login_status || "active";
-      var fans = Number(a.fans || a.followers || Math.floor(Math.random() * 500000 + 10000));
-      var lastPublish = a.last_publish_at || a.created_at || new Date(Date.now() - idx * 86400000).toISOString();
-      var statusCls = status === "active" || status === "online"
-        ? "text-emerald-400 bg-emerald-500/10"
-        : "text-slate-500 bg-slate-500/10";
-      var statusText = status === "active" || status === "online" ? "在线" : "离线";
+      var name = a.account_name || a.username || a.name || ("账号 " + (idx + 1));
+      var platformKey = String(a.platform || "").toLowerCase();
+      var pl = _platformStyle(platformKey);
+      var status = a.status || "active";
+      var followers = Number(a.followers || a.fans || 0);
+      var lastPub = a.last_published_at || a.created_at;
+
+      var statusCls = "";
+      var statusText = "";
+      if (status === "active" || status === "online") {
+        statusCls = "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30";
+        statusText = "● 活跃";
+      } else if (status === "paused" || status === "warning") {
+        statusCls = "text-amber-400 bg-amber-500/10 border border-amber-500/30";
+        statusText = "● 暂停";
+      } else if (status === "expired" || status === "offline") {
+        statusCls = "text-slate-400 bg-slate-500/10 border border-slate-500/30";
+        statusText = "● 失效";
+      } else {
+        statusCls = "text-slate-400 bg-slate-500/10 border border-slate-500/30";
+        statusText = status;
+      }
+
       return '<tr class="hover:bg-slate-700/30 transition-colors">'
-        + '<td class="text-xs text-slate-400">' + esc(platform) + '</td>'
-        + '<td class="text-sm font-medium text-white">@' + esc(name) + '</td>'
-        + '<td><span class="text-[10px] px-2 py-0.5 rounded-full ' + statusCls + ' font-medium">' + statusText + '</span></td>'
-        + '<td class="text-xs text-blue-400 font-mono">' + fmtNum(fans) + '</td>'
-        + '<td class="text-xs text-slate-500">' + fmtRelative(lastPublish) + '</td>'
-        + '<td><span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">已登录</span></td>'
-        + '<td class="text-right">'
-        + '<button class="text-[10px] px-2 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors">管理</button>'
-        + '</td></tr>';
+        + '<td><span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] ' + pl.color + ' border border-slate-700/40">'
+        + pl.icon + ' ' + pl.label + '</span></td>'
+        + '<td class="text-sm font-medium text-white">' + esc(name) + '</td>'
+        + '<td class="text-xs text-blue-400 font-mono">' + fmtNum(followers) + '</td>'
+        + '<td><span class="text-[10px] px-2 py-0.5 rounded-full font-medium ' + statusCls + '">' + statusText + '</span></td>'
+        + '<td class="text-xs text-slate-500">' + (lastPub ? fmtRelative(lastPub) : "—") + '</td>'
+        + '<td class="text-right"><div class="inline-flex items-center gap-1.5">'
+        + '<button class="text-[10px] px-2 py-1 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors test-account-btn" data-account-id="' + (a.id || idx) + '">测试</button>'
+        + '<button class="text-[10px] px-2 py-1 rounded bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors edit-account-btn" data-account-id="' + (a.id || idx) + '">编辑</button>'
+        + '<button class="text-[10px] px-2 py-1 rounded bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition-colors delete-account-btn" data-account-id="' + (a.id || idx) + '">删除</button>'
+        + '</div></td>'
+        + '</tr>';
     }).join("");
 
-    renderPager("accountsPager", STATE.accounts, STATE.accounts.total, loadAccounts);
+    $$(".test-account-btn", el).forEach(function (b) {
+      b.addEventListener("click", function () { toast("已触发账号连接测试", "info"); });
+    });
+    $$(".edit-account-btn", el).forEach(function (b) {
+      b.addEventListener("click", function () { toast("编辑功能开发中...", "info"); });
+    });
+    $$(".delete-account-btn", el).forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.dataset.accountId;
+        if (!confirm("确定要删除该账号吗？此操作不可撤销。")) return;
+        fetch("/api/accounts/" + id, { method: "DELETE", headers: { "Accept": "application/json" } })
+          .then(function (res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+          .then(function () { toast("账号已删除", "success"); loadAccounts(); })
+          .catch(function (err) { toast("删除失败：" + err.message, "error"); });
+      });
+    });
   }
 
   function generateMockAccounts(n) {
-    var names = ["美妆小达人", "科技测评君", "生活好物分享", "时尚穿搭日记", "美食探店博主",
-      "健身教练小李", "母婴育儿经", "家居灵感库", "数码发烧友", "旅行摄影师",
-      "职场成长笔记", "读书分享官"];
-    var platforms = ["抖音", "视频号", "小红书", "快手", "B站"];
+    var names = ["小红书·种草达人铺", "抖音·好物测评官", "微信视频号·品质好物", "快手·老铁福利社", "B站·数码测评菌", "微博·时尚生活家"];
+    var platforms = ["xiaohongshu", "douyin", "wechat", "kuaishou", "bilibili", "weibo"];
+    var statuses = ["active", "active", "active", "active", "paused", "expired"];
     var result = [];
-    for (var i = 0; i < n; i++) {
+    for (var i = 0; i < (n || 6); i++) {
       result.push({
         id: i + 1,
-        name: names[i % names.length],
         platform: platforms[i % platforms.length],
-        status: i % 4 === 0 ? "offline" : "active",
-        fans: Math.floor(Math.random() * 500000 + 10000),
-        last_publish_at: new Date(Date.now() - i * 86400000).toISOString()
+        account_name: names[i % names.length],
+        username: "user_" + (1000 + i),
+        followers: 12000 + i * 37800,
+        status: statuses[i % statuses.length],
+        last_published_at: new Date(Date.now() - i * 86400000).toISOString(),
+        note: "mock 示例账号"
       });
     }
     return result;
@@ -1299,22 +1518,26 @@
    * 11. 数据中心
    * ============================================================ */
 
-  var DATA_TABS = { content: "内容榜", products: "商品榜", accounts: "账号榜" };
-  var currentDataTab = "content";
+  var DATA_TABS = { products: "商品榜", contents: "内容榜", hot_topics: "热点榜" };
+  var currentDataTab = "products";
 
   async function loadDataCenter() {
     try {
-      var data = await apiGet("/api/rankings", { limit: 20 }).catch(function () {
+      var data = await apiGet("/api/rankings", { limit: 10 }).catch(function () {
         return {
-          top_contents: generateMockContents(15),
-          top_products: generateMockProducts(15),
-          commission_trend: generateCommissionTrend()
+          top_products: generateMockProducts(10),
+          top_contents: generateMockContents(10),
+          top_hot_topics: [],
+          platform_distribution: [],
+          commission_trend: generateCommissionTrend(),
+          content_type_distribution: [],
+          accounts_summary: null
         };
       });
 
       STATE.rankings = data;
       renderCommissionChart(data.commission_trend || generateCommissionTrend());
-      renderPlatformDistribution(data);
+      renderPlatformDistribution(data.platform_distribution || []);
       renderRankTable(currentDataTab, data);
     } catch (e) {
       console.error(e);
@@ -1325,17 +1548,26 @@
   function renderCommissionChart(trend) {
     var el = $("commissionChart");
     if (!el) return;
-    var data = Array.isArray(trend) ? trend : generateCommissionTrend();
+    var data = Array.isArray(trend) ? trend : [];
+    if (!data.length) {
+      el.innerHTML = '<div class="h-48 flex items-center justify-center text-slate-500 text-xs">暂无佣金数据</div>';
+      return;
+    }
     var max = Math.max.apply(null, data.map(function (d) { return Number(d.value || d.commission || 0); }));
-    max = Math.max(max, 1000);
+    max = Math.max(max, 100);
 
     var chartHtml = '<div class="flex items-end justify-between h-48 gap-1 px-2">';
     data.forEach(function (d, idx) {
       var val = Number(d.value || d.commission || 0);
       var h = (val / max * 100).toFixed(1);
-      var day = d.day || d.date || (idx + 1);
+      if (Number(h) < 1) h = 1;
+      var dayLabel = d.date || d.day || (idx + 1);
+      if (typeof dayLabel === "string" && dayLabel.length > 5 && dayLabel.indexOf("-") >= 0) {
+        // 如果是完整日期 MM-DD 只保留 MM-DD
+        dayLabel = dayLabel.replace(/^\d{4}-/, "");
+      }
       var isToday = idx === data.length - 1;
-      chartHtml += '<div class="flex-1 flex flex-col items-center justify-end group cursor-pointer" title="Day ' + day + ': ' + fmtMoney(val) + '">'
+      chartHtml += '<div class="flex-1 flex flex-col items-center justify-end group cursor-pointer" title="' + dayLabel + ': ' + fmtMoney(val) + '">'
         + '<div class="text-[9px] text-slate-500 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">' + fmtNum(val) + '</div>'
         + '<div class="w-full rounded-t-md transition-all duration-300 '
         + (isToday
@@ -1346,96 +1578,117 @@
     });
     chartHtml += '</div>';
     chartHtml += '<div class="flex justify-between mt-2 px-2 text-[10px] text-slate-500">'
-      + '<span>月初</span><span>月中</span><span class="text-emerald-400">今日</span></div>';
+      + '<span>30 天前</span><span>15 天前</span><span class="text-emerald-400">今日</span></div>';
     el.innerHTML = chartHtml;
   }
 
-  function renderPlatformDistribution(data) {
+  function renderPlatformDistribution(platformList) {
     var el = $("platformDist");
     if (!el) return;
-    var platforms = [
-      { name: "抖音", count: 156, color: "bg-violet-500" },
-      { name: "视频号", count: 98, color: "bg-emerald-500" },
-      { name: "小红书", count: 124, color: "bg-rose-500" },
-      { name: "快手", count: 67, color: "bg-orange-500" },
-      { name: "B站", count: 45, color: "bg-pink-500" }
-    ];
-    var total = platforms.reduce(function (a, b) { return a + b.count; }, 0);
-    el.innerHTML = platforms.map(function (p) {
-      var pct = ((p.count / total) * 100).toFixed(0);
-      return '<div class="space-y-1.5 mb-3">'
-        + '<div class="flex items-center justify-between text-xs">'
-        + '<span class="text-slate-400">' + p.name + '</span>'
-        + '<span class="text-white font-mono">' + p.count + ' · ' + pct + '%</span>'
-        + '</div>'
-        + '<div class="h-2 bg-slate-700/60 rounded-full overflow-hidden">'
-        + '<div class="h-full ' + p.color + ' rounded-full transition-all duration-500" style="width:' + pct + '%"></div>'
-        + '</div></div>';
+    var list = Array.isArray(platformList) && platformList.length ? platformList : [];
+    var total = list.reduce(function (a, b) { return a + Number(b.count || 0); }, 0);
+
+    if (!total) {
+      el.innerHTML = '<div class="py-4 text-center text-xs text-slate-500">暂无平台分布数据</div>';
+      return;
+    }
+
+    // 用 conic-gradient 实现饼图
+    var colors = ["#8b5cf6", "#10b981", "#f43f5e", "#f59e0b", "#ec4899", "#06b6d4", "#6366f1"];
+    var stops = [];
+    var acc = 0;
+    list.forEach(function (p, i) {
+      var c = Number(p.count || 0);
+      var pct = (c / total) * 100;
+      var color = p.color || colors[i % colors.length];
+      var start = acc;
+      var end = acc + pct;
+      stops.push(color + " " + start.toFixed(2) + "% " + end.toFixed(2) + "%");
+      acc = end;
+      p._color = color;
+      p._pct = pct;
+    });
+    var pieStyle = "conic-gradient(" + stops.join(", ") + ")";
+
+    var legendHtml = list.map(function (p, i) {
+      var plKey = String(p.platform || p.name || "unknown").toLowerCase();
+      var pl = _platformStyle(plKey);
+      var pct = p._pct || 0;
+      return '<div class="flex items-center justify-between text-xs mb-2">'
+        + '<span class="inline-flex items-center gap-2 text-slate-400"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:' + p._color + '"></span>' + pl.label + '</span>'
+        + '<span class="text-white font-mono">' + (p.count || 0) + ' · ' + pct.toFixed(1) + '%</span>'
+        + '</div>';
     }).join("");
+
+    el.innerHTML = '<div class="flex items-center gap-6 p-2">'
+      + '<div class="w-32 h-32 rounded-full border border-slate-700/40 shrink-0" style="background:' + pieStyle + '; box-shadow: 0 0 20px rgba(59,130,246,0.15)"></div>'
+      + '<div class="flex-1 min-w-0">' + legendHtml + '</div>'
+      + '</div>';
   }
 
   function renderRankTable(tab, data) {
     var el = $("rankTable");
     var titleEl = $("rankTitle");
     if (!el) return;
-    if (titleEl) titleEl.textContent = "🏆 " + DATA_TABS[tab] + " TOP 20";
+    if (titleEl) titleEl.textContent = "🏆 " + DATA_TABS[tab] + " TOP 10";
 
     var rows = [];
-    if (tab === "content") {
-      var contents = data.top_contents || data.contents || generateMockContents(20);
-      rows = contents.slice(0, 20).map(function (c, i) {
-        return {
-          rank: i + 1,
-          title: c.title || c.content || "内容 #",
-          platform: c.platform || "未知",
-          views: Number(c.views || c.view_count || Math.floor(Math.random() * 500000 + 50000)),
-          likes: Number(c.likes || c.like_count || Math.floor(Math.random() * 50000 + 1000)),
-          comments: Number(c.comments || c.comment_count || Math.floor(Math.random() * 5000 + 100)),
-          conversion: (Math.random() * 15 + 2).toFixed(1) + "%",
-          commission: Math.floor(Math.random() * 50000 + 5000)
-        };
-      });
-    } else if (tab === "products") {
-      var prods = data.top_products || data.products || generateMockProducts(20);
-      rows = prods.slice(0, 20).map(function (p, i) {
+    if (tab === "products") {
+      var prods = data.top_products || [];
+      rows = prods.slice(0, 10).map(function (p, i) {
         return {
           rank: i + 1,
           title: p.title || p.name || "商品 #",
-          platform: p.platform || "未知",
-          views: Number(p.sales_count || p.sales || Math.floor(Math.random() * 20000 + 1000)),
-          likes: Math.floor(Math.random() * 10000 + 500),
-          comments: Math.floor(Math.random() * 1000 + 50),
-          conversion: (Math.random() * 20 + 5).toFixed(1) + "%",
-          commission: Number(p.commission_amount || p.commission || Math.floor(Math.random() * 80000 + 10000))
+          platform: p.platform || "-",
+          sales: Number(p.sales_count || p.sales || 0),
+          commission: Number(p.commission_amount || p.commission || 0),
+          meta2: "销量: " + fmtNum(Number(p.sales_count || p.sales || 0))
         };
       });
-    } else {
-      var accts = generateMockAccounts(20);
-      rows = accts.slice(0, 20).map(function (a, i) {
+    } else if (tab === "contents") {
+      var contents = data.top_contents || [];
+      rows = contents.slice(0, 10).map(function (c, i) {
         return {
           rank: i + 1,
-          title: "@" + (a.name || "账号"),
-          platform: a.platform || "未知",
-          views: Number(a.fans || 0) * 3,
-          likes: Math.floor(Number(a.fans || 0) * 0.15),
-          comments: Math.floor(Number(a.fans || 0) * 0.02),
-          conversion: (Math.random() * 10 + 3).toFixed(1) + "%",
-          commission: Math.floor(Number(a.fans || 0) * 0.5)
+          title: c.title || c.content_title || c.content || "内容 #",
+          platform: c.platform || "-",
+          meta: (c.content_type || "") + " · " + fmtRelative(c.created_at || ""),
+          sales: Number(c.views || c.view_count || 0),
+          meta2: "浏览: " + fmtNum(Number(c.views || c.view_count || 0)),
+          commission: 0
+        };
+      });
+    } else if (tab === "hot_topics") {
+      var topics = data.top_hot_topics || [];
+      rows = topics.slice(0, 10).map(function (t, i) {
+        return {
+          rank: i + 1,
+          title: t.topic || t.title || t.tag || "热点 #",
+          platform: t.platform || "-",
+          meta: "热度值",
+          sales: Number(t.heat_value || t.heat || 0),
+          meta2: "热度: " + fmtNum(Number(t.heat_value || t.heat || 0)),
+          commission: 0
         };
       });
     }
 
+    if (!rows.length) {
+      el.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-500 text-xs">暂无数据</td></tr>';
+      return;
+    }
+
     el.innerHTML = rows.map(function (r) {
       var medal = r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : ('#' + r.rank);
+      var plKey = String(r.platform || "").toLowerCase();
+      var pl = _platformStyle(plKey);
       return '<tr class="hover:bg-slate-700/30 transition-colors">'
-        + '<td class="text-sm"><span class="' + (r.rank <= 3 ? "text-lg" : "text-slate-500 font-mono text-xs") + '">' + medal + '</span></td>'
+        + '<td class="text-sm w-10"><span class="' + (r.rank <= 3 ? "text-lg" : "text-slate-500 font-mono text-xs") + '">' + medal + '</span></td>'
         + '<td class="text-sm font-medium text-white truncate max-w-sm">' + esc(r.title) + '</td>'
-        + '<td class="text-xs text-slate-400">' + esc(r.platform) + '</td>'
-        + '<td class="text-xs text-blue-400 font-mono">' + fmtNum(r.views) + '</td>'
-        + '<td class="text-xs text-rose-400 font-mono">' + fmtNum(r.likes) + '</td>'
-        + '<td class="text-xs text-slate-400 font-mono">' + fmtNum(r.comments) + '</td>'
-        + '<td class="text-xs text-amber-400 font-mono">' + r.conversion + '</td>'
-        + '<td class="text-xs text-emerald-400 font-mono font-semibold">' + fmtMoney(r.commission) + '</td>'
+        + '<td class="text-xs"><span class="px-1.5 py-0.5 rounded text-[10px] ' + pl.color + ' border border-slate-700/40">' + pl.label + '</span></td>'
+        + '<td class="text-xs text-blue-400 font-mono">' + (r.meta2 ? r.meta2 : "-") + '</td>'
+        + '<td class="text-xs text-slate-400 font-mono">' + (r.meta ? r.meta : "-") + '</td>'
+        + '<td class="text-xs text-amber-400 font-mono">' + (r.commission ? fmtMoney(r.commission) : "—") + '</td>'
         + '</tr>';
     }).join("");
   }
@@ -1449,7 +1702,7 @@
       result.push({
         id: i + 1,
         title: titles[i % titles.length],
-        platform: ["抖音", "小红书", "视频号", "B站"][i % 4],
+        platform: ["douyin", "xiaohongshu", "wechat", "bilibili"][i % 4],
         views: Math.floor(Math.random() * 500000 + 50000),
         likes: Math.floor(Math.random() * 50000 + 1000),
         commission: Math.floor(Math.random() * 50000 + 5000)

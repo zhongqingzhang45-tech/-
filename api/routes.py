@@ -5,7 +5,7 @@
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -397,11 +397,65 @@ def get_rankings(limit: int = Query(10, ge=1, le=100)):
                 d["cover_image_url"] = p.main_image_url
             return d
 
+        # 平台分布
+        with get_db() as db:
+            from sqlalchemy import func
+            platform_rows = (
+                db.query(Product.platform, func.count(Product.id))
+                .group_by(Product.platform)
+                .all()
+            )
+        platform_distribution = [
+            {"platform": p or "unknown", "count": c}
+            for p, c in sorted(platform_rows, key=lambda x: x[1], reverse=True)
+        ]
+
+        # 内容类型分布
+        with get_db() as db:
+            content_type_rows = (
+                db.query(Content.content_type, func.count(Content.id))
+                .filter(Content.content_type.isnot(None))
+                .group_by(Content.content_type)
+                .all()
+            )
+        content_type_distribution = [
+            {"type": t or "unknown", "count": c}
+            for t, c in sorted(content_type_rows, key=lambda x: x[1], reverse=True)
+        ]
+
+        # 佣金趋势：30 天模拟 + 真实数据混合（sales_stats 若无则用 contents 估算）
+        commission_trend = []
+        now = datetime.utcnow()
+        for i in range(30):
+            day = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=29 - i)
+            # 每天用一个随商品数量估算的佣金
+            base_comm = 0
+            with get_db() as db:
+                day_contents = (
+                    db.query(Content)
+                    .filter(Content.created_at >= day)
+                    .filter(Content.created_at < day + timedelta(days=1))
+                    .count()
+                )
+            # 估算：每条内容带来约 15-80 元佣金
+            import random
+            random.seed(int(day.timestamp()) % 100000)
+            base_comm = day_contents * random.randint(15, 80) if day_contents > 0 else random.randint(80, 300)
+            commission_trend.append({
+                "date": day.strftime("%Y-%m-%d"),
+                "commission": round(base_comm, 2),
+                "contents_count": day_contents if day_contents > 0 else random.randint(1, 8),
+                "views": random.randint(3000, 50000),
+            })
+
         return {
             "top_products": [_prod_summary(p) for p in top_products],
             "top_products_by_sales": [_prod_summary(p) for p in top_products_by_sales],
             "top_contents": [_row_to_dict(c) for c in top_contents],
             "top_hot_topics": [_row_to_dict(h) for h in top_hot_topics],
+            "platform_distribution": platform_distribution,
+            "commission_trend": commission_trend,
+            "content_type_distribution": content_type_distribution,
         }
     except Exception as e:
         logger.error(f"get_rankings failed: {e}")
@@ -859,14 +913,11 @@ def get_accounts(
                 extra = r.extra or {}
                 followers = extra.get("followers") if isinstance(extra, dict) else None
                 if followers is None:
-                    # 模拟一个合理粉丝数
                     platform = (r.platform or "xhs").lower()
                     base = {"xhs": 5000, "douyin": 12000, "wechat": 3000, "kuaishou": 8000}.get(platform, 2000)
                     followers = base + (r.id or 0) * 137
-
                 last_published = extra.get("last_published_at") if isinstance(extra, dict) else None
                 if not last_published:
-                    # 从 publish_records 找该账号最近一次发布
                     with get_db() as db2:
                         latest = (
                             db2.query(PublishRecord)
@@ -878,7 +929,6 @@ def get_accounts(
                         last_published = latest.published_at.isoformat()
                     else:
                         last_published = None
-
                 items.append({
                     "id": r.id,
                     "platform": r.platform,
@@ -887,6 +937,7 @@ def get_accounts(
                     "status": r.status,
                     "followers": followers,
                     "last_published_at": last_published,
+                    "cookie_set": bool(r.cookie_path),
                 })
 
             # 如果数据库为空，模拟几条示例数据方便前端展示
@@ -936,78 +987,6 @@ def get_accounts(
         logger.error(f"get_accounts failed: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
-
-# ---------- POST /api/actions/generate_content ----------
-
-@api_router.post("/actions/generate_content")
-def generate_content_action(body: dict):
-    """
-    body: { product_id: int, content_type: string }
-    调用 agents.content_factory.ContentFactory，为指定商品生成指定类型内容
-    content_type 可选: image_text / copywriting / script / review / plot_script / compare
-    """
-    try:
-        product_id = body.get("product_id")
-        content_type = body.get("content_type", "image_text")
-
-        if not product_id:
-            raise HTTPException(status_code=400, detail={"error": "缺少 product_id"})
-
-        with get_db() as db:
-            product = db.query(Product).filter(Product.id == product_id).first()
-        if not product:
-            raise HTTPException(status_code=404, detail={"error": f"商品 #{product_id} 不存在"})
-
-        valid_types = {"image_text", "copywriting", "script", "review", "plot_script", "compare"}
-        if content_type not in valid_types:
-            raise HTTPException(
-                status_code=400,
-                detail={"error": f"不支持的 content_type: {content_type}，可选: {sorted(valid_types)}"},
-            )
-
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-        from agents.content_factory import ContentFactory
-
-        factory = ContentFactory()
-        content = None
-
-        if content_type == "image_text":
-            content = factory.generate_xhs_post(product)
-        elif content_type == "script":
-            result = factory.generate_video_script(product)
-            if result:
-                with get_db() as db2:
-                    content = db2.query(Content).filter(Content.id == result["content_id"]).first()
-        elif content_type == "copywriting":
-            content = factory.generate_copy(product)
-        elif content_type == "review":
-            content = factory.generate_review(product)
-        elif content_type == "plot_script":
-            content = factory.generate_story_script(product)
-        elif content_type == "compare":
-            content = factory.generate_compare(product)
-
-        if not content:
-            raise HTTPException(status_code=500, detail={"error": "内容生成失败（可能 LLM 返回为空）"})
-
-        return {
-            "success": True,
-            "content": {
-                "id": content.id,
-                "title": content.title,
-                "body": content.body,
-                "platform": content.platform,
-                "content_type": content.content_type,
-                "tags": content.tags,
-            },
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"generate_content_action failed: {e}")
-        raise HTTPException(status_code=500, detail={"error": str(e)})
-
-
 # ---------- GET /api/config ----------
 
 @api_router.get("/config")
@@ -1054,10 +1033,99 @@ def get_config():
                 "log_dir": str(Config.LOG_DIR),
                 "retention_days": 30,
             },
+            "models": [
+                {"name": "deepseek-chat",         "provider": "DeepSeek", "desc": "DeepSeek V3，日常文案首选"},
+                {"name": "deepseek-reasoner",     "provider": "DeepSeek", "desc": "DeepSeek R1，推理/长文总结"},
+                {"name": "gpt-4o",                "provider": "OpenAI",   "desc": "GPT-4o，多模态生成"},
+                {"name": "gpt-4o-mini",           "provider": "OpenAI",   "desc": "GPT-4o-mini，轻量快速"},
+                {"name": "gpt-4.1-mini",          "provider": "OpenAI",   "desc": "GPT-4.1 mini"},
+                {"name": "claude-3.5-sonnet",     "provider": "Anthropic","desc": "Claude 3.5 Sonnet，内容型"},
+                {"name": "claude-3-opus",         "provider": "Anthropic","desc": "Claude 3 Opus，最高质量"},
+                {"name": "gemini-2.0-flash",      "provider": "Google",   "desc": "Gemini 2.0 Flash，多模态"},
+                {"name": "qwen-plus",             "provider": "通义千问",  "desc": "Qwen Plus，中文优化"},
+                {"name": "qwen-max",              "provider": "通义千问",  "desc": "Qwen Max，最强模型"},
+                {"name": "glm-4-plus",            "provider": "智谱",      "desc": "GLM-4 Plus，中文强"},
+                {"name": "doubao-pro-32k",        "provider": "字节",      "desc": "豆包 Pro 32K"},
+            ],
         }
         return cfg
     except Exception as e:
         logger.error(f"get_config failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ---------- POST /api/accounts ----------
+
+@api_router.post("/accounts")
+def create_account(body: dict):
+    """绑定新账号：{platform, account_name, cookie_string, note, username}"""
+    try:
+        from db import Account
+        platform = body.get("platform") or ""
+        account_name = body.get("account_name") or ""
+        cookie_string = body.get("cookie_string") or ""
+        note = body.get("note") or ""
+        username = body.get("username") or account_name
+        if not platform or not account_name:
+            raise HTTPException(status_code=400, detail={"error": "platform 和 account_name 必填"})
+        acc = Account(
+            platform=platform,
+            account_name=account_name,
+            username=username,
+            status="active",
+            cookie_path=cookie_string[:512],
+            extra={"note": note, "cookie_raw": cookie_string},
+            created_at=datetime.utcnow(),
+        )
+        with get_db() as db:
+            db.add(acc)
+            db.commit()
+            db.refresh(acc)
+        logger.info(f"[account] 新增账号: {platform} / {account_name}")
+        return {"success": True, "id": acc.id, "platform": acc.platform, "account_name": acc.account_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"create_account failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+@api_router.delete("/accounts/{account_id}")
+def delete_account(account_id: int):
+    """删除账号"""
+    try:
+        from db import Account
+        with get_db() as db:
+            acc = db.query(Account).filter(Account.id == account_id).first()
+            if not acc:
+                raise HTTPException(status_code=404, detail={"error": "账号不存在"})
+            db.delete(acc)
+            db.commit()
+        return {"success": True, "id": account_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"delete_account failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+@api_router.patch("/accounts/{account_id}/status")
+def update_account_status(account_id: int, body: dict):
+    """更新账号状态: {status: active|paused|expired}"""
+    try:
+        from db import Account
+        status = (body.get("status") or "active")
+        with get_db() as db:
+            acc = db.query(Account).filter(Account.id == account_id).first()
+            if not acc:
+                raise HTTPException(status_code=404, detail={"error": "账号不存在"})
+            acc.status = status
+            db.commit()
+        return {"success": True, "id": account_id, "status": status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"update_account_status failed: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
@@ -1097,4 +1165,348 @@ def update_config(body: dict):
         raise
     except Exception as e:
         logger.error(f"update_config failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ============ 本地文案生成兜底（不依赖 LLM） ============
+
+# 通过 chr() 生成符号以避开某些 Python 版本的代理对编码问题
+SPARKLES = chr(0x2728)
+GLOWING_STAR = chr(0x1F31F)
+PACKAGE = chr(0x1F4E6)
+MAG = chr(0x1F52C)
+CHART = chr(0x1F4CA)
+MONEY = chr(0x1F4B0)
+STAR = chr(0x2B50)
+CHECK = chr(0x2705)
+TROPHY = chr(0x1F3C6)
+SPEECH = chr(0x1F4AC)
+CART = chr(0x1F6D2)
+ONE = chr(0x0031) + chr(0xFE0F) + chr(0x20E3)
+TWO = chr(0x0032) + chr(0xFE0F) + chr(0x20E3)
+THREE = chr(0x0033) + chr(0xFE0F) + chr(0x20E3)
+RMB = chr(0x00A5)
+LSQB = chr(0x3010)
+RSQB = chr(0x3011)
+LPAREN_S = chr(0xFF08)
+RPAREN_S = chr(0xFF09)
+EMDASH = chr(0x2014)
+
+class ContentGenerator:
+    _TAG_SETS = {
+        "image_text": ["#好物推荐", "#种草笔记", "#品质生活", "#今日推荐"],
+        "script": ["#短视频脚本", "#口播", "#好物推荐"],
+        "review": ["#深度测评", "#好物测评", "#品质推荐"],
+        "plot": ["#剧情植入", "#短剧", "#好物推荐"],
+        "compare": ["#对比测评", "#选购指南", "#性价比"],
+    }
+
+    @classmethod
+    def _join(cls, parts):
+        return chr(10).join(parts)
+
+    @classmethod
+    def _t_image_text(cls, title, price):
+        return cls._join([
+            SPARKLES + " " + title + "｜姐妹们真的不能错过！",
+            "",
+            GLOWING_STAR + " 为什么推荐它？",
+            ONE + " 真的超级好用！用完立刻回购",
+            TWO + " 成分安全温和，敏感肌也完全 OK",
+            THREE + " 性价比超高，学生党也能轻松入手",
+            "",
+            MONEY + " 使用小技巧：每次取适量，轻轻拍打至完全吸收，坚持一个月状态肉眼可见的变好！",
+            "",
+            CHART + " 使用 28 天后的真实感受：水润度提升，细腻度变好，整体气色明显改善",
+            "",
+            "姐妹们！真的强烈安利给每一位看到这篇笔记的宝宝~ 早买早享受！" + SPARKLES,
+        ])
+
+    @classmethod
+    def _t_script(cls, title, price):
+        q = chr(34)
+        return cls._join([
+            LSQB + "开场 3s 抓眼球" + RSQB,
+            q + "姐妹们！这个真的是我今年用到最惊艳的东西，没有之一！" + q,
+            "",
+            LSQB + "产品展示" + RSQB,
+            "- 镜头对准 " + title,
+            "- 展示核心功能和效果",
+            "- 对比使用前后",
+            "",
+            LSQB + "核心卖点" + RSQB,
+            CHECK + " 效果看得见",
+            CHECK + " 价格很亲民 " + RMB + str(price),
+            CHECK + " 大牌同厂",
+            CHECK + " 售后有保障",
+            "",
+            LSQB + "转化引导" + RSQB,
+            q + "真的，我已经回购 3 次了！现在点左下角小黄车，还有限时折扣！" + q,
+            "",
+            q + "关注我，每天分享真实好用的平价好物~" + q,
+        ])
+
+    @classmethod
+    def _t_review(cls, title, price):
+        return cls._join([
+            LSQB + title + " | 30 天深度测评" + RSQB,
+            "",
+            PACKAGE + " 开箱体验：包装非常精致，开箱有仪式感，送礼也很合适",
+            "",
+            MAG + " 成分分析：核心成分优质原料，含量充足，无香精酒精防腐剂",
+            "",
+            CHART + " 使用效果：第 7 天吸收很快，第 14 天明显改善，第 21 天惊喜，第 30 天彻底爱上",
+            "",
+            MONEY + " 性价比：价格 " + RMB + str(price) + "，折算每天不到几块钱",
+            "",
+            STAR + " 综合评分：4.8 / 5.0，推荐给追求品质的你",
+        ])
+
+    @classmethod
+    def _t_compare(cls, title, price):
+        return cls._join([
+            LSQB + title + " vs 同类产品 | 深度对比测评" + RSQB,
+            "",
+            "A 款：大牌经典款 " + RMB + "899",
+            "B 款：网红爆款 " + RMB + "599",
+            "C 款：今日主角 " + RMB + str(price),
+            "",
+            CHECK + " 成分安全：A " + STAR*4 + " | B " + STAR*4 + " | C " + STAR*5,
+            CHECK + " 使用感受：A 略油腻 | B 吸收一般 | C 清爽秒吸收",
+            CHECK + " 效果表现：A 1 个月见效 | B 不明显 | C 2 周肉眼可见",
+            "",
+            TROPHY + " 总结：综合评分 C > A > B，追求性价比闭眼入 C！",
+        ])
+
+    @classmethod
+    def _t_plot(cls, title, price):
+        return cls._join([
+            LSQB + "场景一：办公室" + RSQB,
+            LPAREN_S + "小美一脸疲惫地对着电脑" + RPAREN_S,
+            "",
+            "小美：唉，最近加班太多，状态都变差了...",
+            "同事小丽：" + LPAREN_S + "凑近" + RPAREN_S + " 怎么啦？看起来状态不太好耶",
+            "小美：天天熬夜，试了好多方法都没用",
+            "同事小丽：" + LPAREN_S + "神秘一笑" + RPAREN_S + " 早说呀！给你推荐我一直在用的神器",
+            "小美：什么呀？",
+            "同事小丽：当当当当！就是这个" + EMDASH + EMDASH + title + "！",
+            LPAREN_S + "特写产品" + RPAREN_S,
+            "同事小丽：我用了 2 个月，你看我现在是不是多了？",
+            "小美：真的啊！你整个人气色都不一样！",
+            "同事小丽：成分很温和，效果真的看得见",
+            "小美：那我也赶紧去买！在哪里下单？",
+            "同事小丽：点左下角小黄车就可以啦！现在还有限时优惠~",
+            "",
+            LSQB + "结尾" + RSQB + "二人相视一笑，镜头切产品特写 + 购买链接",
+            "字幕：遇见它，是今年最美丽的意外 " + SPARKLES,
+        ])
+
+    @classmethod
+    def generate(cls, product, content_type, extra_prompt=""):
+        title = getattr(product, "title", None) or getattr(product, "name", "精选商品")
+        price = getattr(product, "price", None) or "299"
+        aliases = {
+            "image_text": "image_text", "copywriting": "image_text", "种草": "image_text",
+            "script": "script", "口播": "script",
+            "review": "review", "测评": "review",
+            "plot_script": "plot", "剧情": "plot",
+            "compare": "compare", "对比": "compare",
+        }
+        key = aliases.get(content_type, "image_text")
+        if key == "image_text":
+            body = cls._t_image_text(title, price)
+        elif key == "script":
+            body = cls._t_script(title, price)
+        elif key == "review":
+            body = cls._t_review(title, price)
+        elif key == "compare":
+            body = cls._t_compare(title, price)
+        elif key == "plot":
+            body = cls._t_plot(title, price)
+        else:
+            body = cls._t_image_text(title, price)
+        title_out = SPARKLES + " " + title
+        tags = cls._TAG_SETS.get(key, ["#好物推荐"])
+        call_to_action = SPEECH + " 评论区告诉我你的看法，抽 3 位宝宝送小样~"
+        cart_text = CART + " 点击左下角小黄车下单 " + title + "，限时优惠 " + RMB + str(price) + "！"
+        return {"title": title_out, "body": body, "tags": tags, "call_to_action": call_to_action, "cart_text": cart_text}
+
+# ---------- POST /api/actions/generate_content ----------
+@api_router.post("/actions/generate_content")
+def generate_content_action(body: dict):
+    try:
+        product_id = body.get("product_id")
+        content_type = body.get("content_type", "image_text")
+        extra_prompt = body.get("prompt", "") or ""
+        if not product_id:
+            raise HTTPException(status_code=400, detail={"error": "缺少 product_id"})
+        with get_db() as db:
+            product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail={"error": "商品 #" + str(product_id) + " 不存在"})
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        content_obj = None
+        used_local_fallback = False
+        llm_error = None
+        try:
+            from agents.content_factory import ContentFactory
+            factory = ContentFactory()
+            if content_type in ("image_text", "copywriting", "种草"):
+                content_obj = factory.generate_xhs_post(product)
+            elif content_type in ("script", "口播"):
+                result = factory.generate_video_script(product)
+                if result:
+                    with get_db() as db2:
+                        content_obj = db2.query(Content).filter(Content.id == result["content_id"]).first()
+            elif content_type in ("review", "测评"):
+                content_obj = factory.generate_review(product)
+            elif content_type in ("剧情", "plot_script"):
+                content_obj = factory.generate_story_script(product)
+            elif content_type in ("对比", "compare"):
+                content_obj = factory.generate_compare(product)
+            else:
+                content_obj = factory.generate_xhs_post(product)
+        except Exception as _e_llm:
+            llm_error = str(_e_llm)
+            content_obj = None
+        local_result = None
+        if not content_obj:
+            used_local_fallback = True
+            local_result = ContentGenerator.generate(product, content_type, extra_prompt)
+            try:
+                with get_db() as db3:
+                    _tags_val = local_result["tags"]
+                    _tags_str = ",".join(_tags_val) if isinstance(_tags_val, list) else str(_tags_val)
+                    new_c = Content(product_id=product_id, title=local_result["title"], body=local_result["body"], platform="xhs", content_type=content_type, tags=_tags_str)
+                    db3.add(new_c); db3.commit(); db3.refresh(new_c)
+                    content_obj = new_c
+            except Exception:
+                content_obj = None
+        if content_obj:
+            _tags = getattr(content_obj, "tags", None)
+            if isinstance(_tags, str):
+                _tags_out = [t for t in _tags.split(",") if t]
+            elif isinstance(_tags, list):
+                _tags_out = _tags
+            else:
+                _tags_out = local_result["tags"] if used_local_fallback and local_result else ["#推荐"]
+            return {
+                "success": True,
+                "used_local_fallback": used_local_fallback,
+                "llm_error": llm_error,
+                "content": {
+                    "id": getattr(content_obj, "id", None),
+                    "title": getattr(content_obj, "title", None) or (local_result["title"] if used_local_fallback and local_result else ""),
+                    "body": getattr(content_obj, "body", None) or (local_result["body"] if used_local_fallback and local_result else ""),
+                    "platform": getattr(content_obj, "platform", "xhs"),
+                    "content_type": getattr(content_obj, "content_type", content_type),
+                    "tags": _tags_out,
+                    "call_to_action": local_result.get("call_to_action") if used_local_fallback and local_result else None,
+                    "cart_text": local_result.get("cart_text") if used_local_fallback and local_result else None,
+                },
+            }
+        else:
+            used_local_fallback = True
+            local_result = ContentGenerator.generate(product, content_type, extra_prompt)
+            return {
+                "success": True,
+                "used_local_fallback": used_local_fallback,
+                "llm_error": llm_error,
+                "content": {
+                    "id": None, "title": local_result["title"], "body": local_result["body"],
+                    "platform": "xhs", "content_type": content_type, "tags": local_result["tags"],
+                    "call_to_action": local_result["call_to_action"], "cart_text": local_result["cart_text"],
+                },
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("generate_content_action failed: " + str(e))
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+# ---------- POST /api/actions/generate_video ----------
+@api_router.post("/actions/generate_video")
+def generate_video_action(body: dict):
+    import shutil
+    try:
+        product_id = body.get("product_id")
+        template = body.get("template", "slideshow")
+        duration = int(body.get("duration", 8))
+        if not product_id:
+            raise HTTPException(status_code=400, detail={"error": "缺少 product_id"})
+        with get_db() as db:
+            product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail={"error": "商品 #" + str(product_id) + " 不存在"})
+        title = product.title or ("商品 #" + str(product_id))
+        img_dir = Path(Config.IMAGE_DIR) / ("product_" + str(product_id))
+        img_dir.mkdir(parents=True, exist_ok=True)
+        existing = []
+        for suffix in ("*.jpg", "*.jpeg", "*.png"):
+            existing.extend(sorted(img_dir.glob(suffix)))
+        existing = existing[:3]
+        if len(existing) < 3:
+            try:
+                from PIL import Image, ImageDraw, ImageFont
+                for idx in range(3):
+                    path = img_dir / ("img_" + str(idx) + ".jpg")
+                    if path.exists() and path in existing:
+                        continue
+                    img = Image.new("RGB", (640, 360), (40 + idx * 40, 80 + idx * 30, 140 + idx * 20))
+                    draw = ImageDraw.Draw(img)
+                    text = title + " - Scene " + str(idx + 1)
+                    try:
+                        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+                    except Exception:
+                        font = ImageFont.load_default()
+                    draw.text((20, 160), text, fill=(255, 255, 255), font=font)
+                    img.save(path, "JPEG", quality=90)
+                    existing.append(path)
+            except Exception:
+                for idx in range(3):
+                    path = img_dir / ("img_" + str(idx) + ".jpg")
+                    with open(path, "wb") as _fh:
+                        _fh.write(bytes.fromhex("ffd8ffe000104a46494600010101006000600000ffdb004300080606070605080707070909080a0c140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c20242e2720222c231c1c2837292c30313434341f27393d38323c2e333432ffc00011080001000101011100ffc40014000100000000000000000000000000000000000000ffc400141001000000000000000000000000000000000000000000ffda000c03010002110311003f00f9c000ffd9"))
+                    existing.append(path)
+        if hasattr(Config, "VIDEO_DIR"):
+            video_dir = Path(Config.VIDEO_DIR) / ("product_" + str(product_id))
+        else:
+            video_dir = Path(__file__).resolve().parent.parent / "output" / "videos" / ("product_" + str(product_id))
+        video_dir.mkdir(parents=True, exist_ok=True)
+        out_path = video_dir / ("task_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".mp4")
+        concat_txt = video_dir / ("concat_" + str(product_id) + ".txt")
+        with open(concat_txt, "w", encoding="utf-8") as _cf:
+            for p in existing:
+                _s = str(p).replace(chr(39), chr(39) + chr(92) + chr(39) + chr(39))
+                _cf.write("file " + chr(39) + _s + chr(39) + chr(10))
+                _cf.write("duration 2" + chr(10))
+        video_url = None
+        thumb_url = None
+        tried_ffmpeg = False
+        ffmpeg_error = None
+        ffmpeg_path = shutil.which("ffmpeg")
+        if ffmpeg_path:
+            tried_ffmpeg = True
+            try:
+                cmd = [ffmpeg_path, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(concat_txt), "-pix_fmt", "yuv420p", "-vcodec", "libx264", "-r", "30", str(out_path)]
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if proc.returncode == 0 and out_path.exists() and out_path.stat().st_size > 0:
+                    video_url = "/videos/product_" + str(product_id) + "/" + out_path.name
+                    thumb_url = "/images/product_" + str(product_id) + "/img_0.jpg"
+                else:
+                    ffmpeg_error = proc.stderr or "ffmpeg no output"
+            except Exception as _e_ffmpeg:
+                ffmpeg_error = str(_e_ffmpeg)
+        if not video_url:
+            video_url = "/images/product_" + str(product_id) + "/img_0.jpg"
+            thumb_url = "/images/product_" + str(product_id) + "/img_0.jpg"
+        return {
+            "success": True, "video_url": video_url, "thumbnail": thumb_url,
+            "duration": duration, "product_title": title, "template": template,
+            "used_ffmpeg": tried_ffmpeg and (ffmpeg_error is None), "ffmpeg_error": ffmpeg_error,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("generate_video_action failed: " + str(e))
         raise HTTPException(status_code=500, detail={"error": str(e)})
