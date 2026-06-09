@@ -1,0 +1,6 @@
+file '/workspace/output/images/product_169/img_0.jpg'
+duration 2
+file '/workspace/output/images/product_169/img_1.jpg'
+duration 2
+file '/workspace/output/images/product_169/img_2.jpg'
+duration 2

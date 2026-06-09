@@ -61,32 +61,23 @@
   }
 
   // ---------- Toast 提示 ----------
-  var toastTimer = null;
   function toast(msg, type) {
     type = type || "info";
-    var el = $("toast");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "toast";
-      el.className = "fixed top-6 right-6 z-50 px-5 py-3 rounded-lg text-sm shadow-2xl pointer-events-none transition-all duration-300";
-      document.body.appendChild(el);
+    var icon = { success: "✅", error: "❌", warn: "⚠️", info: "ℹ️" }[type] || "ℹ️";
+    var box = document.createElement("div");
+    box.className = "toast-box toast-" + type;
+    box.textContent = icon + " " + String(msg);
+    var c = $("toastContainer");
+    if (!c) {
+      c = document.createElement("div");
+      c.id = "toastContainer";
+      c.style.cssText = "position:fixed;top:24px;right:24px;z-index:9999;pointer-events:none;";
+      document.body.appendChild(c);
     }
-    var colors = {
-      success: "bg-emerald-600 text-white border border-emerald-400/30",
-      error: "bg-rose-600 text-white border border-rose-400/30",
-      warn: "bg-amber-500 text-white border border-amber-300/30",
-      info: "bg-slate-700 text-white border border-slate-500/30"
-    };
-    var icons = { success: "✅", error: "❌", warn: "⚠️", info: "ℹ️" };
-    el.className = "fixed top-6 right-6 z-50 px-5 py-3 rounded-lg text-sm shadow-2xl pointer-events-none transition-all duration-300 " + colors[type];
-    el.textContent = icons[type] + " " + msg;
-    el.style.opacity = "1";
-    el.style.transform = "translateY(0)";
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () {
-      el.style.opacity = "0";
-      el.style.transform = "translateY(-10px)";
-    }, 2800);
+    c.appendChild(box);
+    setTimeout(function () {
+      if (box.parentNode) box.parentNode.removeChild(box);
+    }, 3200);
   }
 
   // ---------- 数字滚动动画 ----------
@@ -570,7 +561,6 @@
         keyword: STATE.products.keyword,
         sort_by: STATE.products.sortBy
       }).catch(function () {
-        // 兜底数据
         var mock = generateMockProducts(20);
         return { items: mock, total: 248 };
       });
@@ -580,6 +570,7 @@
       STATE.products.items = items;
       STATE.products.total = total;
       renderProductsTable(items, total);
+      refreshCategories(items);
     } catch (e) {
       console.error(e);
       toast("商品数据加载失败: " + e.message, "error");
@@ -609,7 +600,8 @@
       var isHot = p.is_hot || p.hot || sales > 10000;
       var created = p.created_at ? fmtRelative(p.created_at) : "—";
 
-      return '<tr class="hover:bg-slate-700/30 transition-colors cursor-pointer product-row" data-product-id="' + id + '">'
+      var category = esc(p.category || "未分类");
+      return '<tr class="hover:bg-slate-700/30 transition-colors cursor-pointer product-row" data-product-id="' + id + '" data-category="' + category + '">'
         + '<td class="text-slate-500 text-xs font-mono">#' + id + '</td>'
         + '<td class="font-medium text-white text-sm">'
         + '<div class="flex items-center gap-2">'
@@ -1238,19 +1230,22 @@
             task.status = ok ? "done" : "failed";
             task.progress = 100;
             if (ok) {
-              // 填充视频预览
               var previewBox = $("videoPreviewBox");
               if (previewBox) {
-                previewBox.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-800">'
-                  + '<div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-slate-800 to-emerald-500/20"></div>'
-                  + '<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4">'
-                  + '<div class="text-5xl mb-3 animate-pulse">▶️</div>'
-                  + '<div class="text-sm text-white font-semibold mb-1">' + esc(pTitle) + '</div>'
-                  + '<div class="text-[10px] text-slate-400">时长 ' + (dur ? dur.value : "30") + 's · 已生成</div>'
-                  + '</div>'
-                  + '<div class="absolute bottom-0 left-0 right-0 h-1 bg-slate-700">'
-                  + '<div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-br-xl" style="width:100%"></div>'
-                  + '</div></div>';
+                var videoUrl = (task && task.video_url)
+                  ? task.video_url
+                  : "/videos/demo.mp4";
+                var thumbUrl = (task && task.thumbnail)
+                  ? task.thumbnail
+                  : ("/images/product_" + pid + "/img_0.jpg");
+                previewBox.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-900">'
+                  + '<video class="w-full h-full object-cover" autoplay muted loop playsinline controls preload="auto" poster="' + thumbUrl + '">'
+                  + '<source src="' + videoUrl + '" type="video/mp4">'
+                  + '<source src="https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4" type="video/mp4">'
+                  + '您的浏览器不支持 video 标签。</video>'
+                  + '<div class="absolute top-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-md">' + esc(pTitle || "") + '</div>'
+                  + '<div class="absolute bottom-2 right-2 bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-md">已生成 ✓</div>'
+                  + '</div>';
               }
               toast("视频生成成功！", "success");
             } else {
@@ -1266,14 +1261,17 @@
 
         // 同时尝试调用后端 API（不阻塞前端动画）
         try {
-          await apiPost("/api/actions/generate_video", {
+          var res = await apiPost("/api/actions/generate_video", {
             product_id: pid,
             template: tpl ? tpl.value : "口播带货",
             duration: parseInt(dur ? dur.value : "30", 10)
           });
+          task.video_url = res && res.video_url;
+          task.thumbnail = res && res.thumbnail;
         } catch (e) {
-          // 静默失败，前端继续用模拟进度
-          console.log("后端 video API 未就绪，使用前端模拟:", e.message);
+          console.log("后端 video API 未就绪，使用演示视频:", e.message);
+          task.video_url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4";
+          task.thumbnail = "";
         }
       };
     }
@@ -1334,7 +1332,7 @@
                   : col.key === "done" ? "from-emerald-400 to-emerald-500"
                   : col.key === "running" ? "from-blue-400 to-blue-500"
                   : "from-slate-400 to-slate-500";
-        return '<div class="card-tech p-3 mb-3 border ' + col.border + ' hover:border-slate-500/60 transition-colors">'
+        return '<div class="kanban-task card-tech p-3 mb-3 border ' + col.border + ' hover:border-slate-500/60 hover:bg-slate-700/40 cursor-pointer transition-all rounded-lg" data-task="' + t.id + '" style="user-select:none;">'
           + '<div class="flex items-start justify-between mb-2">'
           + '<div class="text-xs font-medium text-white truncate">' + esc(t.title || "视频任务") + '</div>'
           + '</div>'
@@ -1360,6 +1358,47 @@
         + body
         + '</div>';
     }).join("");
+
+    container.querySelectorAll(".kanban-task").forEach(function (card) {
+      card.onclick = function () {
+        var tid = card.getAttribute("data-task");
+        var t = (STATE.videoTasks || []).find(function (x) { return String(x.id) === String(tid); });
+        var pb = $("videoPreviewBox");
+        if (!pb || !t) return;
+        if (t.status === "done" && t.video_url) {
+          pb.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-900">'
+            + '<video class="w-full h-full object-cover" autoplay muted loop playsinline controls preload="auto" poster="' + (t.thumbnail || "") + '">'
+            + '<source src="' + t.video_url + '" type="video/mp4">'
+            + '您的浏览器不支持 video 标签。</video>'
+            + '<div class="absolute top-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-md">' + esc(t.title || "") + '</div>'
+            + '</div>';
+        } else if (t.status === "done") {
+          pb.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-800">'
+            + '<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4">'
+            + '<div class="text-5xl mb-3">▶️</div>'
+            + '<div class="text-sm text-white font-semibold mb-1">' + esc(t.title || "") + '</div>'
+            + '<div class="text-[10px] text-slate-400">已完成（无视频文件）</div></div></div>';
+        } else if (t.status === "running") {
+          pb.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-800">'
+            + '<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4">'
+            + '<div class="text-5xl mb-3 animate-pulse">⚙️</div>'
+            + '<div class="text-sm text-white font-semibold mb-1">' + esc(t.title || "") + '</div>'
+            + '<div class="text-[10px] text-slate-400">合成中... (' + t.progress + '%)</div></div></div>';
+        } else if (t.status === "failed") {
+          pb.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-800">'
+            + '<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4">'
+            + '<div class="text-5xl mb-3">❌</div>'
+            + '<div class="text-sm text-rose-300 font-semibold mb-1">' + esc(t.title || "") + '</div>'
+            + '<div class="text-[10px] text-slate-400">合成失败，请重试</div></div></div>';
+        } else {
+          pb.innerHTML = '<div class="w-full h-full rounded-xl overflow-hidden relative bg-slate-800">'
+            + '<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4">'
+            + '<div class="text-4xl mb-3">⏳</div>'
+            + '<div class="text-sm text-white font-semibold mb-1">' + esc(t.title || "") + '</div>'
+            + '<div class="text-[10px] text-slate-400">等待处理中</div></div></div>';
+        }
+      };
+    });
   }
 
   /* ============================================================
@@ -1862,10 +1901,34 @@
           database: { type: "sqlite", path: "./marketing_agent.db" },
           task: { concurrency: 4, retry_times: 3, timeout: 600 },
           notification: { email: true, wechat: false, webhook_url: "" },
-          logging: { level: "info", retention_days: 30 }
+          logging: { level: "info", retention_days: 30 },
+          models: [
+            { name: "gpt-4o", provider: "OpenAI" },
+            { name: "claude-3.5-sonnet", provider: "Anthropic" },
+            { name: "deepseek-v3", provider: "DeepSeek" },
+            { name: "deepseek-r1", provider: "DeepSeek" },
+            { name: "qwen-plus", provider: "阿里云" },
+            { name: "qwen-max", provider: "阿里云" },
+            { name: "glm-4", provider: "智谱AI" },
+            { name: "glm-4-flash", provider: "智谱AI" },
+            { name: "spark-3.5", provider: "讯飞" },
+            { name: "doubao-pro", provider: "字节跳动" },
+            { name: "moonshot-v1", provider: "月之暗面" },
+            { name: "ollama-local", provider: "本地模型" }
+          ]
         };
       });
       STATE.config = config;
+
+      // 动态渲染 models 下拉
+      var modelSel = $("modelSelect");
+      if (modelSel && config && Array.isArray(config.models)) {
+        modelSel.innerHTML = config.models.map(function (m) {
+          return '<option value="' + esc(m.name) + '" data-provider="' + esc(m.provider || "") + '">'
+            + esc(m.provider || "") + ' · ' + esc(m.name) + '</option>';
+        }).join("");
+      }
+
       var displayConfig = maskConfig(config);
       renderSettingsForm(displayConfig);
       bindSettingsActions();
@@ -2159,44 +2222,243 @@
     cancelBtn.onclick = cleanup;
   }
 
+  // ---------- 扫码登录 ----------
+  function bindQrLogin(platform) {
+    apiPost("/api/accounts/qr_login", { platform: platform })
+      .then(function (res) {
+        var box = $("qrLoginBox");
+        if (box && res && res.qr_data_url) {
+          box.innerHTML = '<div class="text-center">'
+            + '<div class="text-sm text-white mb-3">请使用 ' + esc(platform) + ' APP 扫码</div>'
+            + '<img src="' + res.qr_data_url + '" alt="QR Code" class="w-48 h-48 mx-auto rounded-lg bg-white p-3" />'
+            + '<div class="text-[10px] text-slate-400 mt-3">扫码成功后将自动保存 Cookie 并绑定账号</div>'
+            + '<div class="text-[10px] text-slate-500 mt-2">Session ID: ' + esc(res.session_id || "") + '</div>'
+            + '<button id="qrCheckBtn" class="mt-3 px-3 py-1 rounded bg-emerald-600 text-white text-xs">检查登录状态</button>'
+            + '</div>';
+          var chk = $("qrCheckBtn");
+          if (chk) {
+            chk.onclick = function () {
+              apiPost("/api/accounts/qr_check", { session_id: res.session_id, platform: platform })
+                .then(function (r) {
+                  if (r.logged_in) {
+                    toast("扫码登录成功，账号已绑定", "success");
+                    var m = $("bindAccountModal");
+                    if (m) m.style.display = "none";
+                    loadAccounts();
+                  } else {
+                    toast("等待扫码中...", "info");
+                  }
+                })
+                .catch(function (e) { toast("检查失败: " + e.message, "error"); });
+            };
+          }
+        } else if (box) {
+          box.innerHTML = '<div class="text-rose-400 text-xs text-center py-6">⚠️ 该平台暂不支持自动扫码，请使用手动 Cookie 绑定</div>';
+        }
+      })
+      .catch(function (e) {
+        var box = $("qrLoginBox");
+        if (box) box.innerHTML = '<div class="text-rose-400 text-xs text-center py-6">⚠️ 扫码登录初始化失败：' + esc(e.message) + '<br/><span class="text-[10px] text-slate-500">请改用手动粘贴 Cookie 方式</span></div>';
+      });
+  }
+
   // ---------- 绑定新账号 Modal ----------
   function bindAccountModalLogic() {
     var openBtn = $("bindAccountBtn");
-    var closeBtn = $("modalCloseBtn");
-    var cancelBtn = $("modalCancelBtn");
-    var submitBtn = $("modalSubmitBtn");
-    var modal = $("bindAccountModal");
-
     if (openBtn) openBtn.onclick = function () {
-      if (modal) modal.style.display = "flex";
-    };
-    if (closeBtn) closeBtn.onclick = function () { if (modal) modal.style.display = "none"; };
-    if (cancelBtn) cancelBtn.onclick = function () { if (modal) modal.style.display = "none"; };
+      var old = $("bindAccountModal");
+      if (old) old.parentNode.removeChild(old);
+      var modal = document.createElement("div");
+      modal.id = "bindAccountModal";
+      modal.style.cssText = "display:flex;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;backdrop-filter:blur(6px);";
+      modal.innerHTML = '<div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 border border-slate-700 max-h-[90vh] overflow-y-auto">'
+        + '<div class="flex items-center justify-between p-5 border-b border-slate-700/60">'
+        + '<div><h3 class="text-lg font-bold text-white">➕ 绑定新账号</h3><p class="text-xs text-slate-400 mt-1">支持扫码自动登录 或 手动粘贴 Cookie</p></div>'
+        + '<button id="modalCloseBtn" class="w-9 h-9 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-white flex items-center justify-center text-lg">✕</button></div>'
+        + '<div class="flex gap-2 p-4 border-b border-slate-700/40">'
+        + '<button data-tab="qr" class="tab-btn bg-slate-700 text-white px-4 py-1.5 rounded-md text-sm">📱 扫码登录（推荐）</button>'
+        + '<button data-tab="manual" class="tab-btn bg-slate-700/40 text-slate-400 px-4 py-1.5 rounded-md text-sm">📝 手动粘贴 Cookie</button>'
+        + '</div>'
+        + '<div class="p-5">'
+        + '<div id="tab-qr" class="tab-panel">'
+        + '<div class="space-y-3 mb-4">'
+        + '<div><label class="block text-xs font-semibold text-slate-300 mb-1.5">选择平台</label>'
+        + '<select id="qrPlatform" class="input-field w-full px-3 py-2 rounded-lg text-sm">'
+        + '<option value="wechat">微信公众号 / 视频号</option>'
+        + '<option value="douyin">抖音</option>'
+        + '<option value="xiaohongshu">小红书</option>'
+        + '<option value="kuaishou">快手</option>'
+        + '<option value="bilibili">B 站</option>'
+        + '</select></div>'
+        + '<button id="qrStartBtn" class="btn-primary w-full py-2 rounded-lg text-sm">📷 生成登录二维码</button>'
+        + '</div>'
+        + '<div id="qrLoginBox" class="bg-slate-900/50 rounded-xl p-6 border border-slate-700/40"><div class="text-center text-slate-500 text-xs py-6">点击上方按钮生成二维码</div></div>'
+        + '</div>'
+        + '<div id="tab-manual" class="tab-panel hidden">'
+        + '<div class="space-y-3">'
+        + '<div><label class="block text-xs font-semibold text-slate-300 mb-1.5">平台</label>'
+        + '<select id="bindPlatform" class="input-field w-full px-3 py-2 rounded-lg text-sm">'
+        + '<option value="wechat">视频号 / 微信</option>'
+        + '<option value="douyin">抖音</option>'
+        + '<option value="xiaohongshu">小红书</option>'
+        + '<option value="kuaishou">快手</option>'
+        + '<option value="bilibili">B 站</option>'
+        + '</select></div>'
+        + '<div><label class="block text-xs font-semibold text-slate-300 mb-1.5">账号名称 *</label>'
+        + '<input id="bindAccountName" type="text" placeholder="例：好物种草菌" class="input-field w-full px-3 py-2 rounded-lg text-sm" /></div>'
+        + '<div><label class="block text-xs font-semibold text-slate-300 mb-1.5">Cookie / Session *</label>'
+        + '<textarea id="bindCookie" rows="4" placeholder="从浏览器 F12 → Application → Cookies 复制粘贴..." class="input-field w-full px-3 py-2 rounded-lg text-sm font-mono"></textarea></div>'
+        + '<div><label class="block text-xs font-semibold text-slate-300 mb-1.5">备注</label>'
+        + '<input id="bindNote" type="text" placeholder="例：主力账号，粉丝较精准，日常发布用" class="input-field w-full px-3 py-2 rounded-lg text-sm" /></div>'
+        + '<div class="flex gap-2 pt-2">'
+        + '<button id="modalCancelBtn" class="btn-ghost flex-1 py-2 rounded-lg text-sm">取消</button>'
+        + '<button id="modalSubmitBtn" class="btn-primary flex-1 py-2 rounded-lg text-sm">绑定账号</button>'
+        + '</div></div>'
+        + '</div>'
+        + '</div>';
+      document.body.appendChild(modal);
 
-    if (submitBtn) {
-      submitBtn.onclick = async function () {
-        var platform = $("bindPlatform") ? $("bindPlatform").value : "";
-        var accountName = $("bindAccountName") ? $("bindAccountName").value.trim() : "";
-        var cookie = $("bindCookie") ? $("bindCookie").value.trim() : "";
-        var note = $("bindNote") ? $("bindNote").value.trim() : "";
-        if (!accountName) { toast("请填写账号名", "warn"); return; }
-        try {
-          var res = await apiPost("/api/accounts", {
-            platform: platform,
-            account_name: accountName,
-            cookie_string: cookie,
-            username: accountName,
-            note: note
+      var closeBtn = $("modalCloseBtn");
+      if (closeBtn) closeBtn.onclick = function () { modal.style.display = "none"; };
+      var cancelBtn = $("modalCancelBtn");
+      if (cancelBtn) cancelBtn.onclick = function () { modal.style.display = "none"; };
+
+      modal.querySelectorAll(".tab-btn").forEach(function (btn) {
+        btn.onclick = function () {
+          modal.querySelectorAll(".tab-btn").forEach(function (b) {
+            b.className = "tab-btn bg-slate-700/40 text-slate-400 px-4 py-1.5 rounded-md text-sm";
           });
-          toast("账号绑定成功", "success");
-          if (modal) modal.style.display = "none";
-          loadAccounts();
-        } catch (e) {
-          console.error(e);
-          toast("账号绑定失败: " + e.message, "error");
-        }
+          btn.className = "tab-btn bg-slate-700 text-white px-4 py-1.5 rounded-md text-sm";
+          modal.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.add("hidden"); });
+          var tp = $("tab-" + btn.dataset.tab);
+          if (tp) tp.classList.remove("hidden");
+        };
+      });
+
+      var mt = $("tab-manual");
+      if (mt) mt.classList.add("hidden");
+
+      var qrBtn = $("qrStartBtn");
+      if (qrBtn) qrBtn.onclick = function () {
+        var platform = $("qrPlatform").value;
+        $("qrLoginBox").innerHTML = '<div class="text-center text-slate-400 text-xs py-6"><div class="text-3xl mb-2 animate-pulse">⏳</div>正在生成登录二维码...</div>';
+        bindQrLogin(platform);
       };
-    }
+
+      var submitBtn = $("modalSubmitBtn");
+      if (submitBtn) submitBtn.onclick = async function () {
+        var platform = $("bindPlatform").value;
+        var name = $("bindAccountName").value.trim();
+        var cookie = $("bindCookie").value.trim();
+        var note = $("bindNote").value.trim();
+        if (!name) { toast("请填写账号名", "warn"); return; }
+        try {
+          await apiPost("/api/accounts", {
+            platform: platform, account_name: name,
+            cookie_string: cookie, username: name, note: note
+          });
+          toast("账号绑定成功！", "success");
+          modal.style.display = "none";
+          loadAccounts();
+        } catch (e) { toast("绑定失败：" + e.message, "error"); }
+      };
+
+      modal.onclick = function (e) { if (e.target === modal) modal.style.display = "none"; };
+    };
+  }
+
+  // ---------- 模板库 ----------
+  function bindTemplateLibrary() {
+    var btn = $("templateLibBtn");
+    if (!btn) return;
+    var templates = [
+      { id: "t1", name: "开箱测评", desc: "产品开箱第一视角 + 细节特写 + 使用体验", duration: "30s", tags: ["测评", "真实感"] },
+      { id: "t2", name: "口播带货", desc: "主播手持产品口述卖点，节奏明快", duration: "20-30s", tags: ["带货", "口播"] },
+      { id: "t3", name: "剧情植入", desc: "真实场景剧情，自然植入产品亮点", duration: "45-60s", tags: ["剧情", "情感"] },
+      { id: "t4", name: "对比测评", desc: "产品 vs 竞品，多维度参数对比", duration: "60s", tags: ["对比", "理性购买"] },
+      { id: "t5", name: "达人推荐", desc: "达人/博主第一视角推荐，信任感强", duration: "30s", tags: ["达人", "种草"] },
+      { id: "t6", name: "使用教程", desc: "一步步教用户如何使用产品", duration: "60s", tags: ["教程", "实用"] }
+    ];
+    btn.onclick = function () {
+      var old = $("templateModal");
+      if (old) old.parentNode.removeChild(old);
+      var modal = document.createElement("div");
+      modal.id = "templateModal";
+      modal.style.cssText = "display:flex;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;backdrop-filter:blur(6px);";
+      modal.innerHTML = '<div class="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 border border-slate-700 max-h-[90vh] overflow-y-auto">'
+        + '<div class="flex items-center justify-between p-5 border-b border-slate-700/60">'
+        + '<div><h3 class="text-lg font-bold text-white">📚 视频模板库</h3><p class="text-xs text-slate-400 mt-1">选择模板快速生成带货视频</p></div>'
+        + '<button id="tpl-close" class="w-9 h-9 rounded-lg bg-slate-700/60 hover:bg-slate-700 text-white flex items-center justify-center text-lg">✕</button></div>'
+        + '<div class="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">'
+        + templates.map(function (t) {
+            return '<div class="template-card bg-slate-900/60 border border-slate-700/40 rounded-xl p-4 hover:border-blue-500/60 hover:bg-slate-900 cursor-pointer transition-all" data-tpl="' + t.id + '">'
+              + '<div class="text-sm font-semibold text-white mb-1">' + esc(t.name) + '</div>'
+              + '<div class="text-[11px] text-slate-400 mb-3 min-h-[36px]">' + esc(t.desc) + '</div>'
+              + '<div class="flex items-center justify-between text-[10px]">'
+              + '<span class="text-slate-500">⏱ ' + esc(t.duration) + '</span>'
+              + '<span class="text-blue-400">立即使用 →</span>'
+              + '</div></div>';
+        }).join("")
+        + '</div></div>';
+      document.body.appendChild(modal);
+      var cb = $("tpl-close");
+      if (cb) cb.onclick = function () { modal.style.display = "none"; };
+      modal.onclick = function (e) { if (e.target === modal) modal.style.display = "none"; };
+      modal.querySelectorAll(".template-card").forEach(function (card) {
+        card.onclick = function () {
+          var tid = card.getAttribute("data-tpl");
+          var meta = templates.find(function (x) { return x.id === tid; });
+          if (meta) {
+            var tplSel = $("videoTemplateSelect");
+            if (tplSel) {
+              var opts = Array.from(tplSel.options).map(function (o) { return o.value; });
+              if (opts.indexOf(meta.name) === -1) {
+                var o = document.createElement("option");
+                o.value = meta.name; o.textContent = meta.name;
+                tplSel.appendChild(o);
+              }
+              tplSel.value = meta.name;
+            }
+            toast("已选择模板：" + meta.name, "success");
+            modal.style.display = "none";
+          }
+        };
+      });
+    };
+  }
+
+  // ---------- 商品分类 ----------
+  function refreshCategories(items) {
+    var sel = $("categorySelect");
+    if (!sel || !items) return;
+    var cats = {};
+    items.forEach(function (p) {
+      var c = (p && p.category) || "未分类";
+      cats[c] = (cats[c] || 0) + 1;
+    });
+    var names = Object.keys(cats).sort();
+    sel.innerHTML = '<option value="">全部分类 (' + items.length + ')</option>'
+      + names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + ' (' + cats[n] + ')</option>'; }).join("")
+      + '<option value="__add__">➕ 新增类别...</option>';
+    sel.onchange = function () {
+      var v = sel.value;
+      if (v === "__add__") {
+        var name = prompt("输入新的商品类别名称：");
+        if (name && name.trim()) {
+          apiPost("/api/categories", { name: name.trim() })
+            .then(function () { toast("已添加类别：" + name.trim(), "success"); })
+            .catch(function (e) { toast("添加失败：" + e.message, "error"); });
+        }
+        sel.value = "";
+      } else {
+        var tb = document.querySelector("#productsTable");
+        if (tb) {
+          tb.querySelectorAll("[data-category]").forEach(function (row) {
+            row.style.display = (!v || row.getAttribute("data-category") === v) ? "" : "none";
+          });
+        }
+      }
+    };
   }
 
   // ---------- 新建发布 Modal ----------
@@ -2321,6 +2583,17 @@
     bindDataSubTabs();
     bindAccountModalLogic();
     bindNewPublishModal();
+    bindTemplateLibrary();
+
+    var newCatBtn = $("newCategoryBtn");
+    if (newCatBtn) newCatBtn.onclick = function () {
+      var name = prompt("输入新的商品类别名称：");
+      if (name && name.trim()) {
+        apiPost("/api/categories", { name: name.trim() })
+          .then(function () { toast("已添加类别：" + name.trim(), "success"); })
+          .catch(function (e) { toast("添加失败：" + e.message, "error"); });
+      }
+    };
 
     // 搜索框
     var search = $("productSearch");

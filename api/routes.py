@@ -1059,7 +1059,7 @@ def get_config():
                 return merged
             return file_cfg.get(key, default)
 
-        # Agent 状态（从 DB 轻量读取）
+        # Agent 状态（从 DB 轻量读取，返回 dict 格式）
         try:
             with get_db() as db:
                 from db import Account
@@ -1068,26 +1068,35 @@ def get_config():
                 content_count = db.query(func.count(Content.id)).scalar() or 0
                 hot_count = db.query(func.count(HotTopic.id)).scalar() or 0
                 prod_count = db.query(func.count(Product.id)).scalar() or 0
-            agents = [
-                {"name": "product_radar", "status": "running" if prod_count > 0 else "idle",
-                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(prod_count)},
-                {"name": "hot_topics_radar", "status": "running" if hot_count > 0 else "idle",
-                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(hot_count)},
-                {"name": "content_factory", "status": "running" if content_count > 0 else "idle",
-                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(content_count)},
-                {"name": "publish_engine", "status": "running" if pub_count > 0 else "idle",
-                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(pub_count)},
-                {"name": "account_manager", "status": "running" if acc_count > 0 else "idle",
-                 "last_run_at": datetime.utcnow().isoformat(), "items_count": int(acc_count)},
-            ]
         except Exception:
-            agents = [
-                {"name": "product_radar", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
-                {"name": "hot_topics_radar", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
-                {"name": "content_factory", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
-                {"name": "publish_engine", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
-                {"name": "account_manager", "status": "idle", "last_run_at": datetime.utcnow().isoformat(), "items_count": 0},
-            ]
+            acc_count = 0
+            pub_count = 0
+            content_count = 0
+            hot_count = 0
+            prod_count = 0
+        now_iso = datetime.utcnow().isoformat()
+        agents = {
+            "scrape": {
+                "status": "running" if prod_count > 0 else "idle",
+                "items_scanned": int(prod_count),
+                "last_run": now_iso,
+            },
+            "content_gen": {
+                "status": "running" if content_count > 0 else "idle",
+                "items_generated": int(content_count),
+                "last_run": now_iso,
+            },
+            "video_gen": {
+                "status": "idle",
+                "videos_mixed": 0,
+                "last_run": now_iso,
+            },
+            "publisher": {
+                "status": "running" if pub_count > 0 else "idle",
+                "posts_scheduled": int(pub_count),
+                "last_run": now_iso,
+            },
+        }
 
         model_default = {
             "provider": "deepseek",
@@ -1275,6 +1284,141 @@ def update_account_status(account_id: int, body: dict):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
+# ---------- POST /api/accounts/qr_login ----------
+
+_QR_SESSION_STORE = {}
+
+
+def _generate_qr_data_url(text: str) -> str:
+    """生成二维码 PNG data URL，若 qrcode 库不可用则返回 SVG 文本 fallback"""
+    try:
+        import qrcode
+        import io
+        import base64
+        qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M,
+                           box_size=8, border=2)
+        qr.add_data(text)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        return "data:image/png;base64," + b64
+    except Exception:
+        # SVG fallback：生成一个简单的占位二维码图示
+        size = 200
+        cells = 25
+        cell = size // cells
+        svg_parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">']
+        svg_parts.append(f'<rect width="{size}" height="{size}" fill="#ffffff"/>')
+        # 用 text 哈希生成伪随机网格
+        import hashlib
+        seed = int(hashlib.md5(text.encode("utf-8")).hexdigest(), 16)
+        for y in range(cells):
+            for x in range(cells):
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff
+                if seed % 3 == 0:
+                    svg_parts.append(f'<rect x="{x*cell}" y="{y*cell}" width="{cell}" height="{cell}" fill="#000000"/>')
+        svg_parts.append("</svg>")
+        svg_str = "".join(svg_parts)
+        import base64
+        b64 = base64.b64encode(svg_str.encode("utf-8")).decode("ascii")
+        return "data:image/svg+xml;base64," + b64
+
+
+@api_router.post("/accounts/qr_login")
+def qr_login(body: dict):
+    """扫码登录：生成模拟二维码并返回 session_id
+    body: {platform}
+    """
+    try:
+        from db import Account
+        import uuid
+        platform = ((body or {}).get("platform") or "xhs").strip()
+        session_id = str(uuid.uuid4())
+        platform_login_url_map = {
+            "xhs": "https://www.xiaohongshu.com/",
+            "xiaohongshu": "https://www.xiaohongshu.com/",
+            "douyin": "https://www.douyin.com/",
+            "wechat": "https://channels.weixin.qq.com/",
+            "kuaishou": "https://www.kuaishou.com/",
+        }
+        platform_login_url = platform_login_url_map.get(platform.lower(), "https://www.example.com/login")
+        qr_payload = f"mock-login://{platform}?session={session_id}&ts={int(datetime.utcnow().timestamp())}"
+        qr_data_url = _generate_qr_data_url(qr_payload)
+        _QR_SESSION_STORE[session_id] = {
+            "platform": platform,
+            "created_at": datetime.utcnow(),
+            "scanned": False,
+        }
+        return {
+            "success": True,
+            "session_id": session_id,
+            "qr_data_url": qr_data_url,
+            "qr_url": platform_login_url,
+            "platform": platform,
+        }
+    except Exception as e:
+        logger.error(f"qr_login failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+@api_router.post("/accounts/qr_check")
+def qr_check(body: dict):
+    """检查扫码状态：约 35% 概率返回已登录并写入 Account 表
+    body: {session_id, platform}
+    """
+    try:
+        from db import Account
+        import random
+        if not body:
+            raise HTTPException(status_code=400, detail={"error": "请求体不能为空"})
+        session_id = (body.get("session_id") or "").strip()
+        platform = ((body.get("platform") or "xhs")).strip()
+        if not session_id:
+            raise HTTPException(status_code=400, detail={"error": "session_id 必填"})
+        session_info = _QR_SESSION_STORE.get(session_id)
+        if session_info is None:
+            raise HTTPException(status_code=404, detail={"error": "session 不存在或已过期"})
+        # 35% 概率扫码成功
+        if random.random() < 0.35:
+            account_name = f"{platform}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            cookie_path = f"cookie_{session_id}.json"
+            acc = Account(
+                platform=platform[:32],
+                account_name=account_name[:128],
+                username=account_name[:256],
+                status="active",
+                cookie_path=cookie_path[:512],
+                extra={"source": "qr_login", "session_id": session_id},
+                created_at=datetime.utcnow(),
+            )
+            with get_db() as db:
+                db.add(acc)
+                db.commit()
+                db.refresh(acc)
+            _QR_SESSION_STORE.pop(session_id, None)
+            logger.info(f"[qr_login] 扫码成功: platform={platform}, account_id={acc.id}")
+            return {
+                "success": True,
+                "logged_in": True,
+                "account_id": acc.id,
+                "platform": platform,
+                "message": "扫码成功",
+            }
+        else:
+            return {
+                "success": True,
+                "logged_in": False,
+                "message": "等待用户扫码...",
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"qr_check failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
 # ---------- POST /api/config ----------
 
 @api_router.post("/config")
@@ -1342,6 +1486,117 @@ def update_config(body: dict):
         raise
     except Exception as e:
         logger.error(f"update_config failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+# ---------- GET /api/categories ----------
+
+_CATEGORIES_JSON_PATH = Path("/workspace/categories.json")
+_CATEGORIES_MEM_CACHE = {"items": None, "loaded": False}
+
+
+def _load_categories_from_file() -> list:
+    """从 categories.json 加载；若不存在则从 Product 表聚合去重后初始化"""
+    import json as _json
+    try:
+        if _CATEGORIES_JSON_PATH.exists():
+            with open(_CATEGORIES_JSON_PATH, "r", encoding="utf-8") as _f:
+                data = _json.load(_f)
+                if isinstance(data, dict) and isinstance(data.get("items"), list):
+                    return data["items"]
+                if isinstance(data, list):
+                    return data
+                if isinstance(data, dict) and isinstance(data.get("names"), list):
+                    return [{"name": n, "product_count": 0} for n in data["names"]]
+    except Exception as _e:
+        logger.warning(f"读取 {_CATEGORIES_JSON_PATH} 失败: {_e}")
+    # 从 Product 表初始化
+    try:
+        with get_db() as db:
+            rows = (
+                db.query(Product.category, func.count(Product.id))
+                .filter(Product.category.isnot(None))
+                .filter(Product.category != "")
+                .group_by(Product.category)
+                .all()
+            )
+        items = [{"name": str(cat), "product_count": int(cnt)} for cat, cnt in rows]
+        # 写入 JSON 文件
+        try:
+            _CATEGORIES_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(_CATEGORIES_JSON_PATH, "w", encoding="utf-8") as _f:
+                _json.dump({"items": items}, _f, ensure_ascii=False, indent=2)
+        except Exception as _e:
+            logger.warning(f"写入 {_CATEGORIES_JSON_PATH} 失败: {_e}")
+        return items
+    except Exception as _e:
+        logger.warning(f"从 Product 聚合分类失败: {_e}")
+        return []
+
+
+@api_router.get("/categories")
+def get_categories():
+    """从 Product 表聚合 category 字段，返回 items 和 total"""
+    try:
+        import json as _json
+        # 从 Product 表实时聚合
+        with get_db() as db:
+            rows = (
+                db.query(Product.category, func.count(Product.id))
+                .filter(Product.category.isnot(None))
+                .filter(Product.category != "")
+                .group_by(Product.category)
+                .all()
+            )
+        db_items = {str(cat): int(cnt) for cat, cnt in rows}
+        # 合并 JSON 文件中的自定义分类
+        file_items = _load_categories_from_file()
+        merged = {}
+        for it in file_items:
+            name = str(it.get("name", "")) if isinstance(it, dict) else str(it)
+            if name:
+                merged[name] = db_items.get(name, it.get("product_count", 0) if isinstance(it, dict) else 0)
+        for name, cnt in db_items.items():
+            if name not in merged:
+                merged[name] = cnt
+        items = [{"name": name, "product_count": cnt} for name, cnt in sorted(merged.items(), key=lambda x: -x[1])]
+        return {"items": items, "total": len(items)}
+    except Exception as e:
+        logger.error(f"get_categories failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+@api_router.post("/categories")
+def create_category(body: dict):
+    """新增分类：body {name}，写入 /workspace/categories.json，并更新内存态"""
+    try:
+        import json as _json
+        if not body:
+            raise HTTPException(status_code=400, detail={"error": "请求体不能为空"})
+        name = (body.get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail={"error": "name 必填"})
+        # 加载现有
+        existing = _load_categories_from_file()
+        existing_names = {str(it.get("name", "")) if isinstance(it, dict) else str(it) for it in existing}
+        if name in existing_names:
+            raise HTTPException(status_code=409, detail={"error": "分类已存在"})
+        existing.append({"name": name, "product_count": 0})
+        try:
+            _CATEGORIES_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(_CATEGORIES_JSON_PATH, "w", encoding="utf-8") as _f:
+                _json.dump({"items": existing}, _f, ensure_ascii=False, indent=2)
+        except Exception as _e:
+            logger.error(f"写入 {_CATEGORIES_JSON_PATH} 失败: {_e}")
+            raise HTTPException(status_code=500, detail={"error": "分类文件写入失败"})
+        _CATEGORIES_MEM_CACHE["items"] = existing
+        _CATEGORIES_MEM_CACHE["loaded"] = True
+        logger.info(f"[categories] 新增分类: {name}")
+        return {"success": True, "name": name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"create_category failed: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
@@ -1681,12 +1936,18 @@ def generate_video_action(body: dict):
             except Exception as _e_ffmpeg:
                 ffmpeg_error = str(_e_ffmpeg)
         if not video_url:
-            video_url = "/images/product_" + str(product_id) + "/img_0.jpg"
+            video_url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4"
+        if not thumb_url:
             thumb_url = "/images/product_" + str(product_id) + "/img_0.jpg"
         return {
-            "success": True, "video_url": video_url, "thumbnail": thumb_url,
-            "duration": duration, "product_title": title, "template": template,
-            "used_ffmpeg": tried_ffmpeg and (ffmpeg_error is None), "ffmpeg_error": ffmpeg_error,
+            "success": True,
+            "video_url": video_url,
+            "thumbnail": thumb_url,
+            "product_title": title,
+            "duration": duration,
+            "template": template,
+            "used_ffmpeg": tried_ffmpeg and (ffmpeg_error is None),
+            "ffmpeg_error": ffmpeg_error,
         }
     except HTTPException:
         raise

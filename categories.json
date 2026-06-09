@@ -1,0 +1,96 @@
+{
+  "items": [
+    {
+      "name": "3C数码",
+      "product_count": 20
+    },
+    {
+      "name": "健康",
+      "product_count": 1
+    },
+    {
+      "name": "厨房",
+      "product_count": 3
+    },
+    {
+      "name": "图书",
+      "product_count": 8
+    },
+    {
+      "name": "图书文娱",
+      "product_count": 20
+    },
+    {
+      "name": "女装",
+      "product_count": 2
+    },
+    {
+      "name": "女装/女士精品",
+      "product_count": 1
+    },
+    {
+      "name": "家居",
+      "product_count": 10
+    },
+    {
+      "name": "家居家电",
+      "product_count": 20
+    },
+    {
+      "name": "数码",
+      "product_count": 12
+    },
+    {
+      "name": "日用",
+      "product_count": 3
+    },
+    {
+      "name": "服装",
+      "product_count": 8
+    },
+    {
+      "name": "服饰",
+      "product_count": 1
+    },
+    {
+      "name": "服饰女装",
+      "product_count": 20
+    },
+    {
+      "name": "母婴",
+      "product_count": 8
+    },
+    {
+      "name": "母婴玩具",
+      "product_count": 20
+    },
+    {
+      "name": "美妆",
+      "product_count": 8
+    },
+    {
+      "name": "美妆个护",
+      "product_count": 20
+    },
+    {
+      "name": "运动",
+      "product_count": 10
+    },
+    {
+      "name": "运动户外",
+      "product_count": 20
+    },
+    {
+      "name": "食品",
+      "product_count": 8
+    },
+    {
+      "name": "食品饮料",
+      "product_count": 20
+    },
+    {
+      "name": "测试分类A",
+      "product_count": 0
+    }
+  ]
+}
