@@ -3,246 +3,1136 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Marketing Agent · 运营后台</title>
+  <title>Marketing Agent V3.0 · AI MATRIX COMMAND CENTER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      theme: { extend: { colors: { brand: { 500: '#10b981' } } } }
-    }
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              900: '#0F172A',
+              800: '#111827',
+              700: '#1F2937',
+              600: '#334155',
+              500: '#475569',
+              400: '#64748B',
+              300: '#94A3B8',
+              200: '#CBD5E1',
+            },
+            blue: {
+              500: '#3B82F6',
+              400: '#60A5FA',
+              600: '#2563EB',
+            },
+            emerald: {
+              500: '#10B981',
+            },
+            amber: {
+              500: '#F59E0B',
+            },
+            rose: {
+              500: '#EF4444',
+            },
+          },
+          boxShadow: {
+            'glow-blue': '0 0 20px rgba(59, 130, 246, 0.15)',
+            'glow-green': '0 0 20px rgba(16, 185, 129, 0.15)',
+          },
+          keyframes: {
+            'fade-in-up': {
+              '0%': { opacity: '0', transform: 'translateY(8px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            'pulse-ring': {
+              '0%': { transform: 'scale(0.8)', opacity: '0.8' },
+              '100%': { transform: 'scale(2)', opacity: '0' },
+            },
+            'shimmer': {
+              '0%': { backgroundPosition: '-200% 0' },
+              '100%': { backgroundPosition: '200% 0' },
+            },
+          },
+          animation: {
+            'fade-in-up': 'fade-in-up 300ms ease-out',
+            'pulse-ring': 'pulse-ring 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite',
+            'shimmer': 'shimmer 2s linear infinite',
+          },
+        },
+      },
+    };
   </script>
   <link rel="stylesheet" href="static/style.css" />
+  <style>
+    html, body { font-family: 'Inter', system-ui, sans-serif; }
+    body {
+      background-color: #0F172A;
+      background-image:
+        radial-gradient(ellipse at top left, rgba(59, 130, 246, 0.08), transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.06), transparent 50%);
+    }
+    .sidebar-bg {
+      background: linear-gradient(180deg, #0B1220 0%, #0F172A 100%);
+      border-right: 1px solid rgba(71, 85, 105, 0.3);
+    }
+    .nav-item {
+      position: relative;
+      transition: all 200ms ease;
+    }
+    .nav-item:hover {
+      background: rgba(59, 130, 246, 0.08);
+      color: #fff;
+    }
+    .nav-item.active {
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0.04) 100%);
+      color: #fff;
+    }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      background: linear-gradient(180deg, #3B82F6 0%, #60A5FA 100%);
+      border-radius: 0 2px 2px 0;
+    }
+    .card-tech {
+      background: #111827;
+      border: 1px solid rgba(71, 85, 105, 0.3);
+      border-radius: 16px;
+      transition: all 200ms ease;
+    }
+    .card-tech:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 0 24px rgba(59, 130, 246, 0.08);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      transition: all 200ms ease;
+    }
+    .btn-primary:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+    }
+    .btn-ghost {
+      background: rgba(71, 85, 105, 0.15);
+      border: 1px solid rgba(71, 85, 105, 0.3);
+      transition: all 200ms ease;
+    }
+    .btn-ghost:hover {
+      transform: scale(1.02);
+      background: rgba(71, 85, 105, 0.25);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    .status-dot {
+      position: relative;
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .status-dot::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      animation: pulse-ring 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+    .status-running { background: #10B981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+    .status-running::after { background: #10B981; }
+    .status-idle { background: #64748B; }
+    .status-warn { background: #F59E0B; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+    .status-warn::after { background: #F59E0B; }
+    .status-error { background: #EF4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+    .status-error::after { background: #EF4444; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fade-in-up 300ms ease-out; }
+
+    .data-table tbody tr:nth-child(even) { background: rgba(71, 85, 105, 0.04); }
+    .data-table tbody tr:hover { background: rgba(59, 130, 246, 0.06); }
+    .data-table th {
+      font-weight: 500;
+      color: #94A3B8;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+      padding: 14px 16px;
+      text-align: left;
+    }
+    .data-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(71, 85, 105, 0.15);
+      color: #E2E8F0;
+      font-size: 13px;
+    }
+
+    .hot-badge {
+      background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #60A5FA 0%, #34D399 50%, #F59E0B 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .chart-bar {
+      background: linear-gradient(180deg, #3B82F6 0%, #1E40AF 100%);
+      border-radius: 4px 4px 0 0;
+      transition: all 300ms ease;
+    }
+    .chart-bar:hover {
+      background: linear-gradient(180deg, #60A5FA 0%, #2563EB 100%);
+      transform: scaleY(1.05);
+      transform-origin: bottom;
+    }
+
+    .trend-up { color: #10B981; }
+    .trend-down { color: #EF4444; }
+
+    .mini-sparkline {
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.25) 0%, rgba(59, 130, 246, 0) 100%);
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0F172A; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    .kanban-col {
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid rgba(71, 85, 105, 0.3);
+      border-radius: 12px;
+    }
+    .kanban-card {
+      background: #1F2937;
+      border: 1px solid rgba(71, 85, 105, 0.3);
+      border-radius: 10px;
+      transition: all 200ms ease;
+    }
+    .kanban-card:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .segment-btn {
+      transition: all 200ms ease;
+    }
+    .segment-btn.active {
+      background: #3B82F6;
+      color: #fff;
+    }
+
+    .input-field {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(71, 85, 105, 0.3);
+      color: #fff;
+      transition: all 200ms ease;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .setting-card {
+      background: #111827;
+      border: 1px solid rgba(71, 85, 105, 0.3);
+      border-radius: 14px;
+    }
+
+    .empty-state {
+      background:
+        radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.08), transparent 60%);
+    }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+<body class="text-white min-h-screen">
 
 <div class="flex min-h-screen">
 
-  <!-- Sidebar -->
-  <aside id="sidebar" class="sidebar-expanded">
-    <div class="p-4 border-b border-slate-700/60 flex items-center justify-between">
-      <div class="sidebar-logo-expanded text-visible flex items-center gap-2">
-        <span class="text-2xl">🤖</span>
-        <span class="font-bold text-lg tracking-wide bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Marketing Agent</span>
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar-bg w-60 flex-shrink-0 flex flex-col h-screen sticky top-0">
+
+    <!-- Logo -->
+    <div class="px-5 py-6 border-b border-slate-700/40">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-xl shadow-glow-blue">
+          🤖
+        </div>
+        <div>
+          <div class="font-bold text-[15px] tracking-tight text-white">MARKETING AGENT</div>
+          <div class="text-[10px] tracking-[0.2em] text-slate-400 uppercase mt-0.5">AI Matrix Command</div>
+        </div>
       </div>
-      <button id="sidebarToggle" class="text-slate-400 hover:text-emerald-400 transition-colors text-xl" title="折叠/展开">☰</button>
     </div>
-    <nav class="p-2 space-y-1">
-      <a class="menu-item active" data-tab="dashboard" href="#"><span class="menu-icon">📊</span><span class="menu-label">仪表盘</span></a>
-      <a class="menu-item" data-tab="products" href="#"><span class="menu-icon">📦</span><span class="menu-label">商品库</span></a>
-      <a class="menu-item" data-tab="contents" href="#"><span class="menu-icon">✍️</span><span class="menu-label">内容库</span></a>
-      <a class="menu-item" data-tab="hot" href="#"><span class="menu-icon">🔥</span><span class="menu-label">热点 Radar</span></a>
-      <a class="menu-item" data-tab="publish" href="#"><span class="menu-icon">🚀</span><span class="menu-label">发布记录</span></a>
-      <a class="menu-item" data-tab="rankings" href="#"><span class="menu-icon">🏆</span><span class="menu-label">排行榜</span></a>
-      <a class="menu-item" data-tab="logs" href="#"><span class="menu-icon">📝</span><span class="menu-label">日志</span></a>
+
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      <div class="text-[10px] text-slate-500 tracking-[0.2em] uppercase px-3 mb-2 mt-1">主控中心</div>
+      <a class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="dashboard">
+        <span class="text-base">📊</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="products">
+        <span class="text-base">🔥</span><span>爆品中心</span>
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="hot">
+        <span class="text-base">📈</span><span>热点中心</span>
+      </a>
+
+      <div class="text-[10px] text-slate-500 tracking-[0.2em] uppercase px-3 mb-2 mt-4">创作工厂</div>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="content">
+        <span class="text-base">✍️</span><span>内容工厂</span>
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="video">
+        <span class="text-base">🎬</span><span>视频工厂</span>
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="publish">
+        <span class="text-base">🚀</span><span>发布中心</span>
+      </a>
+
+      <div class="text-[10px] text-slate-500 tracking-[0.2em] uppercase px-3 mb-2 mt-4">运营 & 配置</div>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="accounts">
+        <span class="text-base">👥</span><span>账号中心</span>
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="data">
+        <span class="text-base">📊</span><span>数据中心</span>
+      </a>
+      <a class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 cursor-pointer" data-tab="settings">
+        <span class="text-base">⚙️</span><span>系统设置</span>
+      </a>
     </nav>
+
+    <!-- Bottom status card -->
+    <div class="p-4 border-t border-slate-700/40">
+      <div class="card-tech p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-[10px] text-slate-500 tracking-widest uppercase">System Status</div>
+            <div class="text-sm font-semibold mt-0.5 text-white">运行正常</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="status-dot status-running"></span>
+            <span class="text-xs text-emerald-400">Online</span>
+          </div>
+        </div>
+        <div class="space-y-1.5 text-xs">
+          <div class="flex justify-between text-slate-400"><span>Active Agents</span><span class="text-white" id="sbAgentCount">6 / 6</span></div>
+          <div class="flex justify-between text-slate-400"><span>Pending Tasks</span><span class="text-white" id="sbPending">12</span></div>
+          <div class="flex justify-between text-slate-400"><span>Today</span><span class="text-white" id="sbToday">2026-06-09</span></div>
+        </div>
+      </div>
+    </div>
+
   </aside>
 
-  <!-- Main -->
+  <!-- ===================== MAIN WORKSPACE ===================== -->
   <main class="flex-1 flex flex-col min-w-0">
 
-    <!-- Top nav -->
-    <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-700/60">
-      <div class="flex items-center justify-between px-6 py-3 flex-wrap gap-3">
+    <!-- ======= TOP HEADER ======= -->
+    <header class="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-700/40">
+      <div class="flex items-center justify-between px-8 py-5 flex-wrap gap-4">
         <div>
-          <h1 id="pageTitle" class="text-xl font-semibold">📊 仪表盘</h1>
-          <p class="text-xs text-slate-400 mt-0.5" id="todayDate"></p>
+          <h1 id="pageTitle" class="text-2xl font-bold tracking-tight gradient-text">📊 Dashboard · 全域作战指挥中心</h1>
+          <p id="pageSubtitle" class="text-sm text-slate-400 mt-1">实时监控 AI Agent 运行状态 · 掌握每一条流量脉动与佣金转化</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <button id="btnCrawlAll" class="btn-action btn-action-sky">🔄 一键拉取</button>
-          <button id="btnCrawlHot" class="btn-action btn-action-rose">🔥 今日热榜</button>
-          <button id="btnCrawlDy" class="btn-action btn-action-violet">🎵 抖音商城</button>
-          <button id="btnCrawlWx" class="btn-action btn-action-teal">💚 视频号优选</button>
-          <button id="btnSmoke" class="btn-action btn-action-emerald">🚀 冒烟测试</button>
-          <button id="btnPipeline" class="btn-action btn-action-amber">⚡ 全流程</button>
-          <div id="actionResult" class="text-xs text-slate-300 hidden px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 max-w-md"></div>
+          <button data-action="crawl-all" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2">
+            <span>🔄</span><span>一键拉取</span>
+          </button>
+          <button data-action="run-pipeline" class="btn-ghost px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2">
+            <span>⚡</span><span>全流程</span>
+          </button>
+          <button data-action="run-smoke" class="btn-ghost px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2">
+            <span>🚀</span><span>冒烟测试</span>
+          </button>
+          <button data-action="notify" class="btn-ghost w-10 h-10 rounded-lg flex items-center justify-center text-base relative">
+            🔔
+            <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-800"></span>
+          </button>
         </div>
       </div>
     </header>
 
-    <!-- Content area -->
-    <div class="p-6 flex-1 overflow-auto">
+    <!-- ======= CONTENT ======= -->
+    <div class="p-8 flex-1 overflow-auto space-y-6">
 
-      <!-- Dashboard -->
-      <section id="tab-dashboard" class="tab-panel">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="statsCards"></div>
+      <!-- ============ DASHBOARD TAB ============ -->
+      <section id="tab-dashboard" class="tab-panel active">
 
+        <!-- Row 1: 6 stat cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="statsCards">
+          <!-- JS 动态填充 -->
+          <div class="col-span-full card-tech p-10 text-center empty-state">
+            <div class="text-5xl mb-3 opacity-50">📊</div>
+            <div class="text-slate-400 text-sm">核心数据卡片加载中...</div>
+          </div>
+        </div>
+
+        <!-- Row 2: Agents status + task queue -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          <div class="card lg:col-span-2">
-            <div class="card-header">🔥 热销商品 TOP 5</div>
-            <div id="topProductsChart" class="p-5 space-y-3"></div>
+
+          <!-- Agent status -->
+          <div class="card-tech p-6 lg:col-span-2">
+            <div class="flex items-center justify-between mb-5">
+              <div>
+                <h3 class="text-base font-semibold">🤖 Agent 运行状态矩阵</h3>
+                <p class="text-xs text-slate-400 mt-0.5">六大核心 Agent · 实时呼吸灯监控</p>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-slate-400">
+                <span class="flex items-center gap-1.5"><span class="status-dot status-running"></span>运行</span>
+                <span class="flex items-center gap-1.5"><span class="status-dot status-idle" style="animation:none;"></span>空闲</span>
+                <span class="flex items-center gap-1.5"><span class="status-dot status-warn"></span>警告</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="agentStatusGrid">
+              <div class="col-span-full p-8 text-center empty-state">
+                <div class="text-3xl opacity-50 mb-2">⚡</div>
+                <div class="text-slate-400 text-sm">Agent 状态加载中...</div>
+              </div>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-header">🌐 发布平台分布</div>
-            <div class="p-5 flex items-center gap-6">
-              <div id="platformDonut" class="donut shrink-0"></div>
-              <div id="platformLegend" class="space-y-2 text-sm flex-1"></div>
+
+          <!-- Task queue timeline -->
+          <div class="card-tech p-6">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-base font-semibold">⏱ 实时任务队列</h3>
+              <span class="text-xs text-blue-400 cursor-pointer hover:underline">查看全部 →</span>
+            </div>
+            <div class="space-y-3" id="taskTimeline">
+              <div class="p-6 text-center empty-state">
+                <div class="text-3xl opacity-50 mb-2">📋</div>
+                <div class="text-slate-400 text-sm">任务时间线加载中...</div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">📋 最近 5 条发布记录</div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead>
-                <tr><th>商品</th><th>平台</th><th>状态</th><th>时间</th></tr>
-              </thead>
-              <tbody id="recentPublishTable"></tbody>
-            </table>
+        <!-- Row 3: Top 5 products -->
+        <div class="card-tech p-6">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="text-base font-semibold">🔥 热销商品 TOP 5</h3>
+              <p class="text-xs text-slate-400 mt-0.5">按今日佣金排序 · 实时更新</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <button class="segment-btn active px-3 py-1.5 rounded-md bg-slate-700/60 text-white">今日</button>
+              <button class="segment-btn px-3 py-1.5 rounded-md text-slate-400 hover:text-white">本周</button>
+              <button class="segment-btn px-3 py-1.5 rounded-md text-slate-400 hover:text-white">本月</button>
+            </div>
+          </div>
+          <div class="space-y-3" id="topProductsList">
+            <div class="p-8 text-center empty-state">
+              <div class="text-3xl opacity-50 mb-2">🏆</div>
+              <div class="text-slate-400 text-sm">TOP 5 热销商品加载中...</div>
+            </div>
           </div>
         </div>
+
       </section>
 
-      <!-- Products -->
-      <section id="tab-products" class="tab-panel hidden">
-        <div class="card">
-          <div class="flex items-center justify-between flex-wrap gap-3 p-5 border-b border-slate-700/60">
-            <div class="card-header !border-0 !p-0">📦 商品库</div>
+      <!-- ============ 爆品中心 TAB ============ -->
+      <section id="tab-products" class="tab-panel">
+
+        <!-- Filter bar -->
+        <div class="card-tech p-5 mb-4">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
+              <input type="text" placeholder="🔍 搜索商品名称 / SKU..." class="input-field px-4 py-2 rounded-lg text-sm w-72" id="productSearch" />
+              <select class="input-field px-3 py-2 rounded-lg text-sm">
+                <option>全部分类</option><option>美妆个护</option><option>服饰鞋包</option><option>数码家电</option><option>食品饮料</option>
+              </select>
+              <select class="input-field px-3 py-2 rounded-lg text-sm">
+                <option>销量排序</option><option>从高到低</option><option>从低到高</option>
+              </select>
+              <select class="input-field px-3 py-2 rounded-lg text-sm">
+                <option>佣金排序</option><option>从高到低</option><option>从低到高</option>
+              </select>
+            </div>
             <div class="flex items-center gap-2">
-              <input id="productSearch" type="text" placeholder="🔍 搜索商品标题..." class="input-search" />
-              <button class="btn-action btn-action-sm" onclick="productsState.refresh()">查询</button>
+              <button class="btn-ghost px-4 py-2 rounded-lg text-sm flex items-center gap-2">🔄 刷新</button>
+              <button class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2">+ 添加商品</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Products table -->
+        <div class="card-tech overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr>
+                  <th>商品</th><th>分类</th><th>价格</th><th>销量</th><th>佣金</th>
+                  <th>达人数</th><th>竞争指数</th><th>爆款指数</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="productsTable">
+                <tr><td colspan="9" class="text-center py-12 text-slate-400">
+                  <div class="text-4xl mb-3 opacity-50">📦</div>商品数据加载中...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============ 热点中心 TAB ============ -->
+      <section id="tab-hot" class="tab-panel">
+
+        <!-- Platform tabs -->
+        <div class="card-tech p-4 mb-4">
+          <div class="flex items-center gap-2 flex-wrap" id="hotPlatformTabs">
+            <button class="platform-tab active segment-btn px-4 py-2 rounded-lg text-sm font-medium bg-slate-700/60 text-white">🌐 全部平台</button>
+            <button class="platform-tab segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">🔴 微博热搜</button>
+            <button class="platform-tab segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">🎵 抖音热点</button>
+            <button class="platform-tab segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">🔍 百度风云</button>
+            <button class="platform-tab segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">💡 知乎热榜</button>
+            <button class="platform-tab segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">📺 B站热门</button>
+          </div>
+        </div>
+
+        <!-- Hot cards grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="hotCardsGrid">
+          <div class="col-span-full card-tech p-12 text-center empty-state">
+            <div class="text-5xl mb-3 opacity-50">🔥</div>
+            <div class="text-slate-400 text-sm">热点数据加载中...</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============ 内容工厂 TAB ============ -->
+      <section id="tab-content" class="tab-panel">
+
+        <div class="grid grid-cols-12 gap-4">
+
+          <!-- Left: Product / hot / analysis -->
+          <div class="col-span-12 lg:col-span-3 space-y-4">
+            <div class="card-tech p-5">
+              <h3 class="text-sm font-semibold mb-3">🎯 商品 / 热点选择</h3>
+              <div class="input-field px-3 py-2 rounded-lg text-sm mb-3">请选择商品或热点</div>
+              <div class="space-y-2" id="contentSourceList">
+                <div class="p-4 text-center empty-state rounded-lg">
+                  <div class="text-2xl opacity-50 mb-1">📦</div>
+                  <div class="text-slate-400 text-xs">数据源加载中...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-tech p-5">
+              <h3 class="text-sm font-semibold mb-3">💡 卖点分析</h3>
+              <div class="space-y-2 text-xs" id="sellingPoints">
+                <div class="p-3 rounded-lg bg-slate-700/40 text-slate-400">卖点数据加载中...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle: Prompt editor -->
+          <div class="col-span-12 lg:col-span-6">
+            <div class="card-tech p-5">
+
+              <!-- Content type tabs -->
+              <div class="flex items-center gap-2 mb-5 flex-wrap">
+                <span class="text-xs text-slate-400 mr-1">内容类型:</span>
+                <button class="content-type active segment-btn px-3 py-1.5 rounded-md text-xs bg-blue-500 text-white">图文</button>
+                <button class="content-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white bg-slate-700/40">口播</button>
+                <button class="content-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white bg-slate-700/40">测评</button>
+                <button class="content-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white bg-slate-700/40">种草</button>
+                <button class="content-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white bg-slate-700/40">剧情</button>
+                <button class="content-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white bg-slate-700/40">对比</button>
+              </div>
+
+              <!-- Prompt editor -->
+              <div class="mb-4">
+                <label class="text-xs text-slate-400 block mb-2">✏️ Prompt 模板</label>
+                <textarea class="input-field w-full px-4 py-3 rounded-lg text-sm font-mono" rows="8"
+                  placeholder="你是一名资深营销文案写手，请根据以下商品信息，撰写一篇【图文】风格的种草文案..."></textarea>
+              </div>
+
+              <!-- Generated content -->
+              <div class="mb-4">
+                <label class="text-xs text-slate-400 block mb-2">📝 AI 生成内容</label>
+                <div class="input-field w-full px-4 py-3 rounded-lg text-sm min-h-[160px] text-slate-300" id="aiGeneratedContent">
+                  <span class="text-slate-500">⏳ AI 正在思考与生成内容，点击右侧按钮开始创作...</span>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <button class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2">✨ AI 生成</button>
+                <button class="btn-ghost px-4 py-2 rounded-lg text-sm flex items-center gap-2">🔁 重新生成</button>
+                <button class="btn-ghost px-4 py-2 rounded-lg text-sm flex items-center gap-2">💾 保存草稿</button>
+                <button class="btn-ghost px-4 py-2 rounded-lg text-sm flex items-center gap-2">🎬 发送视频工厂</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Live preview -->
+          <div class="col-span-12 lg:col-span-3">
+            <div class="card-tech p-5 sticky top-24">
+              <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                实时预览
+              </h3>
+
+              <!-- Simulated phone preview -->
+              <div class="rounded-2xl bg-slate-700/40 border border-slate-700/60 p-4 mb-4" id="contentPreview">
+                <div class="text-xs text-slate-400 text-center py-10">
+                  <div class="text-3xl opacity-50 mb-2">📱</div>
+                  预览内容待生成...
+                </div>
+              </div>
+
+              <div class="space-y-3 text-xs">
+                <div>
+                  <div class="text-slate-400 mb-1">标题</div>
+                  <div class="input-field px-3 py-2 rounded-md text-white" id="previewTitle">—</div>
+                </div>
+                <div>
+                  <div class="text-slate-400 mb-1">标签</div>
+                  <div class="flex flex-wrap gap-1.5" id="previewTags">
+                    <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]">待生成</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-slate-400 mb-1">评论引导</div>
+                  <div class="input-field px-3 py-2 rounded-md text-slate-300" id="previewCTA">—</div>
+                </div>
+                <div>
+                  <div class="text-slate-400 mb-1">挂车文案</div>
+                  <div class="input-field px-3 py-2 rounded-md text-slate-300" id="previewCart">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ============ 视频工厂 TAB ============ -->
+      <section id="tab-video" class="tab-panel">
+
+        <!-- Top controls -->
+        <div class="card-tech p-5 mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 block mb-2">🛒 选择商品</label>
+              <select class="input-field w-full px-3 py-2 rounded-lg text-sm">
+                <option>请选择商品</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-2">🎞 视频模板</label>
+              <select class="input-field w-full px-3 py-2 rounded-lg text-sm">
+                <option>口播带货</option><option>开箱测评</option><option>剧情植入</option><option>对比测评</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-2">⏱ 视频时长</label>
+              <select class="input-field w-full px-3 py-2 rounded-lg text-sm">
+                <option>15 秒</option><option>30 秒</option><option>60 秒</option><option>3 分钟</option>
+              </select>
+            </div>
+            <div class="flex items-end gap-2">
+              <button class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2 flex-1">🎬 生成视频</button>
+              <button class="btn-ghost px-4 py-2 rounded-lg text-sm flex items-center gap-2">📚 模板库</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kanban + preview -->
+        <div class="grid grid-cols-12 gap-4">
+          <div class="col-span-12 lg:col-span-8">
+            <div class="card-tech p-5">
+              <h3 class="text-sm font-semibold mb-4">📋 视频任务看板</h3>
+              <div class="grid grid-cols-4 gap-3" id="videoKanban">
+                <!-- Wait -->
+                <div class="kanban-col p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-medium text-slate-300">⏳ 等待中</span>
+                    <span class="text-[10px] bg-slate-700/80 text-slate-300 px-1.5 py-0.5 rounded" id="kanbanWaitCount">0</span>
+                  </div>
+                  <div class="space-y-2" id="kanbanWait">
+                    <div class="text-center py-6 text-slate-500 text-xs">无任务</div>
+                  </div>
+                </div>
+                <!-- Processing -->
+                <div class="kanban-col p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-medium text-slate-300">⚙️ 处理中</span>
+                    <span class="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded" id="kanbanProcCount">0</span>
+                  </div>
+                  <div class="space-y-2" id="kanbanProc">
+                    <div class="text-center py-6 text-slate-500 text-xs">无任务</div>
+                  </div>
+                </div>
+                <!-- Done -->
+                <div class="kanban-col p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-medium text-slate-300">✅ 已完成</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded" id="kanbanDoneCount">0</span>
+                  </div>
+                  <div class="space-y-2" id="kanbanDone">
+                    <div class="text-center py-6 text-slate-500 text-xs">无任务</div>
+                  </div>
+                </div>
+                <!-- Failed -->
+                <div class="kanban-col p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-medium text-slate-300">❌ 失败</span>
+                    <span class="text-[10px] bg-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded" id="kanbanFailCount">0</span>
+                  </div>
+                  <div class="space-y-2" id="kanbanFail">
+                    <div class="text-center py-6 text-slate-500 text-xs">无任务</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right video preview -->
+          <div class="col-span-12 lg:col-span-4">
+            <div class="card-tech p-5 sticky top-24">
+              <h3 class="text-sm font-semibold mb-4">🎥 视频预览</h3>
+              <div class="aspect-[9/16] rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/60 flex flex-col items-center justify-center text-slate-500 text-sm" id="videoPreviewBox">
+                <div class="text-5xl mb-3 opacity-50">▶️</div>
+                <div class="text-xs">选择任务进行预览</div>
+              </div>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-xs text-center">
+                <div class="p-2 rounded-md bg-slate-700/40">
+                  <div class="text-slate-400 text-[10px]">总任务</div>
+                  <div class="text-white font-semibold mt-0.5" id="videoTotal">0</div>
+                </div>
+                <div class="p-2 rounded-md bg-slate-700/40">
+                  <div class="text-slate-400 text-[10px]">成功</div>
+                  <div class="text-emerald-400 font-semibold mt-0.5" id="videoSuccess">0</div>
+                </div>
+                <div class="p-2 rounded-md bg-slate-700/40">
+                  <div class="text-slate-400 text-[10px]">失败</div>
+                  <div class="text-rose-400 font-semibold mt-0.5" id="videoFail">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============ 发布中心 TAB ============ -->
+      <section id="tab-publish" class="tab-panel">
+
+        <!-- Platform tabs -->
+        <div class="card-tech p-4 mb-4">
+          <div class="flex items-center gap-2 flex-wrap" id="publishPlatformTabs">
+            <button class="pub-platform active segment-btn px-4 py-2 rounded-lg text-sm font-medium bg-slate-700/60 text-white">🎵 抖音</button>
+            <button class="pub-platform segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">💚 视频号</button>
+            <button class="pub-platform segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">📕 小红书</button>
+            <button class="pub-platform segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white">⚡ 快手</button>
+            <div class="flex-1"></div>
+            <div class="flex items-center gap-2 rounded-lg bg-slate-700/40 p-1">
+              <button class="view-type active segment-btn px-3 py-1.5 rounded-md text-xs bg-blue-500 text-white">📅 日历</button>
+              <button class="view-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white">📋 列表</button>
+              <button class="view-type segment-btn px-3 py-1.5 rounded-md text-xs text-slate-400 hover:text-white">🗂 看板</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calendar placeholder -->
+        <div class="card-tech p-6 mb-4" id="publishCalendar">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="text-base font-semibold">📅 发布排期日历</h3>
+              <p class="text-xs text-slate-400 mt-0.5">2026 年 6 月 · 可视化排期</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn-ghost px-3 py-1.5 rounded-md text-xs">◀ 上月</button>
+              <span class="text-sm text-slate-300 px-3" id="calendarMonth">2026-06</span>
+              <button class="btn-ghost px-3 py-1.5 rounded-md text-xs">下月 ▶</button>
+            </div>
+          </div>
+
+          <!-- Weekday header -->
+          <div class="grid grid-cols-7 gap-2 mb-2 text-center">
+            <div class="text-xs text-slate-400 py-2">一</div>
+            <div class="text-xs text-slate-400 py-2">二</div>
+            <div class="text-xs text-slate-400 py-2">三</div>
+            <div class="text-xs text-slate-400 py-2">四</div>
+            <div class="text-xs text-slate-400 py-2">五</div>
+            <div class="text-xs text-slate-400 py-2">六</div>
+            <div class="text-xs text-slate-400 py-2">日</div>
+          </div>
+
+          <!-- Day cells -->
+          <div class="grid grid-cols-7 gap-2" id="calendarGrid">
+            <div class="col-span-full text-center py-10 text-slate-400 text-sm">
+              <div class="text-3xl opacity-50 mb-2">📅</div>日历数据加载中...
+            </div>
+          </div>
+        </div>
+
+        <!-- Publish records table -->
+        <div class="card-tech overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700/40">
+            <h3 class="text-sm font-semibold">📋 发布记录</h3>
+            <button class="btn-primary px-4 py-2 rounded-lg text-sm">+ 新建发布</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table w-full">
+              <thead>
+                <tr><th>标题</th><th>商品</th><th>平台</th><th>账号</th><th>状态</th><th>计划时间</th><th>实际发布</th><th>操作</th></tr>
+              </thead>
+              <tbody id="publishTable">
+                <tr><td colspan="8" class="text-center py-12 text-slate-400">
+                  <div class="text-4xl mb-3 opacity-50">📋</div>发布记录加载中...
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============ 账号中心 TAB ============ -->
+      <section id="tab-accounts" class="tab-panel">
+
+        <div class="grid grid-cols-4 gap-4 mb-4" id="accountSummary">
+          <div class="col-span-full card-tech p-8 text-center empty-state">
+            <div class="text-4xl opacity-50 mb-2">👥</div>
+            <div class="text-slate-400 text-sm">账号汇总数据加载中...</div>
+          </div>
+        </div>
+
+        <div class="card-tech overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700/40">
+            <h3 class="text-sm font-semibold">👥 账号矩阵管理</h3>
+            <div class="flex items-center gap-2">
+              <input type="text" placeholder="🔍 搜索账号..." class="input-field px-3 py-2 rounded-lg text-xs w-48" />
+              <select class="input-field px-3 py-2 rounded-lg text-xs">
+                <option>全部平台</option><option>抖音</option><option>视频号</option><option>小红书</option><option>快手</option>
+              </select>
+              <button class="btn-primary px-4 py-2 rounded-lg text-xs">+ 绑定账号</button>
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table w-full">
               <thead>
-                <tr>
-                  <th>ID</th><th>标题</th><th>平台</th><th>价格</th><th>佣金</th>
-                  <th>销量</th><th>评分</th><th>爆品</th><th>创建时间</th>
-                </tr>
+                <tr><th>平台</th><th>账号</th><th>状态</th><th>粉丝数</th><th>最近发布</th><th>登录状态</th><th>操作</th></tr>
               </thead>
-              <tbody id="productsTable"></tbody>
+              <tbody id="accountsTable">
+                <tr><td colspan="7" class="text-center py-12 text-slate-400">
+                  <div class="text-4xl mb-3 opacity-50">👥</div>账号数据加载中...
+                </td></tr>
+              </tbody>
             </table>
           </div>
-          <div class="pager" id="productsPager"></div>
         </div>
+
       </section>
 
-      <!-- Contents -->
-      <section id="tab-contents" class="tab-panel hidden">
-        <div class="card">
-          <div class="flex items-center justify-between flex-wrap gap-3 p-5 border-b border-slate-700/60">
-            <div class="card-header !border-0 !p-0">✍️ 内容库</div>
-            <div class="flex flex-wrap gap-2 items-center">
-              <select id="filterPlatform" class="input-search !py-1.5">
-                <option value="">全部平台</option>
-                <option value="xhs">小红书</option>
-                <option value="douyin">抖音</option>
-                <option value="kuaishou">快手</option>
-                <option value="wechat">微信</option>
-              </select>
-              <select id="filterContentType" class="input-search !py-1.5">
-                <option value="">全部类型</option>
-                <option value="image_text">图文</option>
-                <option value="script">脚本</option>
-                <option value="copywriting">文案</option>
-                <option value="review">测评</option>
-                <option value="plot_script">剧情脚本</option>
-                <option value="compare">对比</option>
-              </select>
-              <select id="filterStatus" class="input-search !py-1.5">
-                <option value="">全部状态</option>
-                <option value="draft">草稿</option>
-                <option value="used">已使用</option>
-                <option value="archived">归档</option>
-              </select>
-              <button class="btn-action btn-action-sm" onclick="contentsState.refresh()">查询</button>
+      <!-- ============ 数据中心 TAB ============ -->
+      <section id="tab-data" class="tab-panel">
+
+        <!-- Sub tabs -->
+        <div class="card-tech p-3 mb-4">
+          <div class="flex items-center gap-2 flex-wrap" id="dataSubTabs">
+            <button class="data-sub active segment-btn px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white">🏆 内容榜</button>
+            <button class="data-sub segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white bg-slate-700/40">🔥 商品榜</button>
+            <button class="data-sub segment-btn px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white bg-slate-700/40">👥 账号榜</button>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          <div class="card-tech p-6 lg:col-span-2">
+            <div class="flex items-center justify-between mb-5">
+              <div>
+                <h3 class="text-base font-semibold">💰 佣金趋势分析</h3>
+                <p class="text-xs text-slate-400 mt-0.5">近 30 天佣金收入走势 · 按日统计</p>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-sm bg-blue-500"></span>日佣金</span>
+                <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>累计</span>
+              </div>
+            </div>
+            <div class="h-64" id="commissionChart">
+              <div class="h-full flex items-center justify-center text-slate-400 text-sm">
+                <div class="text-center">
+                  <div class="text-4xl opacity-50 mb-2">📈</div>图表数据加载中...
+                </div>
+              </div>
             </div>
           </div>
+
+          <div class="card-tech p-6">
+            <h3 class="text-base font-semibold mb-4">📊 平台发布分布</h3>
+            <div class="space-y-4" id="platformDist">
+              <div class="text-center py-10 text-slate-400 text-sm empty-state">
+                <div class="text-4xl opacity-50 mb-2">🍩</div>数据加载中...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking table -->
+        <div class="card-tech overflow-hidden">
+          <div class="p-5 border-b border-slate-700/40">
+            <h3 class="text-sm font-semibold" id="rankTitle">🏆 内容互动榜 TOP 20</h3>
+          </div>
           <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table w-full">
               <thead>
-                <tr>
-                  <th>ID</th><th>商品标题</th><th>平台</th><th>类型</th>
-                  <th>标题</th><th>状态</th><th>创建时间</th>
-                </tr>
+                <tr><th>#</th><th>标题</th><th>平台</th><th>浏览</th><th>点赞</th><th>评论</th><th>转化</th><th>佣金</th></tr>
               </thead>
-              <tbody id="contentsTable"></tbody>
+              <tbody id="rankTable">
+                <tr><td colspan="8" class="text-center py-12 text-slate-400">
+                  <div class="text-4xl mb-3 opacity-50">🏆</div>榜单数据加载中...
+                </td></tr>
+              </tbody>
             </table>
           </div>
-          <div class="pager" id="contentsPager"></div>
         </div>
+
       </section>
 
-      <!-- Hot topics -->
-      <section id="tab-hot" class="tab-panel hidden">
-        <div class="card">
-          <div class="card-header">🔥 热点 Radar</div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>#</th><th>关键词</th><th>来源</th><th>热度值</th>
-                  <th>增长</th><th>分类</th><th>排名</th><th>时间</th>
-                </tr>
-              </thead>
-              <tbody id="hotTable"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <!-- ============ 系统设置 TAB ============ -->
+      <section id="tab-settings" class="tab-panel">
 
-      <!-- Publish records -->
-      <section id="tab-publish" class="tab-panel hidden">
-        <div class="card">
-          <div class="card-header">🚀 发布记录</div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead>
-                <tr><th>商品</th><th>平台</th><th>标题</th><th>状态</th><th>发布时间</th></tr>
-              </thead>
-              <tbody id="publishTable"></tbody>
-            </table>
-          </div>
-          <div class="pager" id="publishPager"></div>
-        </div>
-      </section>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-      <!-- Rankings -->
-      <section id="tab-rankings" class="tab-panel hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="card">
-            <div class="card-header">🏆 爆品榜（按佣金）</div>
-            <ol id="rankProducts" class="p-5 space-y-2 text-sm"></ol>
+          <!-- Model config -->
+          <div class="setting-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-lg">🧠</div>
+              <div>
+                <h3 class="text-base font-semibold">模型配置</h3>
+                <p class="text-xs text-slate-400 mt-0.5">LLM / 图像 / 语音模型参数</p>
+              </div>
+            </div>
+            <div class="space-y-4 text-sm">
+              <div>
+                <label class="text-xs text-slate-400 block mb-1.5">主模型 Provider</label>
+                <select class="input-field w-full px-3 py-2 rounded-lg text-sm">
+                  <option>OpenAI · GPT-4o</option><option>Anthropic · Claude 3.5 Sonnet</option><option>DeepSeek · V3</option><option>Ollama · 本地模型</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1.5">API Key</label>
+                <input type="password" placeholder="sk-..." class="input-field w-full px-3 py-2 rounded-lg text-sm font-mono" />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-400 block mb-1.5">Temperature</label>
+                  <input type="number" step="0.1" value="0.7" class="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400 block mb-1.5">Max Tokens</label>
+                  <input type="number" value="4096" class="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                </div>
+              </div>
+              <button class="btn-primary w-full py-2 rounded-lg text-sm">💾 保存模型配置</button>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-header">✍️ 内容榜（按互动）</div>
-            <ol id="rankContents" class="p-5 space-y-2 text-sm"></ol>
-          </div>
-          <div class="card">
-            <div class="card-header">🔥 热点榜</div>
-            <ol id="rankHot" class="p-5 space-y-2 text-sm"></ol>
-          </div>
-        </div>
-      </section>
 
-      <!-- Logs -->
-      <section id="tab-logs" class="tab-panel hidden">
-        <div class="card">
-          <div class="flex items-center justify-between p-5 border-b border-slate-700/60">
-            <div class="card-header !border-0 !p-0">📝 日志（最近 200 行）</div>
-            <button class="btn-action btn-action-sm" onclick="loadLogs()">🔄 刷新</button>
+          <!-- Agent config -->
+          <div class="setting-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-lg">🤖</div>
+              <div>
+                <h3 class="text-base font-semibold">代理配置</h3>
+                <p class="text-xs text-slate-400 mt-0.5">六大 Agent 行为参数设置</p>
+              </div>
+            </div>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">爆品雷达 · 拉取间隔</span>
+                <input type="number" value="30" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">热点雷达 · 平台</span>
+                <select class="input-field px-2 py-1 rounded-md text-xs">
+                  <option>全部平台</option><option>微博+抖音</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">内容工厂 · 并发数</span>
+                <input type="number" value="5" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">视频工厂 · 并发数</span>
+                <input type="number" value="3" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <button class="btn-primary w-full py-2 rounded-lg text-sm mt-2">💾 保存代理配置</button>
+            </div>
           </div>
-          <pre id="logsArea" class="log-area">加载中...</pre>
+
+          <!-- Database config -->
+          <div class="setting-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 flex items-center justify-center text-lg">💾</div>
+              <div>
+                <h3 class="text-base font-semibold">数据库配置</h3>
+                <p class="text-xs text-slate-400 mt-0.5">存储连接与缓存策略</p>
+              </div>
+            </div>
+            <div class="space-y-3 text-sm">
+              <div>
+                <label class="text-xs text-slate-400 block mb-1.5">数据库类型</label>
+                <select class="input-field w-full px-3 py-2 rounded-lg text-sm">
+                  <option>SQLite</option><option>MySQL</option><option>PostgreSQL</option><option>MongoDB</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1.5">连接串</label>
+                <input type="text" placeholder="sqlite:///marketing.db" class="input-field w-full px-3 py-2 rounded-lg text-sm font-mono" />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-400 block mb-1.5">Redis Host</label>
+                  <input type="text" placeholder="127.0.0.1" class="input-field w-full px-3 py-2 rounded-lg text-sm font-mono" />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400 block mb-1.5">Redis Port</label>
+                  <input type="number" value="6379" class="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn-ghost flex-1 py-2 rounded-lg text-sm">🔌 测试连接</button>
+                <button class="btn-primary flex-1 py-2 rounded-lg text-sm">💾 保存</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task config -->
+          <div class="setting-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-lg">⚡</div>
+              <div>
+                <h3 class="text-base font-semibold">任务配置</h3>
+                <p class="text-xs text-slate-400 mt-0.5">调度器 / 队列 / 重试策略</p>
+              </div>
+            </div>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">最大重试次数</span>
+                <input type="number" value="3" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">任务超时 (秒)</span>
+                <input type="number" value="600" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">队列工作进程</span>
+                <input type="number" value="4" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">失败任务保留 (天)</span>
+                <input type="number" value="30" class="input-field w-20 px-2 py-1 rounded-md text-xs text-right" />
+              </div>
+              <button class="btn-primary w-full py-2 rounded-lg text-sm mt-2">💾 保存任务配置</button>
+            </div>
+          </div>
+
+          <!-- Notification config -->
+          <div class="setting-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center text-lg">🔔</div>
+              <div>
+                <h3 class="text-base font-semibold">通知配置</h3>
+                <p class="text-xs text-slate-400 mt-0.5">告警渠道与阈值设置</p>
+              </div>
+            </div>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">Agent 异常告警</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked class="sr-only peer" />
+                  <span class="w-9 h-5 bg-slate-600 peer-checked:bg-blue-500 rounded-full transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></span>
+                </label>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+                <span class="text-slate-200 text-xs">每日佣金日报</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked class="sr-only peer" />
+                  <span class="w-9 h-5 bg-slate-600 peer-checked:bg-blue-500 rounded-full transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></span>
+                </label>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1.5">通知方式</label>
+                <div class="flex gap-2 flex-wrap">
+                  <span class="px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 text-xs cursor-pointer">📨 邮件</span>
+                  <span class="px-3 py-1 rounded-md bg-slate-700/40 text-slate-400 text-xs cursor-pointer">💬 微信</span>
+                  <span class="px-3 py-1 rounded-md bg-slate-700/40 text-slate-400 text-xs cursor-pointer">🔔 站内</span>
+                  <span class="px-3 py-1 rounded-md bg-slate-700/40 text-slate-400 text-xs cursor-pointer">🤖 Webhook</span>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1.5">告警邮箱</label>
+                <input type="email" placeholder="admin@example.com" class="input-field w-full px-3 py-2 rounded-lg text-sm" />
+              </div>
+              <button class="btn-primary w-full py-2 rounded-lg text-sm">💾 保存通知配置</button>
+            </div>
+          </div>
+
+          <!-- Log management -->
+          <div class="setting-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-lg">📝</div>
+              <div>
+                <h3 class="text-base font-semibold">日志管理</h3>
+                <p class="text-xs text-slate-400 mt-0.5">运行日志 / 审计 / 清理</p>
+              </div>
+            </div>
+            <div class="space-y-3 text-sm">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-400 block mb-1.5">日志级别</label>
+                  <select class="input-field w-full px-3 py-2 rounded-lg text-sm">
+                    <option>INFO</option><option>DEBUG</option><option>WARNING</option><option>ERROR</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-400 block mb-1.5">保留天数</label>
+                  <input type="number" value="90" class="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-900/60 font-mono text-xs text-slate-400 h-24 overflow-auto" id="logPreview">
+                <div>[2026-06-09 08:32:11] INFO  系统启动完成 · 6 个 Agent 已加载</div>
+                <div>[2026-06-09 08:32:15] INFO  爆品雷达开始扫掠 · 12 个源</div>
+                <div>[2026-06-09 08:33:02] INFO  热点雷达抓取完成 · 50 条</div>
+                <div>[2026-06-09 08:34:18] WARN  视频工厂任务 #2381 超时 · 已重试</div>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn-ghost flex-1 py-2 rounded-lg text-sm">📂 导出日志</button>
+                <button class="btn-ghost flex-1 py-2 rounded-lg text-sm text-rose-400">🗑 清理日志</button>
+                <button class="btn-primary flex-1 py-2 rounded-lg text-sm">💾 保存配置</button>
+              </div>
+            </div>
+          </div>
+
         </div>
+
+        <div class="text-center text-xs text-slate-500 mt-6 pb-4">
+          Marketing Agent v3.0.1 · Built with ♥ by AI Matrix Team · 2026
+        </div>
+
       </section>
 
     </div>
   </main>
-</div>
 
-<!-- Modal -->
-<div id="modalWrap" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center">
-  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-11/12 max-w-3xl max-h-[85vh] overflow-auto">
-    <div class="flex items-center justify-between p-4 border-b border-slate-700 sticky top-0 bg-slate-800 z-10">
-      <h3 id="modalTitle" class="font-semibold text-emerald-400">详情</h3>
-      <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none w-6 h-6 flex items-center justify-center">✕</button>
-    </div>
-    <div id="modalBody" class="p-5 text-sm"></div>
-  </div>
 </div>
-
-<!-- Toast -->
-<div id="toast" class="fixed top-4 right-4 z-50 hidden px-4 py-2 rounded-lg text-sm shadow-lg"></div>
 
 <script src="static/app.js"></script>
 </body>
