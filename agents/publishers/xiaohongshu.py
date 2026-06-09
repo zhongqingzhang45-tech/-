@@ -16,7 +16,21 @@ XHS_PUBLISH = "https://creator.xiaohongshu.com/publish/publish?source=official"
 
 
 class XiaohongshuPublisher:
-    def __init__(self, headless: bool = False, user_data_dir: Optional[str] = None):
+    """
+    小红书发布器。三种登录方式可选：
+
+    1) user_data_dir 持久化浏览器配置（默认）—— 第一次需手动扫码，后续免登录
+    2) 提供 cookies_file_path（JSON 数组，Playwright 格式）—— 程序启动时注入
+    3) 提供 raw_cookie_string（"a=xxx; b=yyy"，从浏览器 DevTools 复制）—— 自动转为 Playwright cookies
+    """
+
+    def __init__(
+        self,
+        headless: bool = False,
+        user_data_dir: Optional[str] = None,
+        cookies_file_path: Optional[str] = None,
+        raw_cookie_string: Optional[str] = None,
+    ):
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
@@ -29,7 +43,8 @@ class XiaohongshuPublisher:
         self.user_data_dir = user_data_dir or str(
             ensure_dir(Config.DATA_DIR / "browser_profiles" / "xiaohongshu")
         )
-        self._cookies_path = Config.DATA_DIR / "cookies_xhs.json"
+        self._cookies_path = Path(cookies_file_path) if cookies_file_path else (Config.DATA_DIR / "cookies_xhs.json")
+        self._raw_cookie_string = raw_cookie_string
 
     def __enter__(self):
         self._pw = self._pw_cls().start()
@@ -42,7 +57,56 @@ class XiaohongshuPublisher:
         self.page = self._context.pages[0] if self._context.pages else self._context.new_page()
         self.page.set_default_timeout(30000)
         logger.info(f"小红书浏览器已启动 (headless={self.headless})")
+
+        # 注入 cookies（文件 / 原始字符串）
+        loaded = self._inject_cookies_from_file() or self._inject_cookies_from_raw_string()
+        if loaded:
+            logger.success(f"已加载 cookies: {self._cookies_path.name}")
         return self
+
+    # ---------- Cookie 工具 ----------
+    def _inject_cookies_from_file(self) -> bool:
+        """从 Playwright JSON 格式的 cookie 文件加载"""
+        if not self._cookies_path or not self._cookies_path.exists():
+            return False
+        try:
+            cookies = json.loads(self._cookies_path.read_text(encoding="utf-8"))
+            if not isinstance(cookies, list) or not cookies:
+                return False
+            # 补全必需字段：domain / path
+            for c in cookies:
+                c.setdefault("domain", ".xiaohongshu.com")
+                c.setdefault("path", "/")
+            self._context.add_cookies(cookies)
+            return True
+        except Exception as e:
+            logger.warning(f"加载 cookie 文件失败: {e}")
+            return False
+
+    def _inject_cookies_from_raw_string(self) -> bool:
+        """把 'a=1; b=2' 这种从浏览器 DevTools 复制的 cookie 字符串注入进去"""
+        if not self._raw_cookie_string:
+            return False
+        try:
+            cookies = []
+            for part in self._raw_cookie_string.split(";"):
+                part = part.strip()
+                if not part or "=" not in part:
+                    continue
+                name, value = part.split("=", 1)
+                cookies.append({
+                    "name": name.strip(),
+                    "value": value.strip(),
+                    "domain": ".xiaohongshu.com",
+                    "path": "/",
+                })
+            if cookies:
+                self._context.add_cookies(cookies)
+                return True
+            return False
+        except Exception as e:
+            logger.warning(f"解析 cookie 字符串失败: {e}")
+            return False
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:

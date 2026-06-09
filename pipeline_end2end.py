@@ -167,7 +167,13 @@ def step_generate(products_json_path: str, top_n: int = 10) -> List[Dict[str, An
 
 
 # ---------- Step 3: 发布 ----------
-def step_publish(ready_json: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
+def step_publish(
+    ready_json: Optional[str] = None,
+    limit: int = 5,
+    headless: bool = False,
+    cookies_file: Optional[str] = None,
+    raw_cookie: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     if ready_json:
         posts = json.loads(Path(ready_json).read_text(encoding="utf-8"))
     else:
@@ -202,7 +208,11 @@ def step_publish(ready_json: Optional[str] = None, limit: int = 5) -> List[Dict[
         return []
 
     results = []
-    with XiaohongshuPublisher(headless=False) as pub:
+    with XiaohongshuPublisher(
+        headless=headless,
+        cookies_file_path=cookies_file,
+        raw_cookie_string=raw_cookie,
+    ) as pub:
         if not pub.login():
             return [{"success": False, "error": "登录失败"}]
         for idx, p in enumerate(posts, 1):
@@ -268,9 +278,14 @@ def main():
     sp.add_argument("--json", required=True, help="products.json 路径")
     sp.add_argument("--top", type=int, default=10, help="选前N个生成内容")
 
-    sp = sub.add_parser("publish")
-    sp.add_argument("--json", default=None, help="可选: xhs_posts_ready_xxx.json")
-    sp.add_argument("--limit", type=int, default=5)
+    sp = sub.add_parser("publish", help="发布小红书图文笔记（支持 cookie 免登录）")
+    sp.add_argument("--json", default=None, help="xhs_posts_ready_xxx.json 路径；不传则从数据库读草稿")
+    sp.add_argument("--limit", type=int, default=5, help="最多发布条数")
+    sp.add_argument("--cookies", type=str, default=None,
+                    help=f"cookies_xhs.json 路径（默认: data/cookies_xhs.json）")
+    sp.add_argument("--raw-cookie", type=str, default=None,
+                    help="直接传 cookie 字符串（'a=1; b=2'）")
+    sp.add_argument("--headless", action="store_true", help="无头模式（需 cookies 已配置好且验证过）")
 
     sp = sub.add_parser("all")
     sp.add_argument("-n", "--num", type=int, default=20, help="抓取商品数")
@@ -294,7 +309,13 @@ def main():
     elif args.cmd == "generate":
         step_generate(args.json, top_n=args.top)
     elif args.cmd == "publish":
-        r = step_publish(args.json, limit=args.limit)
+        r = step_publish(
+            args.json,
+            limit=args.limit,
+            headless=args.headless,
+            cookies_file=args.cookies,
+            raw_cookie=args.raw_cookie,
+        )
         print(json.dumps(r, ensure_ascii=False, indent=2))
     elif args.cmd == "all":
         r = step_all(args.num, args.top)
