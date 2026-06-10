@@ -91,6 +91,10 @@
     {
       "name": "测试分类A",
       "product_count": 0
+    },
+    {
+      "name": "测试分类",
+      "product_count": 0
     }
   ]
 }
