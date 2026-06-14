@@ -10,11 +10,23 @@ const TITLES = [
 
 export function Hero() {
   const [idx, setIdx] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    setHydrated(true);
     const iv = setInterval(() => setIdx((i) => (i + 1) % TITLES.length), 4500);
     return () => clearInterval(iv);
   }, []);
+
+  const scrollToId = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const openAgentChat = (agentId: string) => {
+    const customEvent = new CustomEvent("lifeos-open-agent", { detail: { agentId } });
+    window.dispatchEvent(customEvent);
+  };
 
   return (
     <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center pt-24 pb-8 px-6 text-center md:pt-32">
@@ -35,10 +47,10 @@ export function Hero() {
 
       <div className="mb-8 flex min-h-[64px] items-center justify-center">
         <p
-          key={idx}
           className="animate-fade-in max-w-2xl text-base leading-relaxed text-gray-300 md:text-lg"
+          suppressHydrationWarning
         >
-          {TITLES[idx]}
+          {hydrated ? TITLES[idx] : TITLES[0]}
         </p>
       </div>
 
@@ -47,13 +59,19 @@ export function Hero() {
       </p>
 
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <button className="group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 px-7 py-3.5 text-sm font-semibold text-ink-950 transition shadow-glow hover:brightness-110">
+        <button
+          onClick={() => scrollToId("lifeos-agent-team")}
+          className="group relative inline-flex items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 px-7 py-3.5 text-sm font-semibold text-ink-950 transition shadow-glow hover:brightness-110 active:scale-95"
+        >
           <span>免费开始</span>
           <span className="transition group-hover:translate-x-0.5">→</span>
         </button>
-        <button className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-7 py-3.5 text-sm font-medium text-white transition hover:border-brand-400/40 hover:text-brand-300">
+        <button
+          onClick={() => openAgentChat("product-manager")}
+          className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-7 py-3.5 text-sm font-medium text-white transition hover:border-brand-400/40 hover:text-brand-300 active:scale-95"
+        >
           <span>▶</span>
-          <span>查看演示</span>
+          <span>立即体验对话</span>
         </button>
       </div>
 
