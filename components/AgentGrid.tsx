@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgentExpert } from "@/data/agents";
 import { AGENT_EXPERTS } from "@/data/agents";
 import { AgentChatPanel } from "./AgentChatPanel";
@@ -8,8 +8,23 @@ import { AgentChatPanel } from "./AgentChatPanel";
 export function AgentGrid() {
   const [active, setActive] = useState<AgentExpert | null>(null);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ agentId: string }>;
+      const agentId = ce.detail?.agentId;
+      if (!agentId) return;
+      const match = AGENT_EXPERTS.find((a) => a.id === agentId);
+      if (match) setActive(match);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("lifeos-open-agent", handler);
+      return () => window.removeEventListener("lifeos-open-agent", handler);
+    }
+  }, []);
+
   return (
-    <section className="mx-auto mt-32 w-full max-w-6xl px-6">
+    <section
+      id="lifeos-agent-team" className="mx-auto mt-32 w-full max-w-6xl px-6">
       <div className="mb-12 text-center">
         <div className="mb-3 text-xs uppercase tracking-[0.25em] text-brand-400">
           AI Expert Team

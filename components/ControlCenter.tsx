@@ -40,8 +40,16 @@ export function ControlCenter() {
   const [activeAgents, setActiveAgents] = useState<AgentSnapshot[]>([]);
   const [tickerIdx, setTickerIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
+  const [clientTime, setClientTime] = useState("");
 
   useEffect(() => {
+    setHydrated(true);
+    setClientTime(new Date().toLocaleString("zh-CN", { hour12: false }));
+    const timeIv = setInterval(() => {
+      setClientTime(new Date().toLocaleString("zh-CN", { hour12: false }));
+    }, 1000);
+
     const fetchStatus = async () => {
       try {
         const res = await fetch("/api/agents/status", { cache: "no-store" });
@@ -71,7 +79,10 @@ export function ControlCenter() {
 
     fetchStatus();
     const iv = setInterval(fetchStatus, 5000);
-    return () => clearInterval(iv);
+    return () => {
+      clearInterval(iv);
+      clearInterval(timeIv);
+    };
   }, []);
 
   useEffect(() => {
@@ -94,8 +105,8 @@ export function ControlCenter() {
           </h2>
         </div>
         <div className="hidden text-right text-xs text-gray-400 md:block">
-          <div className="font-mono">
-            {new Date().toLocaleString("zh-CN", { hour12: false })}
+          <div className="font-mono" suppressHydrationWarning>
+            {hydrated ? clientTime : "——"}
           </div>
           <div>每 5 秒刷新一次</div>
         </div>
@@ -148,12 +159,12 @@ export function ControlCenter() {
           </div>
           <div className="flex-1 rounded-2xl bg-ink-950/60 p-4">
             <div
-              key={tickerIdx}
-              className="mb-3 animate-slide-up font-mono text-sm text-brand-300"
-            >
-              › {TICKER_MESSAGES[tickerIdx]}
-              <span className="ml-1 animate-blink">_</span>
-            </div>
+            className="mb-3 animate-slide-up font-mono text-sm text-brand-300"
+            suppressHydrationWarning
+          >
+            › {hydrated ? TICKER_MESSAGES[tickerIdx] : TICKER_MESSAGES[0]}
+            <span className="ml-1 animate-blink">_</span>
+          </div>
             <div className="space-y-3">
               {(activeAgents.length > 0 ? activeAgents : [
                 { id: "product-manager", name: "产品经理", status: "busy" as const, currentTask: "正在规划需求", taskProgress: 65 },

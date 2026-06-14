@@ -104,7 +104,7 @@ export function ParticleBackground() {
       <div className="absolute inset-0 bg-grid radial-fade opacity-60" />
       <div className="absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-brand-500/20 blur-[140px]" />
       <div className="absolute top-1/3 -right-40 h-[500px] w-[500px] rounded-full bg-fuchsia-500/10 blur-[120px]" />
-      <canvas ref={canvasRef} className="absolute inset-0" />
+      <canvas ref={canvasRef} className="absolute inset-0" suppressHydrationWarning />
     </div>
   );
 }
