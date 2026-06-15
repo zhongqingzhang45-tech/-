@@ -1,95 +1,210 @@
-import { NextResponse } from "next/server";
-import { AGENT_EXPERTS } from "@/data/agents";
+import { NextRequest, NextResponse } from "next/server";
+import { AGENT_FILE_MAP, STATIC_REPLIES, ACTIVITY_HINTS } from "../../../../data/agents";
+import { readFileSync } from "fs";
 
-export const dynamic = "force-dynamic";
+// 简单的内存缓存，避免每次请求都读文件 + 调 API
+const fileCache = new Map<string, string>();
+const CACHE_TTL = 1000 * 60 * 30; // 30 分钟
 
-const ACTIVITIES: Record<string, string[]> = {
-  "product-manager": ["正在编写产品需求文档", "正在分析用户访谈记录", "正在整理版本规划", "正在输出 MVP 方案"],
-  "feedback-synthesizer": ["正在分析本周用户反馈", "正在做主题聚类分析", "正在生成洞察报告", "正在输出改进建议"],
-  "sprint-prioritizer": ["正在做需求打分矩阵", "正在排出迭代顺序", "正在识别依赖关系", "正在输出 Sprint Backlog"],
-  "ui-designer": ["正在设计页面视觉稿", "正在完善组件设计规范", "正在生成图标素材", "正在优化产品配色方案"],
-  "ux-architect": ["正在重构信息架构", "正在梳理用户旅程", "正在设计交互模式", "正在输出可用性评估"],
-  "brand-guardian": ["正在设计品牌色板", "正在规范字体使用", "正在输出物料一致性检查", "正在生成品牌指南"],
-  "frontend-developer": ["正在实现页面模块", "正在编写前端组件", "正在调试页面动效", "正在做浏览器兼容性测试"],
-  "backend-architect": ["正在评审系统架构", "正在设计 API 接口", "正在优化数据库索引", "正在编写技术选型报告"],
-  "ai-engineer": ["正在重构 Agent 调度逻辑", "正在优化 Prompt 模板", "正在编写函数调用编排", "正在做评测与上线"],
-  "database-optimizer": ["正在分析慢查询", "正在重建索引", "正在设计读写分离", "正在做冷热分层"],
-  "devops-automator": ["正在配置 CI/CD 流水线", "正在优化 Docker 镜像", "正在做监控告警配置", "正在设计自动回滚策略"],
-  "incident-response-commander": ["正在分析故障时间线", "正在组织应急响应", "正在执行回滚", "正在输出复盘报告"],
-  "growth-hacker": ["正在生成本周增长方案", "正在分析渠道 ROI", "正在策划裂变活动", "正在优化转化漏斗"],
-  "content-creator": ["正在撰写长篇文案", "正在生成视频脚本", "正在写公众号推文", "正在创作新品发布文案"],
-  "xiaohongshu-specialist": ["正在生成爆款选题", "正在优化封面设计", "正在编写种草正文", "正在分析投放效果"],
-  "douyin-strategist": ["正在设计短视频脚本", "正在做直播带货方案", "正在优化投放策略", "正在生成评论区运营话术"],
-  "private-domain-operator": ["正在编写会员 SOP", "正在策划社群活动", "正在设计自动化流程", "正在撰写复购话术"],
-  "deal-strategist": ["正在分析客户画像", "正在生成报价方案", "正在起草合同框架", "正在编写跟进话术"],
-  "support-responder": ["正在处理咨询工单", "正在更新知识库", "正在写标准回复", "正在生成满意度报告"],
-  "financial-analyst": ["正在生成财务报表", "正在做现金流分析", "正在整理账单", "正在输出预算报告"],
-  "security-architect": ["正在做渗透测试", "正在评审安全基线", "正在写威胁情报", "正在检查合规项"],
-  "senior-project-manager": ["正在输出周报", "正在协调跨部门资源", "正在识别项目风险", "正在追踪行动项"],
-  "brand-creative-director": ["正在设计品牌视觉系统", "正在输出多渠道物料", "正在规范文案语调", "正在准备新品视觉"],
-};
+interface AgentMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
-const REPLIES: Record<string, string> = {
-  "product-manager": "好的，我来做产品拆解：1) 目标用户画像 2) 核心价值主张 3) MVP 功能列表 4) 版本路线图。让我输出一份结构化 PRD。",
-  "feedback-synthesizer": "明白，我来帮你从用户反馈中提炼：聚类 → 去噪 → 按影响面排序 → 输出 Top 5 可行动建议。",
-  "sprint-prioritizer": "收到，按影响力 × 投入比做打分矩阵，排出最高价值的迭代顺序，并标注依赖关系。",
-  "ui-designer": "好的！我从品牌色、组件规范、页面骨架三个维度出发，输出一套可直接落地的 UI 设计。",
-  "ux-architect": "收到，我先设计信息架构和用户旅程，再根据真实使用场景梳理出交互模式库。",
-  "brand-guardian": "明白！让我为你统一品牌视觉：颜色、字体、图标、物料规范，保证对外一致。",
-  "frontend-developer": "好的，我用 React + Tailwind 实现这个模块：响应式布局、动效、代码可维护性都会兼顾。",
-  "backend-architect": "收到！让我设计一下这个功能的 API 合约、数据模型、缓存策略和扩展边界。",
-  "ai-engineer": "明白，我来帮你设计 Agent 的 Prompt、工具调用、上下文管理和评测方案，让它稳定可上线。",
-  "database-optimizer": "好的，让我分析你的 SQL 和索引，给出优化建议：慢查询、索引重建、读写比例和冷热分层。",
-  "devops-automator": "收到！我来帮你设计 CI/CD 流水线、Docker 镜像、监控告警和回滚策略。",
-  "incident-response-commander": "明白，故障发生时我会帮你做时间线梳理、影响面评估、回滚决策和复盘报告。",
-  "growth-hacker": "好的！让我分析你的增长机会：拉新渠道、转化路径、留存激活和 LTV 优化，并给出具体方案。",
-  "content-creator": "收到！我根据你的目标受众和品牌语调，生成对应的内容：长文、短视频脚本、推文和海报文案。",
-  "xiaohongshu-specialist": "明白！小红书全链路我来帮你：爆款选题、封面+标题、种草正文、标签矩阵、私信转化话术。",
-  "douyin-strategist": "好的！短视频/直播全流程：脚本+分镜+评论区运营+投流建议，一站式输出。",
-  "private-domain-operator": "收到！私域留存+复购我来帮你：会员体系、社群 SOP、自动化流程和活动策划。",
-  "deal-strategist": "明白！让我分析客户画像，生成跟进话术、报价方案、合同框架和成交预测。",
-  "support-responder": "好的！7×24 智能客服我来帮你：咨询回复、情绪识别、工单流转、知识库更新。",
-  "financial-analyst": "收到！我来帮你处理财务数据：自动记账、现金流分析、预算管理、报表和税务提醒。",
-  "security-architect": "明白！安全全链路我来把关：渗透测试、威胁情报、合规检查、事件响应。",
-  "senior-project-manager": "好的！让我来做项目治理：跨部门协调、风险识别、行动项追踪、周报自动生成。",
-  "brand-creative-director": "收到！我来帮你做统一的品牌视觉与文案：官网、广告、社媒、PPT、邮件模板全部一致。",
-};
+interface ChatRequest {
+  agentId: string;
+  messages: AgentMessage[];
+  input: string;
+}
 
-export async function POST(req: Request) {
+// 读取 Agent MD 文件（带缓存）
+function readAgentContent(agentId: string): string | null {
+  const path = AGENT_FILE_MAP[agentId];
+  if (!path) return null;
+
+  const cached = fileCache.get(agentId);
+  if (cached) return cached;
+
   try {
-    const { agentId, message } = await req.json();
+    const content = readFileSync(path, "utf-8");
+    if (content) {
+      fileCache.set(agentId, content);
+      return content;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
-    const agent = AGENT_EXPERTS.find((a) => a.id === agentId);
-    if (!agent) {
-      return NextResponse.json(
-        { success: false, error: "Unknown agent" },
-        { status: 400 }
-      );
+// 从 MD 文件中提取 agent 的角色名（作为回复前缀）
+function extractAgentName(mdContent: string): string {
+  const nameMatch = mdContent.match(/name:\s*([^\n]+)/i);
+  return nameMatch ? nameMatch[1].trim() : "";
+}
+
+// 从 MD 内容中生成 system prompt
+// 只保留核心部分（Identity、Role、Critical Rules、Workflow），避免 token 太长
+function buildSystemPrompt(mdContent: string, agentName: string): string {
+  // 保留 4000 字符以内的核心内容
+  const trimmed = mdContent.slice(0, 4000);
+
+  const prefix = `你是 ${agentName || "AI 专家"}，一名专业的 ${agentName || "AI 顾问"}。
+
+你有自己独特的工作方法和专业判断。
+- 如果你有明确的工作流程（Workflow/Deliverables 部分），请按流程输出结构化的结果
+- 如果有固定的框架（如 PRD、MEDDPICC、增长实验报告等），请按模板输出
+- 不要写废话，直接输出有价值的内容
+- 用中文回复，保持专业但自然的语调
+- 优先使用 Markdown 格式输出结构化内容（标题、列表、表格）
+
+`;
+
+  return prefix + "以下是你的详细 Agent 文档（作为你的专业知识与工作方法）：\n\n" + trimmed;
+}
+
+// 调用 DeepSeek Chat API
+async function callDeepSeek(
+  systemPrompt: string,
+  userMessages: AgentMessage[],
+  currentInput: string
+): Promise<{ reply: string; activity: string } | null> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return null;
+
+  // 构造消息：system + 历史 + 当前输入
+  const messages: { role: string; content: string }[] = [
+    { role: "system", content: systemPrompt },
+  ];
+
+  // 只取最近 6 条历史消息（避免上下文过大）
+  const recent = userMessages.slice(-6);
+  recent.forEach((m) => {
+    messages.push({ role: m.role, content: m.content });
+  });
+
+  messages.push({ role: "user", content: currentInput });
+
+  try {
+    const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages,
+        temperature: 0.6,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error(`DeepSeek API error: ${res.status} ${res.statusText}`);
+      return null;
     }
 
-    const activities = ACTIVITIES[agentId] || [];
-    const activity =
-      activities[Math.floor(Math.random() * activities.length)] ||
-      "正在处理您的请求";
+    const data = await res.json();
+    const reply = data?.choices?.[0]?.message?.content;
 
-    let reply = REPLIES[agentId];
-    if (!reply) {
-      const shortMsg = message?.slice(0, 30) || "无内容";
-      reply = `收到你的请求：「${shortMsg}」。让我分析一下，然后给你一份可执行的方案。`;
+    if (!reply) return null;
+
+    // 返回回复和活动状态
+    const activity = "正在生成专业回复...";
+    return { reply, activity };
+  } catch (err) {
+    console.error("DeepSeek call failed:", err);
+    return null;
+  }
+}
+
+// 随机挑选一个活动状态
+function pickActivity(agentId: string): string {
+  const hints = ACTIVITY_HINTS[agentId];
+  if (hints && hints.length) {
+    return hints[Math.floor(Math.random() * hints.length)];
+  }
+  return "正在处理中...";
+}
+
+export const runtime = "nodejs";
+
+export async function POST(req: NextRequest) {
+  try {
+    const body: ChatRequest = await req.json();
+    const { agentId, messages = [] } = body;
+    // 同时兼容 input 与 message 字段
+    const input: string = (body as any).input || (body as any).message || "";
+
+    if (!agentId) {
+      return NextResponse.json({ error: "agentId is required" }, { status: 400 });
     }
+    if (!input) {
+      return NextResponse.json({ error: "input or message is required" }, { status: 400 });
+    }
+
+    const activity = pickActivity(agentId);
+
+    // 1. 读取 Agent MD 文件
+    const mdContent = readAgentContent(agentId);
+
+    if (mdContent) {
+      const agentName = extractAgentName(mdContent);
+      const systemPrompt = buildSystemPrompt(mdContent, agentName);
+
+      // 2. 调用 DeepSeek LLM
+      const llmResult = await callDeepSeek(systemPrompt, messages, input);
+      if (llmResult) {
+        return NextResponse.json({
+          reply: llmResult.reply,
+          activity: activity || llmResult.activity,
+          source: "agent-llm",
+          agentName,
+        });
+      }
+    }
+
+    // 3. 回退：当没有 MD 文件或 LLM API 不可用时，用静态回复
+    const fallbackReply =
+      STATIC_REPLIES[agentId] || "您好！让我来帮你分析一下这个问题：\n\n" + input;
 
     return NextResponse.json({
-      success: true,
-      agentId,
-      reply,
+      reply: fallbackReply,
       activity,
-      thinkingTimeMs: 380 + Math.floor(Math.random() * 900),
-      timestamp: new Date().toISOString(),
+      source: "static",
+      agentName: "",
     });
-  } catch (error) {
+  } catch (e: any) {
+    console.error("chat API error:", e);
     return NextResponse.json(
-      { success: false, error: "Failed to process chat" },
+      { error: e?.message || "Unknown error", reply: "抱歉，系统繁忙，请稍后再试。", activity: "正在重试..." },
       { status: 500 }
     );
   }
+}
+
+// GET /api/agents/chat?agentId=xxx  →  测试 Agent 文件是否可读取
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const agentId = url.searchParams.get("agentId");
+
+  if (!agentId) {
+    return NextResponse.json({
+      agents: Object.keys(AGENT_FILE_MAP),
+      files: AGENT_FILE_MAP,
+      env: {
+        hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
+      },
+    });
+  }
+
+  const content = readAgentContent(agentId);
+  return NextResponse.json({
+    agentId,
+    path: AGENT_FILE_MAP[agentId],
+    hasFile: !!content,
+    fileLength: content?.length || 0,
+    fallback: STATIC_REPLIES[agentId],
+  });
 }
