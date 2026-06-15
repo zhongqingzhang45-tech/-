@@ -16,56 +16,29 @@ interface Props {
 }
 
 const PROMPT_SUGGESTIONS: Record<string, string[]> = {
-  "product-manager": [
-    "帮我把这个想法拆成 MVP",
-    "生成一份 PRD 的结构",
-    "怎么定义我们的目标用户？",
-  ],
-  "ui-designer": [
-    "给我设计一套品牌配色",
-    "帮我设计一个 SaaS 登录页",
-    "我需要一个简洁的图标方案",
-  ],
-  architect: [
-    "推荐一个合适的技术栈",
-    "我的数据库该怎么设计？",
-    "怎么设计可扩展的 API 架构",
-  ],
-  frontend: [
-    "实现一个响应式 Dashboard",
-    "帮我写一个优雅的卡片组件",
-    "给这个页面加一点动效",
-  ],
-  backend: [
-    "帮我设计订单系统的 API",
-    "怎么优化这个 SQL 查询？",
-    "推荐一个部署方案",
-  ],
-  growth: [
-    "我该从哪些渠道获客？",
-    "设计一个裂变活动",
-    "怎么提升转化率？",
-  ],
-  sales: [
-    "生成一份专业的跟进话术",
-    "帮我报价一个 SaaS 项目",
-    "起草一份合作合同框架",
-  ],
-  support: [
-    "给我一套标准 FAQ 回答",
-    "怎么回复愤怒的客户？",
-    "生成客服话术模板",
-  ],
-  finance: [
-    "帮我做一个财务预算表",
-    "这个月现金流怎么分析？",
-    "税务上有什么要注意的？",
-  ],
-  operations: [
-    "帮我分析这份运营数据",
-    "生成一份周报模板",
-    "策划一个用户活动",
-  ],
+  "product-manager": ["帮我把这个想法拆成 MVP", "生成一份 PRD 的结构", "怎么定义目标用户？"],
+  "feedback-synthesizer": ["分析这 20 条用户反馈", "提炼 Top 5 问题", "如何区分噪声和真实需求？"],
+  "sprint-prioritizer": ["帮我排序这些需求的优先级", "识别需求间的依赖关系", "生成下周的迭代计划"],
+  "ui-designer": ["设计一套品牌配色", "帮我设计一个 SaaS 登录页", "需要一个图标方案"],
+  "ux-architect": ["优化注册流程的信息架构", "帮我梳理用户旅程", "设计一套交互模式库"],
+  "brand-guardian": ["为我们品牌生成视觉规范", "检查物料是否符合品牌", "设计品牌色板和字体方案"],
+  "frontend-developer": ["实现一个响应式 Dashboard", "写一个优雅的卡片组件", "给这个页面加动效"],
+  "backend-architect": ["设计订单系统的 API", "怎么优化数据库查询？", "推荐部署架构方案"],
+  "ai-engineer": ["帮我设计 Agent 的 Prompt 方案", "如何设计函数调用流程？", "怎么做 Agent 的评测？"],
+  "database-optimizer": ["SQL 查询太慢了怎么办", "如何设计合适的索引？", "冷热数据分层建议"],
+  "devops-automator": ["搭建 CI/CD 流水线", "优化 Docker 镜像大小", "设计监控告警方案"],
+  "incident-response-commander": ["线上故障怎么排查？", "帮我写一份故障复盘模板", "如何组织应急演练？"],
+  "growth-hacker": ["我该从哪些渠道获客？", "设计一个裂变活动", "怎么提升转化率？"],
+  "content-creator": ["写一篇产品发布长文", "生成短视频脚本", "写一篇公众号推文"],
+  "xiaohongshu-specialist": ["生成 5 条爆款笔记选题", "优化封面和标题", "写种草风格正文"],
+  "douyin-strategist": ["写 10 条短视频脚本", "设计直播带货流程", "生成投放策略"],
+  "private-domain-operator": ["设计会员 SOP 体系", "写社群内容日历", "策划复购活动"],
+  "deal-strategist": ["生成专业的销售跟进话术", "帮我报价一个项目", "起草合作合同框架"],
+  "support-responder": ["写一套标准 FAQ 话术", "怎么回复愤怒的客户？", "生成工单回复模板"],
+  "financial-analyst": ["做一个财务预算表", "分析本月现金流", "税务提醒事项清单"],
+  "security-architect": ["做一次安全基线检查", "渗透测试要点清单", "合规自查清单"],
+  "senior-project-manager": ["生成项目周报", "识别项目的风险点", "跨部门协调会议纪要"],
+  "brand-creative-director": ["为新品设计品牌视觉系统", "统一对外文案语调", "生成一套社媒物料模板"],
 };
 
 export function AgentChatPanel({ agent, onClose }: Props) {

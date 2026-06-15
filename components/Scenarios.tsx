@@ -1,6 +1,14 @@
+"use client";
+
 import { SCENARIOS } from "@/data/content";
 
 export function Scenarios() {
+  const handleClick = (agentId: string) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("lifeos-open-agent", { detail: { agentId } }));
+    }
+  };
+
   return (
     <section className="mx-auto mt-32 w-full max-w-6xl px-6">
       <div className="mb-12 text-center">
@@ -19,9 +27,10 @@ export function Scenarios() {
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {SCENARIOS.map((s, idx) => (
-          <div
+          <button
             key={s.id}
-            className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-6 transition hover:border-brand-400/30"
+            onClick={() => handleClick(s.agentId)}
+            className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-6 text-left transition hover:-translate-y-1 hover:border-brand-400/30"
             style={{ animation: `slideUp 0.6s ease-out ${idx * 50}ms both` }}
           >
             <div className="flex items-start justify-between">
@@ -58,10 +67,10 @@ export function Scenarios() {
             </ul>
 
             <div className="mt-5 flex items-center gap-1 text-xs font-medium transition group-hover:gap-2" style={{ color: s.color }}>
-              <span>立即开始</span>
+              <span>立即开始对话</span>
               <span>→</span>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </section>

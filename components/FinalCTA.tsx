@@ -1,6 +1,18 @@
 "use client";
 
 export function FinalCTA() {
+  const handleStart = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("lifeos-open-agent", { detail: { agentId: "product-manager" } }));
+    }
+  };
+
+  const handleContact = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("lifeos-open-agent", { detail: { agentId: "deal-strategist" } }));
+    }
+  };
+
   return (
     <section className="mx-auto mt-32 w-full max-w-6xl px-6">
       <div className="relative overflow-hidden rounded-[32px] border border-brand-400/20 bg-gradient-to-br from-brand-500/10 via-white/[0.03] to-fuchsia-500/10 p-10 md:p-16">
@@ -19,10 +31,10 @@ export function FinalCTA() {
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <button className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 px-7 py-3.5 text-sm font-semibold text-ink-950 shadow-glow transition hover:brightness-110">
+            <button onClick={handleStart} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-400 to-brand-500 px-7 py-3.5 text-sm font-semibold text-ink-950 shadow-glow transition hover:brightness-110">
               免费开始 →
             </button>
-            <button className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-7 py-3.5 text-sm font-medium text-white transition hover:border-brand-400/40">
+            <button onClick={handleContact} className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-7 py-3.5 text-sm font-medium text-white transition hover:border-brand-400/40">
               联系顾问
             </button>
           </div>

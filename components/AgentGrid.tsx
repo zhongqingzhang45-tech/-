@@ -30,7 +30,7 @@ export function AgentGrid() {
           AI Expert Team
         </div>
         <h2 className="text-3xl font-semibold text-white md:text-4xl">
-          <span className="text-gradient-brand">10 位 AI 专家</span>
+          <span className="text-gradient-brand">23 位 AI 专家</span>
           ，全天候在线
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-400 md:text-base">

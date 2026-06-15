@@ -92,6 +92,7 @@ export interface Scenario {
   bullets: string[];
   icon: string;
   color: string;
+  agentId: string;
 }
 
 export const SCENARIOS: Scenario[] = [
@@ -107,6 +108,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     icon: "✦",
     color: "#22d3ee",
+    agentId: "product-manager",
   },
   {
     id: "build-product",
@@ -120,6 +122,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     icon: "⬢",
     color: "#34d399",
+    agentId: "backend-architect",
   },
   {
     id: "marketing",
@@ -133,6 +136,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     icon: "◆",
     color: "#e879f9",
+    agentId: "growth-hacker",
   },
   {
     id: "customers",
@@ -146,6 +150,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     icon: "▲",
     color: "#fb7185",
+    agentId: "deal-strategist",
   },
   {
     id: "management",
@@ -159,6 +164,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     icon: "◉",
     color: "#818cf8",
+    agentId: "senior-project-manager",
   },
   {
     id: "automation",
@@ -172,6 +178,7 @@ export const SCENARIOS: Scenario[] = [
     ],
     icon: "∞",
     color: "#fbbf24",
+    agentId: "ai-engineer",
   },
 ];
 
@@ -194,7 +201,7 @@ export const PRICING_TIERS: PricingTier[] = [
     unit: "永久免费",
     highlight: false,
     features: [
-      "体验全部 10 位 AI 员工",
+      "体验全部 23 位 AI 专家",
       "每月 30 次任务执行",
       "基础部门协同",
       "社区支持",
@@ -209,7 +216,7 @@ export const PRICING_TIERS: PricingTier[] = [
     unit: "/ 月",
     highlight: true,
     features: [
-      "解锁全部 10 位 AI 员工",
+      "解锁全部 23 位 AI 专家",
       "每月 1,000 次任务执行",
       "六大部门自动协同",
       "自定义工作流",

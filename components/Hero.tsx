@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const TITLES = [
   "一个人，也能拥有一家公司的执行能力。",
   "从想法到落地，AI 团队为你全程推进。",
-  "让你的每一个想法，都有 10 位 AI 专家在背后支持。",
+  "让你的每一个想法，都有 23 位 AI 专家在背后支持。",
 ];
 
 export function Hero() {
@@ -80,7 +80,7 @@ export function Hero() {
           <span className="text-brand-300">✓</span> 无需信用卡
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-brand-300">✓</span> 10 位 AI 员工
+          <span className="text-brand-300">✓</span> 23 位 AI 专家
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-brand-300">✓</span> 6 大部门协同

@@ -1,6 +1,14 @@
+"use client";
+
 import { PRICING_TIERS } from "@/data/content";
 
 export function Pricing() {
+  const handleClick = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("lifeos-open-agent", { detail: { agentId: "senior-project-manager" } }));
+    }
+  };
+
   return (
     <section className="mx-auto mt-32 w-full max-w-6xl px-6">
       <div className="mb-12 text-center">
@@ -60,6 +68,7 @@ export function Pricing() {
             </ul>
 
             <button
+              onClick={handleClick}
               className={`mt-7 w-full rounded-xl py-2.5 text-sm font-medium transition ${
                 tier.highlight
                   ? "bg-gradient-to-r from-brand-400 to-brand-500 text-ink-950 hover:brightness-110"
