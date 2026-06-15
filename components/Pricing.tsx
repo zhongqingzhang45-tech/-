@@ -3,14 +3,22 @@
 import { PRICING_TIERS } from "@/data/content";
 
 export function Pricing() {
-  const handleClick = () => {
+  const handleSubscribe = (tier: (typeof PRICING_TIERS)[0]) => {
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("lifeos-open-agent", { detail: { agentId: "senior-project-manager" } }));
+      window.dispatchEvent(
+        new CustomEvent("lifeos-open-payment", {
+          detail: {
+            planId: tier.id,
+            planName: tier.name,
+            planPrice: tier.price.replace("¥", "").replace("联系顾问", "0"),
+          },
+        })
+      );
     }
   };
 
   return (
-    <section className="mx-auto mt-32 w-full max-w-6xl px-6">
+    <section id="lifeos-pricing" className="mx-auto mt-32 w-full max-w-6xl px-6">
       <div className="mb-12 text-center">
         <div className="mb-2 text-xs uppercase tracking-[0.25em] text-brand-400">
           Pricing
@@ -68,7 +76,7 @@ export function Pricing() {
             </ul>
 
             <button
-              onClick={handleClick}
+              onClick={() => handleSubscribe(tier)}
               className={`mt-7 w-full rounded-xl py-2.5 text-sm font-medium transition ${
                 tier.highlight
                   ? "bg-gradient-to-r from-brand-400 to-brand-500 text-ink-950 hover:brightness-110"

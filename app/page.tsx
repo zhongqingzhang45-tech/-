@@ -9,11 +9,13 @@ import { BusinessModules } from "@/components/BusinessModules";
 import { Pricing } from "@/components/Pricing";
 import { FinalCTA } from "@/components/FinalCTA";
 import { Footer } from "@/components/Footer";
+import { PageProviders } from "@/components/PageProviders";
 
 export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden">
       <ParticleBackground />
+      <PageProviders />
 
       <Hero />
       <ControlCenter />
