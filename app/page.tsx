@@ -1,30 +1,19 @@
-import { ParticleBackground } from "@/components/ParticleBackground";
-import { Hero } from "@/components/Hero";
-import { ControlCenter } from "@/components/ControlCenter";
-import { Departments } from "@/components/Departments";
-import { Scenarios } from "@/components/Scenarios";
-import { AgentGrid } from "@/components/AgentGrid";
-import { Workflow } from "@/components/Workflow";
-import { BusinessModules } from "@/components/BusinessModules";
-import { Pricing } from "@/components/Pricing";
-import { FinalCTA } from "@/components/FinalCTA";
-import { Footer } from "@/components/Footer";
+import { Hero } from '@/components/home/Hero';
+import { LearningOverview } from '@/components/home/LearningOverview';
+import { PopularCourses } from '@/components/home/PopularCourses';
+import { Features } from '@/components/home/Features';
+import { Highlights } from '@/components/home/Highlights';
+import { CommunityPreview } from '@/components/home/CommunityPreview';
 
 export default function HomePage() {
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <ParticleBackground />
-
+    <main className="relative min-h-screen">
       <Hero />
-      <ControlCenter />
-      <Departments />
-      <Scenarios />
-      <AgentGrid />
-      <Workflow />
-      <BusinessModules />
-      <Pricing />
-      <FinalCTA />
-      <Footer />
+      <LearningOverview />
+      <PopularCourses />
+      <Features />
+      <Highlights />
+      <CommunityPreview />
     </main>
   );
 }
