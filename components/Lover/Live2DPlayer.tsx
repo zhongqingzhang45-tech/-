@@ -81,6 +81,58 @@ function loadAllScripts(): Promise<void> {
   return scriptsPromise;
 }
 
+function onUpdate(this: any, delta: number) {
+  const deltaTime = 0.016 * delta;
+
+  if (!this.animator.isPlaying) {
+    const m = this.motions.get("idle");
+    if (m) {
+      this.animator.getLayer("base").play(m);
+    }
+  }
+  this._animator.updateAndEvaluate(deltaTime);
+
+  if (this.inDrag) {
+    this.addParameterValueById("ParamAngleX", this.pointerX * 30);
+    this.addParameterValueById("ParamAngleY", -this.pointerY * 30);
+    this.addParameterValueById("ParamBodyAngleX", this.pointerX * 10);
+    this.addParameterValueById("ParamBodyAngleY", -this.pointerY * 10);
+    this.addParameterValueById("ParamEyeBallX", this.pointerX);
+    this.addParameterValueById("ParamEyeBallY", -this.pointerY);
+  }
+
+  if (this._physicsRig) {
+    this._physicsRig.updateAndEvaluate(deltaTime);
+  }
+
+  this._coreModel.update();
+
+  let sort = false;
+  for (let m = 0; m < this._meshes.length; ++m) {
+    this._meshes[m].alpha = this._coreModel.drawables.opacities[m];
+    this._meshes[m].visible = Live2DCubismCore.Utils.hasIsVisibleBit(this._coreModel.drawables.dynamicFlags[m]);
+    if (Live2DCubismCore.Utils.hasVertexPositionsDidChangeBit(this._coreModel.drawables.dynamicFlags[m])) {
+      this._meshes[m].vertices = this._coreModel.drawables.vertexPositions[m];
+      this._meshes[m].dirtyVertex = true;
+    }
+    if (Live2DCubismCore.Utils.hasRenderOrderDidChangeBit(this._coreModel.drawables.dynamicFlags[m])) {
+      sort = true;
+    }
+  }
+
+  if (sort) {
+    this.children.sort((a: any, b: any) => {
+      const aIndex = this._meshes.indexOf(a);
+      const bIndex = this._meshes.indexOf(b);
+      const aRenderOrder = this._coreModel.drawables.renderOrders[aIndex];
+      const bRenderOrder = this._coreModel.drawables.renderOrders[bIndex];
+      return aRenderOrder - bRenderOrder;
+    });
+  }
+
+  this._coreModel.drawables.resetDynamicFlags();
+}
+
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
   ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -283,6 +335,10 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
             );
 
             model.motions = motions;
+            model.update = onUpdate;
+            model.inDrag = false;
+            model.pointerX = 0;
+            model.pointerY = 0;
             modelRef.current = model;
 
             model.animator.addLayer("base", LIVE2DCUBISMFRAMEWORK.BuiltinAnimationBlenders.OVERRIDE, 1);
@@ -290,30 +346,19 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
             app.stage.addChild(model);
             app.stage.addChild(model.masks);
 
-            const modelScale = (width * 0.03) * scale;
-            model.scale.set(modelScale);
-            model.x = width / 2;
-            model.y = height * positionY;
+            const modelScale = (width * 0.5 * 0.06) * scale;
+            model.position.x = width * 0.5;
+            model.position.y = height * positionY;
+            model.scale.x = modelScale;
+            model.scale.y = modelScale;
+
+            if (model.height <= 200) {
+              const smallScale = (width * 0.5 * 0.6) * scale;
+              model.scale.x = smallScale;
+              model.scale.y = smallScale;
+            }
 
             model.masks.resize(app.view.width, app.view.height);
-
-            const originalUpdate = model.update.bind(model);
-            model.update = (delta: number) => {
-              if (!model.animator.isPlaying) {
-                const idleKeys = ["idle", "Idle", "main_1", "main_2", "main_3", "home"];
-                let idleMotion = null;
-                for (const key of idleKeys) {
-                  if (model.motions && model.motions.has(key)) {
-                    idleMotion = model.motions.get(key);
-                    break;
-                  }
-                }
-                if (idleMotion && model.animator.getLayer("base")) {
-                  model.animator.getLayer("base").play(idleMotion);
-                }
-              }
-              originalUpdate(delta);
-            };
 
             app.ticker.add((delta: number) => {
               if (!model) return;
