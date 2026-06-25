@@ -6,6 +6,7 @@ interface Live2DPlayerProps {
   modelPath: string;
   modelName: string;
   scale?: number;
+  positionY?: number;
   onModelLoaded?: () => void;
   onError?: (error: string) => void;
 }
@@ -63,7 +64,7 @@ async function loadAllScripts(): Promise<void> {
 }
 
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Live2DPlayer(
-  { modelPath, modelName, scale = 1, onModelLoaded, onError },
+  { modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -286,13 +287,13 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Liv
             const modelWidth = bounds.width;
             const modelHeight = bounds.height;
 
-            const scaleX = (width * 0.9) / modelWidth;
-            const scaleY = (height * 0.9) / modelHeight;
+            const scaleX = (width * 0.7) / modelWidth;
+            const scaleY = (height * 0.7) / modelHeight;
             const modelScale = Math.min(scaleX, scaleY) * scale;
 
             model.scale.set(modelScale);
             model.x = width / 2;
-            model.y = height - modelHeight * modelScale * 0.05;
+            model.y = height * positionY;
 
             model.masks.resize(app.view.width, app.view.height);
 
@@ -330,7 +331,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Liv
       setIsLoading(false);
       onError?.(err.message || "Failed to setup Live2D");
     }
-  }, [modelPath, modelName, scale, onModelLoaded, onError]);
+  }, [modelPath, modelName, scale, positionY, onModelLoaded, onError]);
 
   useEffect(() => {
     let mounted = true;
@@ -375,12 +376,12 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Liv
       const bounds = model.getBounds();
       const modelWidth = bounds.width;
       const modelHeight = bounds.height;
-      const scaleX = (width * 0.9) / modelWidth;
-      const scaleY = (height * 0.9) / modelHeight;
+      const scaleX = (width * 0.7) / modelWidth;
+      const scaleY = (height * 0.7) / modelHeight;
       const modelScale = Math.min(scaleX, scaleY) * (scale || 1);
       model.scale.set(modelScale);
       model.x = width / 2;
-      model.y = height - modelHeight * modelScale * 0.05;
+      model.y = height * (positionY || 0.5);
       
       if (model.masks) {
         model.masks.resize(app.view.width, app.view.height);

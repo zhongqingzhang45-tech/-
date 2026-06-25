@@ -13,8 +13,8 @@ const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
 });
 
 const CHARACTERS = [
-  { id: "HaruGreeter", name: "Haru", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸" },
-  { id: "lafei", name: "Lafei", path: "/live2d-models/lafei", model: "lafei", avatar: "⚓" },
+  { id: "HaruGreeter", name: "Haru", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸", scale: 1.1, positionY: 0.5 },
+  { id: "lafei", name: "Lafei", path: "/live2d-models/lafei", model: "lafei", avatar: "⚓", scale: 1.8, positionY: 0.4 },
 ];
 
 const NAV_ITEMS = [
@@ -226,7 +226,8 @@ export default function LoverPage() {
               ref={live2dRef}
               modelPath={currentCharacter.path}
               modelName={currentCharacter.model}
-              scale={1.1}
+              scale={currentCharacter.scale}
+              positionY={currentCharacter.positionY}
               onModelLoaded={() => setModelReady(true)}
               onError={(err) => console.error("Live2D error:", err)}
             />
