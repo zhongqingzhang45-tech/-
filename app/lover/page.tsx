@@ -14,7 +14,6 @@ const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
 
 const CHARACTERS = [
   { id: "HaruGreeter", name: "Haru", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸", scale: 1.1, positionY: 0.5 },
-  { id: "lafei", name: "Lafei", path: "/live2d-models/lafei", model: "lafei", avatar: "⚓", scale: 1.8, positionY: 0.4 },
 ];
 
 const NAV_ITEMS = [
