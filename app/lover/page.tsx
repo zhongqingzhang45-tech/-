@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType } from "@/lib/core";
+
+const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const NAV_ITEMS = [
   { id: "chat", label: "Chat", icon: "💬" },
@@ -30,7 +36,7 @@ export default function LoverPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [input, setInput] = useState("");
   const [micActive, setMicActive] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentMood = (mood?.mood ?? "happy") as MoodType;
 
@@ -69,7 +75,7 @@ export default function LoverPage() {
     }
   };
 
-  const CHAR_IMG = "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=beautiful%20realistic%203d%20anime%20girl%20with%20silver%20white%20hair%2C%20wearing%20white%20tank%20top%2C%20full%20body%20standing%20pose%2C%20soft%20volumetric%20lighting%2C%20ethereal%20glow%2C%20transparent%20background%2C%20highly%20detailed%2C%20cinematic%20render%2C%20pixar%20style&image_size=portrait_4_3";
+  const CHAR_IMG = "";
 
   return (
     <main 
@@ -163,41 +169,22 @@ export default function LoverPage() {
       {/* Main Content */}
       <div className="flex-1 flex min-h-0 relative">
         {/* Left - Character Area */}
-        <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start pl-8 lg:pl-16">
-          <div className="relative z-10" style={{ height: "88%", width: "100%" }}>
-            <div className="relative h-full flex items-end justify-start">
-              <img
-                src={CHAR_IMG}
-                alt="Character"
-                className="object-contain object-bottom"
-                style={{ 
-                  height: "100%",
-                  width: "auto",
-                  maxHeight: "calc(100vh - 56px)",
-                  filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.5)) drop-shadow(0 0 60px rgba(147,112,219,0.15))",
-                  opacity: imgLoaded ? 1 : 0,
-                  transition: "opacity 0.5s ease",
-                }}
-                onLoad={() => setImgLoaded(true)}
-              />
-              {/* Loading glow placeholder */}
-              {!imgLoaded && (
-                <div 
-                  className="absolute bottom-0 left-0 w-48 h-[80%] rounded-full"
-                  style={{ 
-                    background: "radial-gradient(ellipse at center bottom, rgba(147,112,219,0.2) 0%, transparent 70%)",
-                    animation: "pulse 2s ease-in-out infinite",
-                  }}
-                />
-              )}
-            </div>
+        <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
+          <div className="relative z-10 w-full h-full">
+            <Live2DPlayer
+              modelPath="/live2d-models/shizuku/runtime"
+              modelName="shizuku"
+              scale={1.1}
+              onModelLoaded={() => setModelReady(true)}
+              onError={(err) => console.error("Live2D error:", err)}
+            />
           </div>
-          {/* Floor reflection */}
+          {/* Floor glow */}
           <div 
             className="absolute bottom-0 left-0 w-full pointer-events-none"
             style={{ 
-              height: "120px",
-              background: "linear-gradient(to top, rgba(147,112,219,0.08) 0%, transparent 100%)",
+              height: "140px",
+              background: "radial-gradient(ellipse at 30% 100%, rgba(147,112,219,0.12) 0%, transparent 65%)",
             }}
           />
         </div>
@@ -206,14 +193,11 @@ export default function LoverPage() {
         <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2">
           {/* Mobile character */}
           <div className="md:hidden flex justify-center pt-4 pb-2">
-            <div className="relative" style={{ width: "140px", height: "200px" }}>
-              <img
-                src={CHAR_IMG}
-                alt="Character"
-                className="object-contain object-bottom w-full h-full"
-                style={{ 
-                  filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))",
-                }}
+            <div className="relative" style={{ width: "180px", height: "260px" }}>
+              <Live2DPlayer
+                modelPath="/live2d-models/shizuku/runtime"
+                modelName="shizuku"
+                scale={1}
               />
             </div>
           </div>
