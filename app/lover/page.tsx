@@ -1,22 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Script from "next/script";
-import { LoverParticles } from "@/components/Lover/LoverParticles";
 import { ChatPanel } from "@/components/Lover/ChatPanel";
-
-const Live2DCharacter = dynamic(
-  () => import("@/components/Lover/Live2DCharacter").then((mod) => mod.Live2DCharacter),
-  { ssr: false, loading: () => (
-    <div className="w-[280px] h-[360px] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-pink-300/30 border-t-pink-400 rounded-full animate-spin" />
-    </div>
-  )}
-);
-import { Sidebar } from "@/components/Lover/Sidebar";
-import { SettingsPanel } from "@/components/Lover/SettingsPanel";
-import { GameModal } from "@/components/Lover/GameModal";
 import {
   INITIAL_DIARY,
   INITIAL_SCHEDULE,
@@ -25,6 +12,24 @@ import {
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { DEFAULT_MOOD_CONFIG, MoodType } from "@/lib/core";
 import { ChatMessage } from "@/data/lover";
+
+const Live2DCharacter = dynamic(
+  () => import("@/components/Lover/Live2DCharacter").then((mod) => mod.Live2DCharacter),
+  { ssr: false, loading: () => (
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-pink-300/20 border-t-pink-400/60 rounded-full animate-spin" />
+    </div>
+  )}
+);
+
+const NAV_ITEMS = [
+  { id: "chat", label: "Chat", icon: "💬" },
+  { id: "activities", label: "Activities", icon: "🎮" },
+  { id: "memory", label: "Memory", icon: "📝" },
+  { id: "diary", label: "Diary", icon: "📔" },
+  { id: "profile", label: "Profile", icon: "👤" },
+  { id: "room", label: "Room", icon: "🏠" },
+];
 
 export default function LoverPage() {
   const { messages, mood, isTyping, relationship, sendMessage, triggerMood, profile } =
@@ -39,12 +44,10 @@ export default function LoverPage() {
     stopListening,
   } = useSpeech();
 
-  const [showSettings, setShowSettings] = useState(false);
-  const [activeGame, setActiveGame] = useState<string | null>(null);
-  const [showMobilePanel, setShowMobilePanel] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"diary" | "schedule" | "games">("games");
+  const [activeNav, setActiveNav] = useState("chat");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [micActive, setMicActive] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const currentMood = (mood?.mood ?? "happy") as MoodType;
   const intimacy = relationship?.intimacy ?? 72;
@@ -63,14 +66,6 @@ export default function LoverPage() {
 
   const handleSendMessage = (text: string) => {
     sendMessage(text);
-  };
-
-  const handleGameSelect = (gameId: string) => {
-    setActiveGame(gameId);
-  };
-
-  const handleMoodChange = (m: string) => {
-    triggerMood(m as MoodType, 0.8);
   };
 
   const handleMicToggle = () => {
@@ -101,326 +96,335 @@ export default function LoverPage() {
   const moodConfig = DEFAULT_MOOD_CONFIG[currentMood];
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
+    <main className="relative min-h-screen overflow-hidden bg-[#0a0a12]">
       <Script src="/live2dcubismcore.min.js" strategy="afterInteractive" />
-      <LoverParticles />
 
-      <div className="relative z-10 h-screen flex flex-col">
-        <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl
-                border border-white/10 flex items-center justify-center text-xl"
-              style={{
-                background: `linear-gradient(135deg, ${profile.accentColor}20, ${profile.secondaryColor}20)`,
-              }}
-            >
-              {moodConfig.emoji}
-            </div>
-            <div>
-              <h1 className="text-base font-semibold bg-gradient-to-r from-pink-300 to-violet-300 bg-clip-text text-transparent">
-                {profile.name}
-              </h1>
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${intimacy}%`,
-                      background: `linear-gradient(90deg, ${profile.accentColor}, ${profile.secondaryColor})`,
-                    }}
-                  />
-                </div>
-                <span className="text-[10px] text-white/40">亲密度 {intimacy}%</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {speechEnabled && (
-              <>
-                <button
-                  onClick={handleVoiceToggle}
-                  className={`w-10 h-10 rounded-xl border transition-all duration-200
-                    flex items-center justify-center ${
-                      voiceEnabled
-                        ? "bg-pink-500/20 border-pink-400/40"
-                        : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-pink-400/30"
-                    }`}
-                  title={voiceEnabled ? "关闭语音" : "开启语音"}
-                >
-                  <span className="text-lg">{voiceEnabled ? "🔊" : "🔈"}</span>
-                </button>
-                <button
-                  onClick={handleMicToggle}
-                  className={`w-10 h-10 rounded-xl border transition-all duration-200
-                    flex items-center justify-center ${
-                      micActive
-                        ? "bg-rose-500/20 border-rose-400/40 animate-pulse"
-                        : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-pink-400/30"
-                    }`}
-                  title={micActive ? "停止录音" : "开始说话"}
-                >
-                  <span className="text-lg">{micActive ? "🎤" : "🎙️"}</span>
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10
-                hover:bg-white/10 hover:border-pink-400/30
-                transition-all duration-200 flex items-center justify-center"
-            >
-              <span className="text-lg">⚙️</span>
-            </button>
-          </div>
-        </header>
-
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-4 p-3 sm:p-4 lg:p-6 overflow-auto">
-            <div className="lg:w-80 flex-shrink-0 space-y-3 sm:space-y-4">
-              <div
-                className="p-2 sm:p-4 rounded-2xl backdrop-blur-xl border border-white/10
-                  flex flex-col items-center overflow-hidden"
-                style={{
-                  background: `linear-gradient(180deg, ${profile.accentColor}08, transparent)`,
-                }}
-              >
-                <Live2DCharacter
-                  model="mao_pro"
-                  mood={currentMood}
-                  isTyping={isTyping}
-                  isSpeaking={isSpeaking}
-                  size="lg"
-                  width={280}
-                  height={360}
-                />
-                <div className="mt-2 text-center">
-                  <p className="text-sm font-medium bg-gradient-to-r from-pink-300 to-violet-300 bg-clip-text text-transparent">
-                    {profile.nickname}
-                  </p>
-                  <p className="text-[10px] text-white/40 mt-0.5">
-                    {moodConfig.label}中...
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => triggerMood("love", 0.8)}
-                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10
-                    hover:bg-pink-500/10 hover:border-pink-400/20
-                    transition-all duration-200 flex flex-col items-center gap-1"
-                >
-                  <span className="text-xl">🎁</span>
-                  <span className="text-[10px] text-white/50">送礼物</span>
-                </button>
-                <button
-                  onClick={() => triggerMood("shy", 0.6)}
-                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10
-                    hover:bg-violet-500/10 hover:border-violet-400/20
-                    transition-all duration-200 flex flex-col items-center gap-1"
-                >
-                  <span className="text-xl">📸</span>
-                  <span className="text-[10px] text-white/50">合影</span>
-                </button>
-                <button
-                  onClick={() => triggerMood("sleepy", 0.5)}
-                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10
-                    hover:bg-amber-500/10 hover:border-amber-400/20
-                    transition-all duration-200 flex flex-col items-center gap-1"
-                >
-                  <span className="text-xl">🎵</span>
-                  <span className="text-[10px] text-white/50">听歌</span>
-                </button>
-              </div>
-
-              {relationship && (
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-white/60">关系状态</span>
-                    <span className="text-[10px] text-emerald-400">✨ 热恋中</span>
-                  </div>
-                  <div className="space-y-2">
-                    <StatBar
-                      label="亲密度"
-                      value={relationship.intimacy}
-                      color="from-pink-400 to-rose-400"
-                    />
-                    <StatBar
-                      label="信任度"
-                      value={relationship.trust}
-                      color="from-violet-400 to-purple-400"
-                    />
-                    <StatBar
-                      label="依赖值"
-                      value={relationship.dependence}
-                      color="from-amber-400 to-orange-400"
-                    />
-                    <StatBar
-                      label="吸引力"
-                      value={relationship.attraction}
-                      color="from-rose-400 to-pink-500"
-                    />
-                    <StatBar
-                      label="熟悉度"
-                      value={relationship.familiarity}
-                      color="from-cyan-400 to-blue-400"
-                    />
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-white/5">
-                    <div className="flex justify-between text-xs text-white/50">
-                      <span>连续陪伴</span>
-                      <span className="text-pink-300">{relationship.streakDays} 天</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 min-h-0 xl:pb-0 pb-20">
-              <div className="h-full min-h-[400px] sm:min-h-[500px] rounded-2xl bg-white/[0.02] backdrop-blur-xl
-                border border-white/10 overflow-hidden flex flex-col">
-                <ChatPanel
-                  messages={convertedMessages}
-                  onSendMessage={handleSendMessage}
-                  isTyping={isTyping}
-                  currentMood={currentMood}
-                />
-              </div>
-            </div>
-
-            <div className="hidden xl:block xl:w-80 flex-shrink-0">
-              <div className="sticky top-4 h-[calc(100vh-120px)] rounded-2xl overflow-hidden">
-                <Sidebar
-                  diary={INITIAL_DIARY}
-                  schedule={INITIAL_SCHEDULE}
-                  games={MINI_GAMES}
-                  onGameSelect={handleGameSelect}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Ambient background glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div 
+          className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full blur-[120px] opacity-30"
+          style={{ background: `radial-gradient(circle, ${profile.accentColor}40, transparent 70%)` }}
+        />
+        <div 
+          className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full blur-[100px] opacity-25"
+          style={{ background: `radial-gradient(circle, ${profile.secondaryColor}40, transparent 70%)` }}
+        />
+        <div 
+          className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full blur-[120px] opacity-20"
+          style={{ background: `radial-gradient(circle, ${profile.accentColor}30, transparent 70%)` }}
+        />
+        {/* Subtle grid overlay */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+        }} />
       </div>
 
-      {showSettings && (
-        <SettingsPanel
-          profile={{
-            name: profile.name,
-            nickname: profile.nickname,
-            userNickname: profile.userNickname,
-            personality: profile.persona,
-            birthday: profile.birthday,
-            anniversary: profile.anniversary,
-            avatar: profile.avatar,
-            accentColor: profile.accentColor,
-            secondaryColor: profile.secondaryColor,
-          }}
-          onUpdateProfile={(updates) => {}}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-
-      {activeGame && (
-        <GameModal
-          gameId={activeGame}
-          onClose={() => setActiveGame(null)}
-          onMoodChange={handleMoodChange}
-        />
-      )}
-
-      {showMobilePanel && (
-        <div className="fixed inset-0 z-40 xl:hidden">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowMobilePanel(false)}
-          />
-          <div className="absolute bottom-0 left-0 right-0 max-h-[75vh]
-            bg-gradient-to-b from-white/[0.08] to-white/[0.02]
-            backdrop-blur-2xl border-t border-white/10 rounded-t-3xl
-            animate-slide-up overflow-hidden flex flex-col">
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <Sidebar
-                diary={INITIAL_DIARY}
-                schedule={INITIAL_SCHEDULE}
-                games={MINI_GAMES}
-                initialTab={mobileTab}
-                onGameSelect={(id) => {
-                  setShowMobilePanel(false);
-                  handleGameSelect(id);
-                }}
-              />
+      {/* Top navigation */}
+      <nav className="relative z-20 h-16 flex items-center px-6 lg:px-10 border-b border-white/[0.06]">
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-9 h-9 rounded-2xl flex items-center justify-center text-lg border border-white/10"
+            style={{
+              background: `linear-gradient(135deg, ${profile.accentColor}25, ${profile.secondaryColor}20)`,
+            }}
+          >
+            {moodConfig.emoji}
+          </div>
+          <div>
+            <h1 className="text-sm font-semibold text-white/90">{profile.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] text-white/40">Online</span>
             </div>
           </div>
         </div>
-      )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 xl:hidden
-        bg-white/[0.06] backdrop-blur-xl border-t border-white/10
-        px-6 py-2 safe-area-inset-bottom">
-        <div className="flex justify-around items-center">
-          <button className="flex flex-col items-center gap-0.5 py-1 px-3 text-pink-300">
-            <span className="text-xl">💬</span>
-            <span className="text-[10px]">聊天</span>
-          </button>
-          <button
-            onClick={() => {
-              setMobileTab("games");
-              setShowMobilePanel(true);
-            }}
-            className="flex flex-col items-center gap-0.5 py-1 px-3 text-white/50"
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center justify-center flex-1 gap-1">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveNav(item.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-medium transition-all duration-300 ${
+                activeNav === item.id
+                  ? "bg-white/[0.08] text-white/90 border border-white/10"
+                  : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+              }`}
+            >
+              <span className="mr-1.5">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto">
+          {speechEnabled && (
+            <>
+              <button
+                onClick={handleVoiceToggle}
+                className={`w-9 h-9 rounded-xl border transition-all duration-200
+                  flex items-center justify-center ${
+                    voiceEnabled
+                      ? "bg-pink-500/15 border-pink-400/30"
+                      : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08]"
+                  }`}
+                title={voiceEnabled ? "关闭语音" : "开启语音"}
+              >
+                <span className="text-base">{voiceEnabled ? "🔊" : "🔈"}</span>
+              </button>
+              <button
+                onClick={handleMicToggle}
+                className={`w-9 h-9 rounded-xl border transition-all duration-200
+                  flex items-center justify-center ${
+                    micActive
+                      ? "bg-rose-500/15 border-rose-400/30 animate-pulse"
+                      : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08]"
+                  }`}
+                title={micActive ? "停止录音" : "开始说话"}
+              >
+                <span className="text-base">{micActive ? "🎤" : "🎙️"}</span>
+              </button>
+            </>
+          )}
+          <button 
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="md:hidden w-9 h-9 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center"
           >
-            <span className="text-xl">🎮</span>
-            <span className="text-[10px]">互动</span>
-          </button>
-          <button
-            onClick={() => {
-              setMobileTab("diary");
-              setShowMobilePanel(true);
-            }}
-            className="flex flex-col items-center gap-0.5 py-1 px-3 text-white/50"
-          >
-            <span className="text-xl">📔</span>
-            <span className="text-[10px]">日记</span>
-          </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex flex-col items-center gap-0.5 py-1 px-3 text-white/50"
-          >
-            <span className="text-xl">👤</span>
-            <span className="text-[10px]">TA</span>
+            <span className="text-base">☰</span>
           </button>
         </div>
       </nav>
-    </main>
-  );
-}
 
-function StatBar({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-white/50">{label}</span>
-      <div className="flex items-center gap-2">
-        <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
-          <div
-            className={`h-full bg-gradient-to-r ${color} rounded-full`}
-            style={{ width: `${value}%` }}
-          />
+      {/* Main content - Replika style: left character, right chat */}
+      <div className="relative z-10 flex h-[calc(100vh-4rem)]">
+        {/* Left side - Character display */}
+        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative items-center justify-center">
+          {/* Character glow layers */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div 
+              className="w-[70%] h-[70%] rounded-full blur-[80px] opacity-40"
+              style={{ background: `radial-gradient(ellipse at center, ${profile.accentColor}30, transparent 70%)` }}
+            />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div 
+              className="w-[50%] h-[60%] rounded-full blur-[60px] opacity-30"
+              style={{ background: `radial-gradient(ellipse at 50% 60%, ${profile.secondaryColor}40, transparent 70%)` }}
+            />
+          </div>
+
+          {/* Volumetric light rays */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div 
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-1/2 opacity-20"
+              style={{
+                background: `linear-gradient(to bottom, ${profile.accentColor}, transparent)`,
+                filter: 'blur(4px)',
+              }}
+            />
+            <div 
+              className="absolute top-0 left-[40%] w-[1px] h-[45%] opacity-10"
+              style={{
+                background: `linear-gradient(to bottom, ${profile.secondaryColor}, transparent)`,
+                filter: 'blur(3px)',
+              }}
+            />
+            <div 
+              className="absolute top-0 left-[60%] w-[1px] h-[40%] opacity-10"
+              style={{
+                background: `linear-gradient(to bottom, ${profile.accentColor}, transparent)`,
+                filter: 'blur(3px)',
+              }}
+            />
+          </div>
+
+          {/* Character container */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="relative">
+              {/* Outer glow ring */}
+              <div 
+                className="absolute -inset-8 rounded-full opacity-30 blur-2xl"
+                style={{ background: `radial-gradient(circle, ${profile.accentColor}40, transparent 70%)` }}
+              />
+              
+              {/* Live2D Character */}
+              <div className="relative">
+                <Live2DCharacter
+                  model="shizuku"
+                  mood={currentMood}
+                  isTyping={isTyping}
+                  isSpeaking={isSpeaking}
+                  size="full"
+                  width={480}
+                  height={620}
+                />
+              </div>
+
+              {/* Bottom glow / reflection */}
+              <div 
+                className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[60%] h-8 rounded-full blur-xl opacity-40"
+                style={{ background: `radial-gradient(ellipse at center, ${profile.accentColor}60, transparent 70%)` }}
+              />
+            </div>
+
+            {/* Character name & status */}
+            <div className="mt-6 text-center">
+              <h2 className="text-2xl font-light tracking-wide bg-gradient-to-r from-white/90 via-pink-200/80 to-white/90 bg-clip-text text-transparent">
+                {profile.name}
+              </h2>
+              <p className="text-xs text-white/40 mt-1 capitalize">{moodConfig.label} · {intimacy}% intimacy</p>
+              <div className="mt-3 w-48 h-1 rounded-full bg-white/10 overflow-hidden mx-auto">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${intimacy}%`,
+                    background: `linear-gradient(90deg, ${profile.accentColor}, ${profile.secondaryColor})`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        <span className="text-white/40 text-[10px] w-8 text-right">{Math.round(value)}%</span>
+
+        {/* Divider */}
+        <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-white/[0.08] to-transparent" />
+
+        {/* Right side - Chat panel */}
+        <div className="flex-1 flex flex-col p-4 lg:p-8 min-h-0">
+          {/* Mobile character preview */}
+          <div className="lg:hidden flex justify-center mb-4">
+            <div className="relative">
+              <div 
+                className="absolute -inset-4 rounded-full blur-xl opacity-30"
+                style={{ background: `radial-gradient(circle, ${profile.accentColor}40, transparent 70%)` }}
+              />
+              <Live2DCharacter
+                model="shizuku"
+                mood={currentMood}
+                isTyping={isTyping}
+                isSpeaking={isSpeaking}
+                size="md"
+                width={200}
+                height={260}
+              />
+            </div>
+          </div>
+
+          {/* Chat container */}
+          <div className="flex-1 min-h-0 flex flex-col rounded-3xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] overflow-hidden">
+            {/* Chat header */}
+            <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg border border-white/10"
+                  style={{
+                    background: `linear-gradient(135deg, ${profile.accentColor}20, ${profile.secondaryColor}15)`,
+                  }}
+                >
+                  {moodConfig.emoji}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white/90">{profile.name}</p>
+                  <p className="text-[10px] text-emerald-400/70">
+                    {isTyping ? "typing..." : isSpeaking ? "speaking..." : "online"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-white/50 transition-colors">
+                  <span className="text-sm">📞</span>
+                </button>
+                <button className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-white/50 transition-colors">
+                  <span className="text-sm">📹</span>
+                </button>
+                <button className="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-white/50 transition-colors">
+                  <span className="text-sm">⋯</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Chat messages */}
+            <div className="flex-1 overflow-hidden">
+              <ChatPanel
+                messages={convertedMessages}
+                onSendMessage={handleSendMessage}
+                isTyping={isTyping}
+                currentMood={currentMood}
+              />
+            </div>
+          </div>
+
+          {/* Quick action buttons */}
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
+            {[
+              { emoji: "💕", label: "想你了" },
+              { emoji: "😮‍💨", label: "今天好累" },
+              { emoji: "🤔", label: "你在干嘛" },
+              { emoji: "❤️", label: "我爱你" },
+              { emoji: "🎵", label: "唱首歌" },
+            ].map((action, i) => (
+              <button
+                key={i}
+                onClick={() => handleSendMessage(action.label)}
+                className="flex-shrink-0 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08]
+                  hover:bg-white/[0.08] hover:border-pink-400/20
+                  transition-all duration-200 text-xs text-white/70 hover:text-white/90
+                  flex items-center gap-1.5"
+              >
+                <span>{action.emoji}</span>
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30
+        bg-[#0a0a12]/90 backdrop-blur-xl border-t border-white/[0.06]
+        px-6 py-2 safe-area-inset-bottom">
+        <div className="flex justify-around items-center">
+          {NAV_ITEMS.slice(0, 5).map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveNav(item.id)}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 transition-colors ${
+                activeNav === item.id ? "text-pink-300" : "text-white/40"
+              }`}
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-[9px]">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Mobile menu dropdown */}
+      {showMobileMenu && (
+        <div className="md:hidden fixed top-16 right-4 z-40 rounded-2xl bg-[#12121c]/95 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveNav(item.id);
+                setShowMobileMenu(false);
+              }}
+              className={`w-full px-5 py-3 text-left text-sm transition-colors flex items-center gap-3 ${
+                activeNav === item.id
+                  ? "bg-white/[0.06] text-white/90"
+                  : "text-white/60 hover:bg-white/[0.04]"
+              }`}
+            >
+              <span>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </main>
   );
 }

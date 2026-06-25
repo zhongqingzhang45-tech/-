@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import * as PIXI from "pixi.js";
+
+declare global {
+  interface Window {
+    PIXI: any;
+    live2dcubismcore: any;
+    __live2dLoadingPromise?: Promise<void>;
+  }
+}
 
 export interface Live2DPlayerProps {
   modelUrl: string;
@@ -9,7 +16,7 @@ export interface Live2DPlayerProps {
   height?: number;
   mouthOpenSize?: number;
   nowSpeaking?: boolean;
-  expression?: string;
+  expression?: string | number;
   motion?: string;
   motionIndex?: number;
   scale?: number;
@@ -19,6 +26,62 @@ export interface Live2DPlayerProps {
   eyeTracking?: boolean;
   onModelLoaded?: () => void;
   onError?: (error: Error) => void;
+  onHit?: (hitAreas: string[]) => void;
+}
+
+function ensureLive2DScripts(): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+  
+  if (window.PIXI?.live2d?.Live2DModel) {
+    return Promise.resolve();
+  }
+  
+  if (window.__live2dLoadingPromise) {
+    return window.__live2dLoadingPromise;
+  }
+  
+  const loadScript = (src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.crossOrigin = "anonymous";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load ${src}`));
+      document.head.appendChild(script);
+    });
+  };
+  
+  window.__live2dLoadingPromise = (async () => {
+    try {
+      if (!window.live2dcubismcore) {
+        await loadScript("/live2dcubismcore.min.js");
+      }
+      if (!window.PIXI) {
+        await loadScript("/vendor/pixi.min.js");
+      }
+      
+      // PixiJS v7 compatibility shim for pixi-live2d-display
+      const PIXI = window.PIXI;
+      if (PIXI && PIXI.utils) {
+        if (PIXI.utils.EventEmitter && !PIXI.EventEmitter) {
+          PIXI.EventEmitter = PIXI.utils.EventEmitter;
+        }
+        if (!PIXI.TextureCache) PIXI.TextureCache = PIXI.utils.TextureCache;
+        if (!PIXI.BaseTextureCache) PIXI.BaseTextureCache = PIXI.utils.BaseTextureCache;
+      }
+      
+      if (!window.PIXI?.live2d?.Live2DModel) {
+        await loadScript("/vendor/cubism4.min.js");
+      }
+    } catch (err) {
+      window.__live2dLoadingPromise = undefined;
+      throw err;
+    }
+  })();
+  
+  return window.__live2dLoadingPromise;
 }
 
 export function Live2DPlayer({
@@ -37,12 +100,14 @@ export function Live2DPlayer({
   eyeTracking = true,
   onModelLoaded,
   onError,
+  onHit,
 }: Live2DPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const appRef = useRef<PIXI.Application | null>(null);
+  const appRef = useRef<any>(null);
   const modelRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [scriptsReady, setScriptsReady] = useState(false);
 
   const blinkStateRef = useRef({
     phase: "idle" as "idle" | "closing" | "opening",
@@ -55,14 +120,13 @@ export function Live2DPlayer({
 
   const lastUpdateTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
-  const coreModelRef = useRef<any>(null);
 
   const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
   const easeOutQuad = (t: number) => 1 - (1 - t) * (1 - t);
   const easeInQuad = (t: number) => t * t;
 
   const updateAutoBlink = useCallback((dt: number) => {
-    const coreModel = coreModelRef.current;
+    const coreModel = modelRef.current?.internalModel?.coreModel;
     if (!coreModel) return;
 
     const state = blinkStateRef.current;
@@ -113,72 +177,127 @@ export function Live2DPlayer({
   }, []);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
     if (typeof window === "undefined") return;
 
+    const checkReady = () => {
+      if (window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DModel) {
+        setScriptsReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkReady()) return;
+
+    const loadScript = (src: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.crossOrigin = "anonymous";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(script);
+      });
+    };
+
+    const loadAll = async () => {
+      try {
+        if (!window.live2dcubismcore) {
+          await loadScript("/live2dcubismcore.min.js");
+        }
+        if (!window.PIXI) {
+          await loadScript("/vendor/pixi.min.js");
+        }
+        
+        // PixiJS v7 compatibility shim for pixi-live2d-display
+        // In v7, EventEmitter was moved to PIXI.utils
+        const PIXI = window.PIXI;
+        if (PIXI && PIXI.utils) {
+          if (PIXI.utils.EventEmitter && !PIXI.EventEmitter) {
+            PIXI.EventEmitter = PIXI.utils.EventEmitter;
+          }
+          if (!PIXI.TextureCache) PIXI.TextureCache = PIXI.utils.TextureCache;
+          if (!PIXI.BaseTextureCache) PIXI.BaseTextureCache = PIXI.utils.BaseTextureCache;
+        }
+        
+        if (!window.PIXI?.live2d?.Live2DModel) {
+          await loadScript("/vendor/cubism4.min.js");
+        }
+        
+        setScriptsReady(true);
+      } catch (err) {
+        console.error("Failed to load Live2D scripts:", err);
+        setLoadError(err instanceof Error ? err.message : String(err));
+        setIsLoading(false);
+      }
+    };
+
+    loadAll();
+  }, []);
+
+  useEffect(() => {
+    if (!scriptsReady || !canvasRef.current) return;
+
     let isMounted = true;
-    let live2dModule: any = null;
+    let renderer: any = null;
+    let stage: any = null;
+    let ticker: any = null;
 
     const initApp = async () => {
       try {
-        (window as any).PIXI = PIXI;
+        const PIXI = window.PIXI;
+        const Live2DModel = window.PIXI.live2d.Live2DModel;
+        const MotionPriority = window.PIXI.live2d.MotionPriority;
 
-        const mod = await import("pixi-live2d-display/cubism4");
-        live2dModule = mod;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-        const app = new PIXI.Application({
-          view: canvasRef.current!,
+        canvas.width = width;
+        canvas.height = height;
+
+        renderer = new PIXI.Renderer({
+          view: canvas,
           width,
           height,
-          transparent: true,
+          backgroundAlpha: 0,
           antialias: true,
           autoDensity: true,
           resolution: Math.min(window.devicePixelRatio || 2, 2),
-          backgroundColor: 0x000000,
         });
 
-        if (!isMounted) {
-          app.destroy(true);
-          return;
-        }
+        stage = new PIXI.Container();
+        appRef.current = { renderer, stage };
 
-        appRef.current = app;
-
-        const { Live2DModel } = mod;
         const model = await Live2DModel.from(modelUrl, {
           autoInteract: eyeTracking,
         });
 
         if (!isMounted) {
           model.destroy();
-          app.destroy(true);
+          renderer.destroy();
           return;
         }
 
         modelRef.current = model;
-        app.stage.addChild(model);
+        stage.addChild(model);
 
-        model.anchor?.set(0.5, 0.5);
+        model.anchor.set(0.5, 0.5);
         model.x = width / 2 + positionOffset.x;
         model.y = height / 2 + positionOffset.y;
 
         const baseScale = Math.min(width / model.width, height / model.height) * scale;
         model.scale.set(baseScale, baseScale);
 
-        const internalModel = model.internalModel;
-        const coreModel: any = internalModel?.coreModel;
-        const motionManager: any = internalModel?.motionManager;
-
-        coreModelRef.current = coreModel;
-
-        if (coreModel) {
-          coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
+        if (onHit) {
+          model.on("hit", (hitAreas: string[]) => {
+            onHit(hitAreas);
+          });
         }
 
-        if (motionManager && idleAnimation) {
+        if (idleAnimation) {
           setTimeout(() => {
             try {
-              model.motion("Idle", 0);
+              model.motion("Idle", 0, MotionPriority.IDLE);
             } catch (e) {
               // ignore
             }
@@ -188,22 +307,17 @@ export function Live2DPlayer({
         lastUpdateTimeRef.current = performance.now();
 
         const tick = () => {
-          if (!modelRef.current || !appRef.current) return;
+          if (!modelRef.current || !renderer || !stage) return;
 
           const now = performance.now();
           const dt = now - lastUpdateTimeRef.current;
           lastUpdateTimeRef.current = now;
 
-          if (coreModelRef.current) {
-            if (autoBlink) {
-              updateAutoBlink(dt);
-            }
-
-            if (nowSpeaking) {
-              coreModelRef.current.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
-            }
+          if (autoBlink) {
+            updateAutoBlink(dt);
           }
 
+          renderer.render(stage);
           animationFrameRef.current = requestAnimationFrame(tick);
         };
 
@@ -219,15 +333,7 @@ export function Live2DPlayer({
       }
     };
 
-    const checkCubism = () => {
-      if (typeof (window as any).Live2DCubismCore !== "undefined") {
-        initApp();
-      } else {
-        setTimeout(checkCubism, 100);
-      }
-    };
-
-    checkCubism();
+    initApp();
 
     return () => {
       isMounted = false;
@@ -238,37 +344,36 @@ export function Live2DPlayer({
 
       if (modelRef.current) {
         try {
-          modelRef.current.destroy?.();
+          modelRef.current.destroy();
         } catch (e) {
           // ignore
         }
         modelRef.current = null;
       }
 
-      if (appRef.current) {
+      if (renderer) {
         try {
-          appRef.current.destroy(true);
+          renderer.destroy();
         } catch (e) {
           // ignore
         }
-        appRef.current = null;
       }
-
-      coreModelRef.current = null;
+      appRef.current = null;
     };
-  }, [modelUrl, width, height]);
+  }, [scriptsReady, modelUrl, width, height]);
 
   useEffect(() => {
-    if (!coreModelRef.current) return;
+    if (!modelRef.current) return;
+    const model = modelRef.current;
     if (nowSpeaking) {
-      coreModelRef.current.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
+      model.mouthOpen = mouthOpenSize;
     }
   }, [mouthOpenSize, nowSpeaking]);
 
   useEffect(() => {
-    if (!modelRef.current || !expression) return;
+    if (!modelRef.current || expression === undefined) return;
     try {
-      modelRef.current.expression?.(expression);
+      modelRef.current.expression(expression);
     } catch (e) {
       // ignore
     }
@@ -277,14 +382,15 @@ export function Live2DPlayer({
   useEffect(() => {
     if (!modelRef.current || !motion) return;
     try {
-      modelRef.current.motion?.(motion, motionIndex);
+      const MotionPriority = window.PIXI.live2d.MotionPriority;
+      modelRef.current.motion(motion, motionIndex, MotionPriority?.FORCE ?? 3);
     } catch (e) {
       // ignore
     }
   }, [motion, motionIndex]);
 
   useEffect(() => {
-    if (!modelRef.current || !appRef.current) return;
+    if (!modelRef.current) return;
 
     const model = modelRef.current;
     const baseScale = Math.min(width / model.width, height / model.height) * scale;
