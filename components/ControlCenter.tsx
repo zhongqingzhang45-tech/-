@@ -40,8 +40,10 @@ export function ControlCenter() {
   const [activeAgents, setActiveAgents] = useState<AgentSnapshot[]>([]);
   const [tickerIdx, setTickerIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState("");
 
   useEffect(() => {
+    setNow(new Date().toLocaleString("zh-CN", { hour12: false }));
     const fetchStatus = async () => {
       try {
         const res = await fetch("/api/agents/status", { cache: "no-store" });
@@ -95,7 +97,7 @@ export function ControlCenter() {
         </div>
         <div className="hidden text-right text-xs text-gray-400 md:block">
           <div className="font-mono">
-            {new Date().toLocaleString("zh-CN", { hour12: false })}
+            {now}
           </div>
           <div>每 5 秒刷新一次</div>
         </div>
