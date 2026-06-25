@@ -23,6 +23,9 @@ import {
 } from "./systems";
 import { SkillSystem, SkillResult } from "./skills";
 import { ImageRecognition } from "./image-recognition";
+import { GiftSystem } from "./gift-system";
+import { ContextService } from "./context-service";
+import { DeviceFingerprint } from "./device-binding";
 
 export interface ResponseResult {
   text: string;
@@ -46,6 +49,9 @@ export class DigitalLifeAgent {
   private decisionEngine: DecisionEngine;
   private skillSystem: SkillSystem;
   private imageRecognition: ImageRecognition;
+  private giftSystem: GiftSystem;
+  private contextService: ContextService;
+  private deviceFingerprint: DeviceFingerprint;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -71,9 +77,26 @@ export class DigitalLifeAgent {
     this.decisionEngine = new DecisionEngine(this.profile);
     this.skillSystem = new SkillSystem();
     this.imageRecognition = new ImageRecognition();
+    this.giftSystem = new GiftSystem();
+    this.contextService = new ContextService();
+    this.deviceFingerprint = DeviceFingerprint.getInstance();
     
     this.initializeTemplates();
     this.seedMemories();
+    this.initializeDeviceBinding();
+  }
+
+  private async initializeDeviceBinding(): Promise<void> {
+    try {
+      await this.deviceFingerprint.collectDeviceInfo();
+      const email = typeof window !== "undefined" ? localStorage.getItem("lover_email") : "";
+      const nickname = this.profile.userNickname;
+      if (email) {
+        await this.deviceFingerprint.createOrUpdateBinding(`user_${Date.now()}`, email, nickname);
+      }
+    } catch (e) {
+      console.warn("Device binding initialization failed:", e);
+    }
   }
 
   static createForUser(userGender: Gender): DigitalLifeAgent {
@@ -399,6 +422,8 @@ export class DigitalLifeAgent {
 
     let imageAnalysis: any = null;
     let enrichedInput = userInput;
+    let giftResult: { success: boolean; effect: any; message: string } | null = null;
+    let contextResponse: string | null = null;
 
     const emojis = this.imageRecognition.detectEmojis(userInput);
     if (emojis.length > 0) {
@@ -410,6 +435,39 @@ export class DigitalLifeAgent {
       imageAnalysis = this.imageRecognition.analyzeImage(imageUrl);
       enrichedInput = `${userInput} [发了一张图片，${imageAnalysis.description}]`;
     }
+
+    const lower = userInput.toLowerCase();
+    
+    if (lower.includes("送我礼物") || lower.includes("给你买") || lower.includes("送礼物")) {
+      const giftMatch = userInput.match(/送(.+?)(?:礼物|给我)/);
+      if (giftMatch) {
+        const giftName = giftMatch[1];
+        const gift = this.giftSystem.getAllGifts().find(g => 
+          g.name.includes(giftName) || giftName.includes(g.name)
+        );
+        if (gift) {
+          giftResult = this.giftSystem.sendGift(gift.id);
+        }
+      }
+    }
+
+    if (giftResult && giftResult.success) {
+      const { effect } = giftResult;
+      if (effect.affectionBonus) {
+        this.personaMatrix.state.affection += effect.affectionBonus;
+        this.lifeState.persona.affection = this.personaMatrix.state.affection;
+      }
+      if (effect.resentmentReduce) {
+        this.personaMatrix.state.resentment = Math.max(0, this.personaMatrix.state.resentment - effect.resentmentReduce);
+        this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
+      }
+      if (effect.moodBoost) {
+        this.emotionSystem.triggerMood(effect.moodBoost as any, 0.7);
+        this.lifeState.emotion = { ...this.emotionSystem.state };
+      }
+    }
+
+    contextResponse = this.contextService.generateContextualResponse(userInput);
 
     const analysis = this.eventUnderstanding.analyze(enrichedInput, imageUrl);
     const behaviorTags = this.eventUnderstanding.detectBehaviorTags(userInput, this.recentMessages);
@@ -516,7 +574,11 @@ export class DigitalLifeAgent {
     let responseText: string;
     let skillResult: SkillResult | null = null;
 
-    if (detectedSkill && decision.personaMode !== "aggressive" && decision.personaMode !== "silent_treatment") {
+    if (contextResponse) {
+      responseText = contextResponse;
+    } else if (giftResult) {
+      responseText = giftResult.message;
+    } else if (detectedSkill && decision.personaMode !== "aggressive" && decision.personaMode !== "silent_treatment") {
       skillResult = this.skillSystem.executeSkill(detectedSkill.id, userInput, this.lifeState.emotion.mood as any);
       if (skillResult) {
         responseText = skillResult.response;
@@ -529,6 +591,10 @@ export class DigitalLifeAgent {
       }
     } else {
       responseText = this.generateResponse(decision, analysis, enrichedInput);
+    }
+
+    if (giftResult && giftResult.success && giftResult.message) {
+      responseText = giftResult.message;
     }
 
     const assistantMessage: ChatMessage = {
@@ -816,5 +882,80 @@ export class DigitalLifeAgent {
 
   getSkillsByCategory(category: any) {
     return this.skillSystem.getSkillsByCategory(category);
+  }
+
+  getGiftSystem() {
+    return this.giftSystem;
+  }
+
+  getAvailableGifts() {
+    return this.giftSystem.getAvailableGifts();
+  }
+
+  getUserGifts() {
+    return this.giftSystem.getUserGifts();
+  }
+
+  getCoinBalance() {
+    return this.giftSystem.getCoinBalance();
+  }
+
+  buyGift(giftId: string, quantity?: number) {
+    return this.giftSystem.buyGift(giftId, quantity);
+  }
+
+  sendGift(giftId: string) {
+    return this.giftSystem.sendGift(giftId);
+  }
+
+  addToWishList(giftId: string, priority?: number, note?: string) {
+    return this.giftSystem.addToWishList(giftId, priority, note);
+  }
+
+  getWishList() {
+    return this.giftSystem.getWishList();
+  }
+
+  getGiftHistory() {
+    return this.giftSystem.getHistory();
+  }
+
+  getGiftStats() {
+    return this.giftSystem.getStats();
+  }
+
+  getPendingGiftRequests() {
+    return this.giftSystem.getPendingRequests();
+  }
+
+  fulfillGiftRequest(requestId: string) {
+    return this.giftSystem.fulfillGiftRequest(requestId);
+  }
+
+  getContextSummary() {
+    return this.contextService.getFullContextSummary();
+  }
+
+  getTimeContext() {
+    return this.contextService.getTimeContext();
+  }
+
+  getWeatherContext() {
+    return this.contextService.getWeatherContext();
+  }
+
+  getGreeting() {
+    return this.contextService.getGreeting();
+  }
+
+  getDeviceBindingStatus() {
+    return this.deviceFingerprint.getBindingStatus();
+  }
+
+  generateGiftRequest() {
+    return this.giftSystem.generateGiftRequest(
+      this.lifeState.currentMode,
+      this.lifeState.persona.resentment
+    );
   }
 }

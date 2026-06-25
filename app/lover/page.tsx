@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
-import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Skill } from "@/lib/core/digital-life";
+import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Gift, GiftRequest } from "@/lib/core/digital-life";
 import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
 
 const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
@@ -56,8 +56,11 @@ export default function LoverPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [userGender, setUserGender] = useState<Gender>("male");
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [skills, setSkills] = useState<Skill[]>([]);
+  const [skills, setSkills] = useState<any[]>([]);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [showGiftPanel, setShowGiftPanel] = useState(false);
+  const [giftTab, setGiftTab] = useState<"shop" | "inventory" | "wishlist" | "requests">("shop");
+  const [coinBalance, setCoinBalance] = useState(100);
   const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +99,7 @@ export default function LoverPage() {
   useEffect(() => {
     if (agent) {
       setSkills(agent.getSkills());
+      setCoinBalance(agent.getCoinBalance());
     }
   }, [agent]);
 
@@ -537,6 +541,15 @@ export default function LoverPage() {
               </button>
 
               <button 
+                onClick={() => setShowGiftPanel(!showGiftPanel)}
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
+                style={{ backgroundColor: showGiftPanel ? "rgba(236,72,153,0.3)" : "rgba(255,255,255,0.08)" }}
+                title="礼物"
+              >
+                <span className="text-lg">🎁</span>
+              </button>
+
+              <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
                 style={{ backgroundColor: pendingImage ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.08)" }}
@@ -643,6 +656,165 @@ export default function LoverPage() {
 
               {skills.length === 0 && (
                 <p className="text-center text-white/30 text-sm py-8">技能加载中...</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {showGiftPanel && (
+        <>
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setShowGiftPanel(false)}
+          />
+          <div 
+            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:top-[50%] md:-translate-y-1/2 md:w-[90%] md:max-w-md z-50 rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto max-h-[85vh]"
+            style={{ backgroundColor: "#1a1a28" }}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0" style={{ backgroundColor: "#1a1a28", borderColor: "rgba(255,255,255,0.05)" }}>
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🎁</span>
+                <h2 className="text-base font-semibold text-white">礼物中心</h2>
+                <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: "rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+                  💰 {coinBalance}
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowGiftPanel(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white/90"
+                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            <div className="flex border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+              {[
+                { id: "shop", label: "商店", icon: "🏪" },
+                { id: "inventory", label: "背包", icon: "🎒" },
+                { id: "wishlist", label: "心愿单", icon: "💫" },
+                { id: "requests", label: "索取", icon: "📩" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setGiftTab(tab.id as any)}
+                  className={`flex-1 py-3 text-xs font-medium transition-all ${
+                    giftTab === tab.id ? "text-white border-b-2" : "text-white/40"
+                  }`}
+                  style={{ borderColor: giftTab === tab.id ? "#8b5cf6" : "transparent" }}
+                >
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-4 space-y-3">
+              {giftTab === "shop" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    {agent?.getAvailableGifts().slice(0, 6).map((gift: Gift) => (
+                      <button
+                        key={gift.id}
+                        onClick={() => {
+                          if (coinBalance >= gift.price) {
+                            agent?.buyGift(gift.id, 1);
+                            setCoinBalance(agent?.getCoinBalance() || 0);
+                          }
+                        }}
+                        className="p-3 rounded-xl text-center transition-all hover:scale-105"
+                        style={{ 
+                          backgroundColor: coinBalance >= gift.price ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)",
+                          opacity: coinBalance >= gift.price ? 1 : 0.5,
+                        }}
+                      >
+                        <span className="text-3xl">{gift.icon}</span>
+                        <p className="text-xs font-medium text-white mt-1">{gift.name}</p>
+                        <p className="text-xs" style={{ color: "#fbbf24" }}>💰 {gift.price}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-center text-white/30 text-xs mt-2">点击礼物购买，发送时说「送礼物」即可赠送给 TA</p>
+                </>
+              )}
+
+              {giftTab === "inventory" && (
+                <>
+                  {agent?.getUserGifts().map(({ gift, userGift }: any) => (
+                    <div key={gift.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                      <span className="text-3xl">{gift.icon}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">{gift.name}</p>
+                        <p className="text-xs text-white/50">剩余 {userGift.quantity} 个</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const result = agent?.sendGift(gift.id);
+                          if (result?.success) {
+                            setCoinBalance(agent?.getCoinBalance() || 0);
+                            setTimeout(() => setGiftTab("inventory"), 500);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+                        style={{ background: "linear-gradient(135deg, #ec4899, #f472b6)" }}
+                      >
+                        赠送
+                      </button>
+                    </div>
+                  ))}
+                  {(!agent?.getUserGifts() || agent.getUserGifts().length === 0) && (
+                    <p className="text-center text-white/30 text-sm py-8">背包空空如也，去商店逛逛吧～</p>
+                  )}
+                </>
+              )}
+
+              {giftTab === "wishlist" && (
+                <>
+                  {agent?.getWishList().map(({ gift, wish }: any) => (
+                    <div key={wish.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                      <span className="text-3xl">{gift.icon}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">{gift.name}</p>
+                        <p className="text-xs text-white/50">优先级: {wish.priority}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-center text-white/30 text-xs mt-2">告诉 TA 你想要什么礼物，TA 会记在心愿单里 💫</p>
+                </>
+              )}
+
+              {giftTab === "requests" && (
+                <>
+                  {(agent?.getPendingGiftRequests() || []).map((request: GiftRequest) => (
+                    <div key={request.id} className="p-4 rounded-xl" style={{ backgroundColor: request.urgency === "high" ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)" }}>
+                      <p className="text-sm text-white mb-2">💭 {request.message}</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            agent?.fulfillGiftRequest(request.id);
+                            setCoinBalance(agent?.getCoinBalance() || 0);
+                          }}
+                          className="flex-1 py-2 rounded-lg text-xs font-medium text-white"
+                          style={{ background: "linear-gradient(135deg, #ec4899, #f472b6)" }}
+                        >
+                          💝 送礼物
+                        </button>
+                        <button
+                          onClick={() => {
+                            agent?.getGiftSystem().rejectGiftRequest(request.id);
+                          }}
+                          className="px-4 py-2 rounded-lg text-xs text-white/60"
+                          style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                        >
+                          拒绝
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {(!agent?.getPendingGiftRequests() || agent.getPendingGiftRequests().length === 0) && (
+                    <p className="text-center text-white/30 text-sm py-8">暂无礼物索取请求</p>
+                  )}
+                </>
               )}
             </div>
           </div>
