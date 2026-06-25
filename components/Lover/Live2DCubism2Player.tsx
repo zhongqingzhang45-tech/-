@@ -22,23 +22,44 @@ declare global {
   }
 }
 
-function waitForLoadlive2d(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
-    const check = () => {
-      if (typeof window.loadlive2d === "function") {
+const C2_SCRIPT = "/vendor/live2dv2/live2d.js";
+
+let c2ScriptLoading = false;
+let c2ScriptReady = false;
+let c2ScriptPromise: Promise<void> | null = null;
+
+function loadC2Script(): Promise<void> {
+  if (c2ScriptReady) return Promise.resolve();
+  if (typeof window.loadlive2d === "function") {
+    c2ScriptReady = true;
+    return Promise.resolve();
+  }
+  if (c2ScriptPromise) return c2ScriptPromise;
+  
+  c2ScriptLoading = true;
+  c2ScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${C2_SCRIPT}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => {
+        c2ScriptReady = true;
+        c2ScriptLoading = false;
         resolve();
-        return;
-      }
-      attempts++;
-      if (attempts > 100) {
-        reject(new Error("Cubism 2 library not loaded"));
-        return;
-      }
-      setTimeout(check, 100);
+      });
+      existing.addEventListener("error", () => reject(new Error("Failed to load Cubism 2 library")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = C2_SCRIPT;
+    script.onload = () => {
+      c2ScriptReady = true;
+      c2ScriptLoading = false;
+      resolve();
     };
-    check();
+    script.onerror = () => reject(new Error("Failed to load Cubism 2 library"));
+    document.head.appendChild(script);
   });
+  
+  return c2ScriptPromise;
 }
 
 let canvasCounter = 0;
@@ -60,7 +81,7 @@ const Live2DCubism2Player = forwardRef<Live2DCubism2PlayerRef, Live2DCubism2Play
 
       async function init() {
         try {
-          await waitForLoadlive2d();
+          await loadC2Script();
           if (cancelled) return;
           loadModel();
         } catch (e: any) {
