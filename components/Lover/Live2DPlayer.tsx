@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as PIXI from "pixi.js";
-import { Live2DModel } from "pixi-live2d-display/cubism4";
 
 export interface Live2DPlayerProps {
   modelUrl: string;
@@ -41,7 +40,7 @@ export function Live2DPlayer({
 }: Live2DPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const modelRef = useRef<Live2DModel | null>(null);
+  const modelRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -56,12 +55,16 @@ export function Live2DPlayer({
 
   const lastUpdateTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
+  const coreModelRef = useRef<any>(null);
 
   const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
   const easeOutQuad = (t: number) => 1 - (1 - t) * (1 - t);
   const easeInQuad = (t: number) => t * t;
 
-  const updateAutoBlink = useCallback((dt: number, coreModel: any) => {
+  const updateAutoBlink = useCallback((dt: number) => {
+    const coreModel = coreModelRef.current;
+    if (!coreModel) return;
+
     const state = blinkStateRef.current;
     const BLINK_CLOSE_DURATION = 75;
 
@@ -111,27 +114,37 @@ export function Live2DPlayer({
 
   useEffect(() => {
     if (!canvasRef.current) return;
+    if (typeof window === "undefined") return;
 
     let isMounted = true;
+    let live2dModule: any = null;
 
     const initApp = async () => {
       try {
-        if (typeof window === "undefined") return;
-
         (window as any).PIXI = PIXI;
+
+        const mod = await import("pixi-live2d-display/cubism4");
+        live2dModule = mod;
 
         const app = new PIXI.Application({
           view: canvasRef.current!,
           width,
           height,
-          backgroundAlpha: 0,
+          transparent: true,
           antialias: true,
           autoDensity: true,
           resolution: Math.min(window.devicePixelRatio || 2, 2),
+          backgroundColor: 0x000000,
         });
+
+        if (!isMounted) {
+          app.destroy(true);
+          return;
+        }
 
         appRef.current = app;
 
+        const { Live2DModel } = mod;
         const model = await Live2DModel.from(modelUrl, {
           autoInteract: eyeTracking,
         });
@@ -143,18 +156,20 @@ export function Live2DPlayer({
         }
 
         modelRef.current = model;
-        (app.stage as any).addChild(model);
+        app.stage.addChild(model);
 
-        model.anchor.set(0.5, 0.5);
+        model.anchor?.set(0.5, 0.5);
         model.x = width / 2 + positionOffset.x;
         model.y = height / 2 + positionOffset.y;
 
         const baseScale = Math.min(width / model.width, height / model.height) * scale;
         model.scale.set(baseScale, baseScale);
 
-        const internalModel = (model as any).internalModel;
-        const coreModel = internalModel?.coreModel;
-        const motionManager = internalModel?.motionManager;
+        const internalModel = model.internalModel;
+        const coreModel: any = internalModel?.coreModel;
+        const motionManager: any = internalModel?.motionManager;
+
+        coreModelRef.current = coreModel;
 
         if (coreModel) {
           coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
@@ -179,15 +194,13 @@ export function Live2DPlayer({
           const dt = now - lastUpdateTimeRef.current;
           lastUpdateTimeRef.current = now;
 
-          const coreModel = (modelRef.current as any).internalModel?.coreModel;
-
-          if (coreModel) {
+          if (coreModelRef.current) {
             if (autoBlink) {
-              updateAutoBlink(dt, coreModel);
+              updateAutoBlink(dt);
             }
 
             if (nowSpeaking) {
-              coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
+              coreModelRef.current.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
             }
           }
 
@@ -206,16 +219,15 @@ export function Live2DPlayer({
       }
     };
 
-    if (typeof window !== "undefined") {
-      const checkCubism = () => {
-        if (typeof (window as any).Live2DCubismCore !== "undefined") {
-          initApp();
-        } else {
-          setTimeout(checkCubism, 100);
-        }
-      };
-      checkCubism();
-    }
+    const checkCubism = () => {
+      if (typeof (window as any).Live2DCubismCore !== "undefined") {
+        initApp();
+      } else {
+        setTimeout(checkCubism, 100);
+      }
+    };
+
+    checkCubism();
 
     return () => {
       isMounted = false;
@@ -226,7 +238,7 @@ export function Live2DPlayer({
 
       if (modelRef.current) {
         try {
-          modelRef.current.destroy();
+          modelRef.current.destroy?.();
         } catch (e) {
           // ignore
         }
@@ -241,21 +253,22 @@ export function Live2DPlayer({
         }
         appRef.current = null;
       }
+
+      coreModelRef.current = null;
     };
   }, [modelUrl, width, height]);
 
   useEffect(() => {
-    if (!modelRef.current) return;
-    const coreModel = (modelRef.current as any).internalModel?.coreModel;
-    if (coreModel && nowSpeaking) {
-      coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
+    if (!coreModelRef.current) return;
+    if (nowSpeaking) {
+      coreModelRef.current.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
     }
   }, [mouthOpenSize, nowSpeaking]);
 
   useEffect(() => {
     if (!modelRef.current || !expression) return;
     try {
-      (modelRef.current as any).expression(expression);
+      modelRef.current.expression?.(expression);
     } catch (e) {
       // ignore
     }
@@ -264,7 +277,7 @@ export function Live2DPlayer({
   useEffect(() => {
     if (!modelRef.current || !motion) return;
     try {
-      modelRef.current.motion(motion, motionIndex);
+      modelRef.current.motion?.(motion, motionIndex);
     } catch (e) {
       // ignore
     }
