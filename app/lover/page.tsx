@@ -16,7 +16,7 @@ const Live2DCharacter = dynamic(
   () => import("@/components/Lover/Live2DCharacter").then((mod) => mod.Live2DCharacter),
   { ssr: false, loading: () => (
     <div className="w-full h-full flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-white/10 border-t-white/40 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-3 border-white/10 border-t-white/40 rounded-full animate-spin" />
     </div>
   )}
 );
@@ -29,10 +29,6 @@ const NAV_ITEMS = [
   { id: "profile", label: "轮廓", icon: "👤" },
   { id: "room", label: "房间", icon: "🏠" },
 ];
-
-function formatTime(date: Date) {
-  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-}
 
 export default function LoverPage() {
   const { messages, mood, isTyping, relationship, sendMessage, triggerMood, profile } =
@@ -55,8 +51,6 @@ export default function LoverPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentMood = (mood?.mood ?? "happy") as MoodType;
-  const intimacy = relationship?.intimacy ?? 72;
-  const moodConfig = DEFAULT_MOOD_CONFIG[currentMood];
 
   const convertedMessages: ChatMessage[] = messages.map((msg) => ({
     id: msg.id,
@@ -113,25 +107,38 @@ export default function LoverPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden" style={{ backgroundColor: "#1e2a4a" }}>
+    <main 
+      className="relative min-h-screen overflow-hidden"
+      style={{ 
+        background: "linear-gradient(180deg, #2a3a6b 0%, #1e2a4a 50%, #1a2340 100%)",
+      }}
+    >
       <Script src="/live2dcubismcore.min.js" strategy="afterInteractive" />
 
       {/* Top Navigation Bar */}
-      <header className="relative z-30 h-14 flex items-center px-4 md:px-8" style={{ backgroundColor: "rgba(30, 42, 74, 0.95)", backdropFilter: "blur(10px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <header 
+        className="relative z-30 h-16 flex items-center px-6 md:px-10"
+        style={{ 
+          backgroundColor: "rgba(42, 58, 107, 0.4)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
         {/* Left - Logo & Level */}
         <div className="flex items-center gap-3">
           <div 
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-lg"
-            style={{ backgroundColor: "#6366f1" }}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            style={{ backgroundColor: "#7c7cff" }}
           >
             R
           </div>
-          <div 
-            className="px-3 py-1 rounded-full text-xs font-medium text-white/80"
+          <button 
+            className="px-4 py-1.5 rounded-full text-xs font-medium text-white/80"
             style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
           >
             二级
-          </div>
+          </button>
         </div>
 
         {/* Center - Nav Tabs */}
@@ -140,14 +147,14 @@ export default function LoverPage() {
             <button
               key={item.id}
               onClick={() => setActiveNav(item.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${
                 activeNav === item.id
                   ? "text-white"
-                  : "text-white/50 hover:text-white/80"
+                  : "text-white/50 hover:text-white/75"
               }`}
               style={activeNav === item.id ? { backgroundColor: "rgba(255,255,255,0.12)" } : {}}
             >
-              <span>{item.icon}</span>
+              <span style={{ fontSize: "13px" }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
@@ -160,7 +167,7 @@ export default function LoverPage() {
               <button
                 onClick={handleVoiceToggle}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-                style={{ backgroundColor: voiceEnabled ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.08)" }}
+                style={{ backgroundColor: voiceEnabled ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)" }}
                 title={voiceEnabled ? "关闭语音" : "开启语音"}
               >
                 <span className="text-sm">{voiceEnabled ? "🔊" : "🔈"}</span>
@@ -168,7 +175,7 @@ export default function LoverPage() {
               <button
                 onClick={handleMicToggle}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-                style={{ backgroundColor: micActive ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.08)" }}
+                style={{ backgroundColor: micActive ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.08)" }}
                 title={micActive ? "停止录音" : "开始说话"}
               >
                 <span className="text-sm">{micActive ? "🎤" : "🎙️"}</span>
@@ -180,16 +187,19 @@ export default function LoverPage() {
             className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
           >
-            <span className="text-white/70 text-sm">☰</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/70">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="relative z-10 flex h-[calc(100vh-3.5rem)]">
+      <div className="relative z-10 flex h-[calc(100vh-4rem)]">
         {/* Left Side - Character */}
-        <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-center pb-8">
-          {/* Character */}
+        <div className="hidden md:flex md:w-[35%] lg:w-[32%] relative items-end justify-center">
           <div className="relative h-full w-full flex items-end justify-center">
             <Live2DCharacter
               model="shizuku"
@@ -197,36 +207,35 @@ export default function LoverPage() {
               isTyping={isTyping}
               isSpeaking={isSpeaking}
               size="full"
-              width={380}
-              height={520}
-              className="drop-shadow-2xl"
-            />
-          </div>
-        </div>
-
-        {/* Mobile character */}
-        <div className="md:hidden flex justify-center pt-4 pb-2">
-          <div className="relative">
-            <Live2DCharacter
-              model="shizuku"
-              mood={currentMood}
-              isTyping={isTyping}
-              isSpeaking={isSpeaking}
-              size="md"
-              width={180}
-              height={240}
+              width={360}
+              height={550}
             />
           </div>
         </div>
 
         {/* Center - Chat Area */}
-        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-8 md:pl-4">
+        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-12 lg:pr-16 md:pl-0">
+          {/* Mobile character */}
+          <div className="md:hidden flex justify-center pt-4 pb-2">
+            <div className="relative">
+              <Live2DCharacter
+                model="shizuku"
+                mood={currentMood}
+                isTyping={isTyping}
+                isSpeaking={isSpeaking}
+                size="md"
+                width={180}
+                height={240}
+              />
+            </div>
+          </div>
+
           {/* Chat messages */}
-          <div className="flex-1 overflow-y-auto py-4 space-y-3 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto py-6 space-y-4 scrollbar-thin pr-2">
             {/* Disclaimer */}
-            <div className="flex justify-center">
+            <div className="flex justify-center mb-4">
               <div 
-                className="px-3 py-1.5 rounded-lg text-[10px] text-white/40 max-w-md text-center"
+                className="px-4 py-2 rounded-lg text-[11px] text-white/40 max-w-sm text-center leading-relaxed"
                 style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
               >
                 Replika 是一款人工智能程序，无法提供医疗建议。如遇紧急情况，请寻求专家帮助。
@@ -239,19 +248,19 @@ export default function LoverPage() {
                 className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                  className={`max-w-[65%] px-4 py-2.5 text-sm leading-relaxed ${
                     msg.sender === "user"
-                      ? "rounded-br-sm"
-                      : "rounded-bl-sm"
+                      ? "rounded-[18px] rounded-br-sm"
+                      : "rounded-[18px] rounded-bl-sm"
                   }`}
                   style={{
                     backgroundColor: msg.sender === "user" 
-                      ? "rgba(148, 163, 184, 0.35)"
-                      : "rgba(226, 232, 240, 0.9)",
-                    color: msg.sender === "user" ? "#e2e8f0" : "#1e293b",
+                      ? "rgba(120, 144, 180, 0.5)"
+                      : "rgba(220, 225, 235, 0.92)",
+                    color: msg.sender === "user" ? "#e8edf5" : "#1a1f2e",
                   }}
                 >
-                  <p>{msg.content}</p>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
                 </div>
               </div>
             ))}
@@ -259,13 +268,13 @@ export default function LoverPage() {
             {isTyping && (
               <div className="flex justify-start">
                 <div 
-                  className="px-4 py-3 rounded-2xl rounded-bl-sm"
-                  style={{ backgroundColor: "rgba(226, 232, 240, 0.9)" }}
+                  className="px-4 py-3 rounded-[18px] rounded-bl-sm"
+                  style={{ backgroundColor: "rgba(220, 225, 235, 0.92)" }}
                 >
-                  <div className="flex space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <div className="flex space-x-1 items-center h-4">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400/50 animate-bounce" style={{ animationDelay: "0ms", animationDuration: "1.2s" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400/50 animate-bounce" style={{ animationDelay: "200ms", animationDuration: "1.2s" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400/50 animate-bounce" style={{ animationDelay: "400ms", animationDuration: "1.2s" }} />
                   </div>
                 </div>
               </div>
@@ -275,8 +284,8 @@ export default function LoverPage() {
           </div>
 
           {/* Input area */}
-          <div className="py-4 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <div className="flex items-end gap-2">
+          <div className="py-5">
+            <div className="flex items-end gap-3">
               <div className="flex-1 relative">
                 <textarea
                   value={input}
@@ -284,22 +293,28 @@ export default function LoverPage() {
                   onKeyDown={handleKeyDown}
                   placeholder="跟我说点什么..."
                   rows={1}
-                  className="w-full px-4 py-3 rounded-2xl text-sm text-white placeholder-white/30 resize-none outline-none"
-                  style={{ backgroundColor: "rgba(255,255,255,0.08)", maxHeight: "120px" }}
+                  className="w-full px-5 py-3.5 rounded-[22px] text-sm text-white placeholder-white/35 resize-none outline-none"
+                  style={{ 
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    maxHeight: "120px",
+                  }}
                 />
               </div>
               <button
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="w-11 h-11 rounded-full flex items-center justify-center text-white transition-all disabled:opacity-40"
-                style={{ backgroundColor: "#6366f1" }}
+                className="w-12 h-12 rounded-full flex items-center justify-center text-white transition-all disabled:opacity-40 shadow-lg"
+                style={{ backgroundColor: "#7c7cff" }}
               >
-                <span>→</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
               </button>
             </div>
 
             {/* Quick replies */}
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+            <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
               {[
                 "想你了 💕",
                 "今天好累 😮‍💨",
@@ -310,8 +325,8 @@ export default function LoverPage() {
                 <button
                   key={i}
                   onClick={() => sendMessage(text.replace(/[^\u4e00-\u9fa5]/g, ""))}
-                  className="flex-shrink-0 px-4 py-2 rounded-full text-xs text-white/70 hover:text-white/90 transition-colors"
-                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                  className="flex-shrink-0 px-4 py-2 rounded-full text-xs text-white/75 hover:text-white transition-colors"
+                  style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
                 >
                   {text}
                 </button>
@@ -330,9 +345,15 @@ export default function LoverPage() {
           />
           <div 
             className="fixed top-0 right-0 bottom-0 z-50 w-80 shadow-2xl overflow-y-auto"
-            style={{ backgroundColor: "#2d3a5c", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ 
+              backgroundColor: "#2d3a5c",
+              borderLeft: "1px solid rgba(255,255,255,0.08)",
+            }}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+            <div 
+              className="flex items-center justify-between px-5 py-4 border-b"
+              style={{ borderColor: "rgba(255,255,255,0.08)" }}
+            >
               <h2 className="text-base font-semibold text-white">设置</h2>
               <button 
                 onClick={() => setShowSettings(false)}
@@ -366,15 +387,19 @@ export default function LoverPage() {
                   { label: "深色主题", enabled: false },
                   { label: "显示水平", enabled: true },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-3 px-4 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                  <div 
+                    key={i} 
+                    className="flex items-center justify-between py-3 px-4 rounded-xl"
+                    style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                  >
                     <span className="text-sm text-white/80">{item.label}</span>
                     <div 
-                      className="w-10 h-6 rounded-full relative cursor-pointer transition-colors"
+                      className="w-11 h-6 rounded-full relative cursor-pointer transition-colors"
                       style={{ backgroundColor: item.enabled ? "#22c55e" : "rgba(255,255,255,0.2)" }}
                     >
                       <div 
                         className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow"
-                        style={{ left: item.enabled ? "22px" : "4px" }}
+                        style={{ left: item.enabled ? "24px" : "4px" }}
                       />
                     </div>
                   </div>
@@ -398,7 +423,7 @@ export default function LoverPage() {
                       <span>{item.icon}</span>
                       {item.label}
                     </span>
-                    <span className="text-white/40 text-sm">›</span>
+                    <span className="text-white/40 text-lg">›</span>
                   </button>
                 ))}
               </div>
@@ -438,7 +463,15 @@ export default function LoverPage() {
       )}
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-2" style={{ backgroundColor: "rgba(30, 42, 74, 0.95)", backdropFilter: "blur(10px)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <nav 
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 px-4 py-2"
+        style={{ 
+          backgroundColor: "rgba(42, 58, 107, 0.85)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
         <div className="flex justify-around items-center">
           {NAV_ITEMS.slice(0, 5).map((item) => (
             <button
