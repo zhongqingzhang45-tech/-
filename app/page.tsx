@@ -4,6 +4,7 @@ import { ControlCenter } from "@/components/ControlCenter";
 import { Departments } from "@/components/Departments";
 import { Scenarios } from "@/components/Scenarios";
 import { AgentGrid } from "@/components/AgentGrid";
+import { PersonaLab } from "@/components/PersonaLab";
 import { Workflow } from "@/components/Workflow";
 import { BusinessModules } from "@/components/BusinessModules";
 import { Pricing } from "@/components/Pricing";
@@ -20,6 +21,7 @@ export default function HomePage() {
       <Departments />
       <Scenarios />
       <AgentGrid />
+      <PersonaLab />
       <Workflow />
       <BusinessModules />
       <Pricing />
