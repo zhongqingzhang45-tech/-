@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as PIXI from "pixi.js";
-import { Live2DModel } from "pixi-live2d-display-lipsyncpatch/cubism4";
+import { Live2DModel } from "pixi-live2d-display/cubism4";
 
 export interface Live2DPlayerProps {
   modelUrl: string;
@@ -10,7 +10,7 @@ export interface Live2DPlayerProps {
   height?: number;
   mouthOpenSize?: number;
   nowSpeaking?: boolean;
-  expression?: string | number;
+  expression?: string;
   motion?: string;
   motionIndex?: number;
   scale?: number;
@@ -18,10 +18,8 @@ export interface Live2DPlayerProps {
   autoBlink?: boolean;
   idleAnimation?: boolean;
   eyeTracking?: boolean;
-  idleMotionGroupName?: string;
   onModelLoaded?: () => void;
   onError?: (error: Error) => void;
-  onHit?: (hitAreas: string[]) => void;
 }
 
 export function Live2DPlayer({
@@ -38,10 +36,8 @@ export function Live2DPlayer({
   autoBlink = true,
   idleAnimation = true,
   eyeTracking = true,
-  idleMotionGroupName = "Idle",
   onModelLoaded,
   onError,
-  onHit,
 }: Live2DPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
@@ -121,7 +117,6 @@ export function Live2DPlayer({
     const initApp = async () => {
       try {
         if (typeof window === "undefined") return;
-        if (typeof (window as any).Live2DCubismCore === "undefined") return;
 
         (window as any).PIXI = PIXI;
 
@@ -129,11 +124,10 @@ export function Live2DPlayer({
           view: canvasRef.current!,
           width,
           height,
-          transparent: true,
+          backgroundAlpha: 0,
           antialias: true,
           autoDensity: true,
           resolution: Math.min(window.devicePixelRatio || 2, 2),
-          backgroundAlpha: 0,
         });
 
         appRef.current = app;
@@ -149,7 +143,7 @@ export function Live2DPlayer({
         }
 
         modelRef.current = model;
-        app.stage.addChild(model);
+        (app.stage as any).addChild(model);
 
         model.anchor.set(0.5, 0.5);
         model.x = width / 2 + positionOffset.x;
@@ -158,16 +152,18 @@ export function Live2DPlayer({
         const baseScale = Math.min(width / model.width, height / model.height) * scale;
         model.scale.set(baseScale, baseScale);
 
-        if (onHit) {
-          model.on("hit", (hitAreas: string[]) => {
-            onHit(hitAreas);
-          });
+        const internalModel = (model as any).internalModel;
+        const coreModel = internalModel?.coreModel;
+        const motionManager = internalModel?.motionManager;
+
+        if (coreModel) {
+          coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
         }
 
-        if (idleAnimation && idleMotionGroupName) {
+        if (motionManager && idleAnimation) {
           setTimeout(() => {
             try {
-              model.motion(idleMotionGroupName, 0);
+              model.motion("Idle", 0);
             } catch (e) {
               // ignore
             }
@@ -183,8 +179,7 @@ export function Live2DPlayer({
           const dt = now - lastUpdateTimeRef.current;
           lastUpdateTimeRef.current = now;
 
-          const internalModel = (modelRef.current as any).internalModel;
-          const coreModel = internalModel?.coreModel;
+          const coreModel = (modelRef.current as any).internalModel?.coreModel;
 
           if (coreModel) {
             if (autoBlink) {
@@ -213,7 +208,6 @@ export function Live2DPlayer({
 
     if (typeof window !== "undefined") {
       const checkCubism = () => {
-        if (!isMounted) return;
         if (typeof (window as any).Live2DCubismCore !== "undefined") {
           initApp();
         } else {
@@ -259,17 +253,9 @@ export function Live2DPlayer({
   }, [mouthOpenSize, nowSpeaking]);
 
   useEffect(() => {
-    if (!modelRef.current || expression === undefined || expression === null) return;
+    if (!modelRef.current || !expression) return;
     try {
-      if (typeof expression === "number") {
-        const internalModel = (modelRef.current as any).internalModel;
-        const expressions = internalModel?.settings?.expressions;
-        if (expressions && expressions[expression]) {
-          (modelRef.current as any).expression(expressions[expression].Name);
-        }
-      } else {
-        (modelRef.current as any).expression(expression);
-      }
+      (modelRef.current as any).expression(expression);
     } catch (e) {
       // ignore
     }

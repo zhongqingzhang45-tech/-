@@ -1,69 +1,43 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import dynamic from "next/dynamic";
-
-const Live2DPlayer = dynamic(
-  () => import("./Live2DPlayer").then((mod) => mod.Live2DPlayer),
-  { ssr: false }
-);
+import { Live2DPlayer } from "./Live2DPlayer";
+import { MoodType } from "@/data/lover";
 
 export interface Live2DCharacterProps {
   model?: "mao_pro" | "shizuku";
-  mood?: string;
+  mood?: MoodType;
   isTyping?: boolean;
   isSpeaking?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
   width?: number;
   height?: number;
-  scale?: number;
   onTap?: (hitArea: string) => void;
   className?: string;
 }
 
-const MODELS = {
-  mao_pro: {
-    url: "/live2d-models/mao_pro/runtime/mao_pro.model3.json",
-    kScale: 0.5,
-    initialXshift: 0,
-    initialYshift: 0,
-    idleMotionGroupName: "Idle",
-    emotionMap: {
-      neutral: 0,
-      happy: 3,
-      excited: 3,
-      shy: 4,
-      love: 4,
-      sad: 1,
-      angry: 2,
-      jealous: 2,
-      sleepy: 7,
-      thoughtful: 3,
-      playful: 5,
-      surprised: 3,
-    } as Record<string, number>,
-  },
-  shizuku: {
-    url: "/live2d-models/shizuku/runtime/shizuku.model3.json",
-    kScale: 0.5,
-    initialXshift: 0,
-    initialYshift: 0,
-    idleMotionGroupName: "Idle",
-    emotionMap: {
-      neutral: 0,
-      happy: 3,
-      excited: 3,
-      shy: 4,
-      love: 4,
-      sad: 1,
-      angry: 2,
-      jealous: 2,
-      sleepy: 7,
-      thoughtful: 3,
-      playful: 5,
-      surprised: 3,
-    } as Record<string, number>,
-  },
+const MOOD_TO_EXPRESSION: Record<string, string> = {
+  happy: "exp_02",
+  excited: "exp_02",
+  shy: "exp_04",
+  love: "exp_04",
+  sad: "exp_06",
+  angry: "exp_08",
+  jealous: "exp_08",
+  sleepy: "exp_07",
+  thoughtful: "exp_03",
+  playful: "exp_05",
+  surprised: "exp_01",
+  neutral: "exp_01",
+};
+
+const MOOD_TO_MOTION: Partial<Record<string, { group: string; index: number }>> = {
+  happy: { group: "", index: 1 },
+  excited: { group: "", index: 2 },
+  shy: { group: "", index: 3 },
+  love: { group: "", index: 4 },
+  playful: { group: "", index: 3 },
+  surprised: { group: "", index: 5 },
 };
 
 const SIZE_MAP = {
@@ -81,24 +55,30 @@ export function Live2DCharacter({
   size = "md",
   width,
   height,
-  scale = 1,
   onTap,
   className = "",
 }: Live2DCharacterProps) {
-  const [expression, setExpression] = useState<number>(0);
+  const [expression, setExpression] = useState<string>("exp_01");
+  const [motion, setMotion] = useState<string | undefined>(undefined);
+  const [motionIndex, setMotionIndex] = useState(0);
   const [mouthOpen, setMouthOpen] = useState(0);
   const [modelLoaded, setModelLoaded] = useState(false);
   const mouthAnimRef = useRef<number>(0);
 
-  const modelConfig = MODELS[model];
   const dimensions = SIZE_MAP[size];
   const finalWidth = width ?? dimensions.width;
   const finalHeight = height ?? dimensions.height;
 
   useEffect(() => {
-    const emotionIndex = modelConfig.emotionMap[mood] ?? 0;
-    setExpression(emotionIndex);
-  }, [mood, modelConfig]);
+    const targetExpression = MOOD_TO_EXPRESSION[mood] || "exp_01";
+    setExpression(targetExpression);
+
+    const moodMotion = MOOD_TO_MOTION[mood];
+    if (moodMotion) {
+      setMotion(moodMotion.group);
+      setMotionIndex(moodMotion.index);
+    }
+  }, [mood]);
 
   useEffect(() => {
     if (!isSpeaking && !isTyping) {
@@ -133,43 +113,35 @@ export function Live2DCharacter({
     setModelLoaded(true);
   }, []);
 
-  const handleHit = useCallback(
-    (hitAreas: string[]) => {
-      if (onTap && hitAreas.length > 0) {
-        onTap(hitAreas[0]);
-      }
-    },
-    [onTap]
-  );
+  const handleError = useCallback((err: Error) => {
+    console.warn("Live2D model load error:", err);
+  }, []);
 
   return (
     <div
       className={`relative ${className}`}
       style={{ width: finalWidth, height: finalHeight }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-pink-200/20 via-transparent to-rose-200/20 rounded-full blur-3xl opacity-60" />
+      <div className="absolute inset-0 bg-gradient-to-b from-pink-100/10 via-transparent to-rose-100/10 rounded-full blur-2xl" />
 
       <Live2DPlayer
-        modelUrl={modelConfig.url}
+        modelUrl={`/live2d-models/${model}/runtime/${model}.model3.json`}
         width={finalWidth}
         height={finalHeight}
         expression={expression}
         mouthOpenSize={mouthOpen}
         nowSpeaking={isSpeaking || isTyping}
-        scale={scale * modelConfig.kScale}
-        positionOffset={{
-          x: modelConfig.initialXshift,
-          y: modelConfig.initialYshift,
-        }}
-        idleMotionGroupName={modelConfig.idleMotionGroupName}
+        motion={motion}
+        motionIndex={motionIndex}
+        scale={1}
         autoBlink={true}
         idleAnimation={true}
         eyeTracking={true}
         onModelLoaded={handleModelLoaded}
-        onHit={handleHit}
+        onError={handleError}
       />
 
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-3 bg-pink-300/30 rounded-full blur-xl" />
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-pink-200/30 rounded-full blur-xl" />
     </div>
   );
 }
