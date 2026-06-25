@@ -286,12 +286,33 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Liv
           app.stage.addChild(model);
           app.stage.addChild(model.masks);
 
-          const modelScale = (width * 0.005) * scale;
+          const modelScale = (width * 0.03) * scale;
           model.scale.set(modelScale);
           model.x = width / 2;
           model.y = height * positionY;
 
           model.masks.resize(app.view.width, app.view.height);
+
+          const originalUpdate = model.update.bind(model);
+          model.update = (delta: number) => {
+            const deltaTime = 0.016 * delta;
+
+            if (!model.animator.isPlaying) {
+              const idleKeys = ["idle", "Idle", "微笑-正常", "微笑-看着你", "微笑-平淡", "微笑-说话", "平淡"];
+              let idleMotion = null;
+              for (const key of idleKeys) {
+                if (model.motions && model.motions.has(key)) {
+                  idleMotion = model.motions.get(key);
+                  break;
+                }
+              }
+              if (idleMotion && model.animator.getLayer("base")) {
+                model.animator.getLayer("base").play(idleMotion);
+              }
+            }
+
+            originalUpdate(delta);
+          };
 
           app.ticker.add((delta: number) => {
             if (!model) return;
