@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live2D Cubism 2 Test</title>
+    <meta charset="utf-8">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: sans-serif;
+        }
+        .canvas-container {
+            width: 400px;
+            height: 600px;
+            border: 2px solid #667eea;
+            position: relative;
+            margin: 20px 0;
+        }
+        #live2d {
+            width: 100%;
+            height: 100%;
+        }
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #764ba2;
+        }
+        button.active {
+            background: #f093fb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live2D Cubism 2 - 男生模型测试</h1>
+    <div class="model-selector">
+        <button onclick="loadModel('len')" class="active">镜音连</button>
+        <button onclick="loadModel('len_impact')">镜音连-冲击</button>
+        <button onclick="loadModel('len_space')">镜音连-太空</button>
+        <button onclick="loadModel('len_swim')">镜音连-泳装</button>
+        <button onclick="loadModel('haruto')">遥斗</button>
+        <button onclick="loadModel('jin')">仁</button>
+        <button onclick="loadModel('makoto0')">诚</button>
+    </div>
+    <div class="canvas-container">
+        <canvas id="live2d" width="400" height="600"></canvas>
+    </div>
+    <div id="status">正在加载...</div>
+
+    <script src="/vendor/live2dv2/LAppDefine.js"></script>
+    <script src="/vendor/live2dv2/live2d.js"></script>
+    <script>
+        const models = {
+            'len': '/live2d-models/cubism2/len/len.model.json',
+            'len_impact': '/live2d-models/cubism2/len_impact/len_impact.model.json',
+            'len_space': '/live2d-models/cubism2/len_space/len_space.model.json',
+            'len_swim': '/live2d-models/cubism2/len_swim/len_swim.model.json',
+            'haruto': '/live2d-models/cubism2/haruto/haruto.model.json',
+            'jin': '/live2d-models/cubism2/jin/jin.model.json',
+            'makoto0': '/live2d-models/cubism2/makoto0/makoto0.model.json',
+        };
+
+        function loadModel(name) {
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('status').textContent = '正在加载 ' + name + '...';
+            try {
+                loadlive2d('live2d', models[name]);
+                setTimeout(() => {
+                    document.getElementById('status').textContent = '已加载: ' + name;
+                }, 1500);
+            } catch (e) {
+                document.getElementById('status').textContent = '错误: ' + e.message;
+            }
+        }
+
+        window.onload = function() {
+            loadlive2d('live2d', models['len']);
+            setTimeout(() => {
+                document.getElementById('status').textContent = '已加载: 镜音连';
+            }, 1500);
+        };
+    </script>
+</body>
+</html>
