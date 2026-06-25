@@ -94,6 +94,7 @@ function loadAllScripts(): Promise<void> {
 
 function onUpdate(this: any, delta: number) {
   const deltaTime = 0.016 * delta;
+  const Live2DCubismCore = window.Live2DCubismCore;
 
   if (!this.animator.isPlaying) {
     let m = this.motions.get("idle");

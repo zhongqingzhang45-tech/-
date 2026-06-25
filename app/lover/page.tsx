@@ -12,66 +12,38 @@ const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
   loading: () => null,
 });
 
-const Live2DCubism2Player = dynamic(() => import("@/components/Lover/Live2DCubism2Player"), {
-  ssr: false,
-  loading: () => null,
-});
-
 interface Character {
   id: string;
   name: string;
   path: string;
   model: string;
-  modelJson?: string;
   avatar: string;
   scale: number;
   positionY: number;
-  type: "cubism3" | "cubism2";
+  type: "cubism3";
   gender: "female" | "male";
 }
 
 const CHARACTERS: Character[] = [
-  { id: "HaruGreeter", name: "春（迎宾）", path: "/live2d-models", model: "HaruGreeter", avatar: "🌸", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "mao_pro", name: "Mao（猫猫）", path: "/live2d-models", model: "mao_pro", avatar: "🐱", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "shizuku", name: "雫（滴）", path: "/live2d-models", model: "shizuku", avatar: "💧", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "lafei", name: "拉菲", path: "/live2d-models/azurlane", model: "lafei", avatar: "🍷", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "lafei_4", name: "拉菲（新春）", path: "/live2d-models/azurlane", model: "lafei_4", avatar: "🧧", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "lingbo", name: "绫波", path: "/live2d-models/azurlane", model: "lingbo", avatar: "🌊", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "biaoqiang", name: "标枪", path: "/live2d-models/azurlane", model: "biaoqiang", avatar: "🏹", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "biaoqiang_3", name: "标枪（泳装）", path: "/live2d-models/azurlane", model: "biaoqiang_3", avatar: "🏖️", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "z23", name: "Z23", path: "/live2d-models/azurlane", model: "z23", avatar: "⚓", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "z46_2", name: "Z46（夏装）", path: "/live2d-models/azurlane", model: "z46_2", avatar: "☀️", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "aierdeliqi_5", name: "埃尔德里奇", path: "/live2d-models/azurlane", model: "aierdeliqi_5", avatar: "💫", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "dafeng_2", name: "大凤（盛宴）", path: "/live2d-models/azurlane", model: "dafeng_2", avatar: "🦚", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "beierfasite_2", name: "贝尔法斯特", path: "/live2d-models/azurlane", model: "beierfasite_2", avatar: "🌹", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "dujiaoshou_4", name: "独角兽", path: "/live2d-models/azurlane", model: "dujiaoshou_4", avatar: "🦄", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "mingshi", name: "明石", path: "/live2d-models/azurlane", model: "mingshi", avatar: "🐱", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "ninghai_4", name: "宁海（新春）", path: "/live2d-models/azurlane", model: "ninghai_4", avatar: "🏮", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "pinghai_4", name: "平海（新春）", path: "/live2d-models/azurlane", model: "pinghai_4", avatar: "🧧", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "bisimai_2", name: "俾斯麦", path: "/live2d-models/azurlane", model: "bisimai_2", avatar: "⚔️", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "kelifulan_3", name: "克利夫兰", path: "/live2d-models/azurlane", model: "kelifulan_3", avatar: "🛡️", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "genaisennao_2", name: "格奈森瑙", path: "/live2d-models/azurlane", model: "genaisennao_2", avatar: "🗡️", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "aidang_2", name: "爱宕", path: "/live2d-models/azurlane", model: "aidang_2", avatar: "🌺", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "heitaizi_2", name: "黑太子", path: "/live2d-models/azurlane", model: "heitaizi_2", avatar: "⚔️", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-  { id: "len", name: "镜音连（男生）", path: "/live2d-models/len", model: "len", modelJson: "len.model.json", avatar: "🎸", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "HaruGreeter", name: "小春", path: "/live2d-models", model: "HaruGreeter", avatar: "🌸", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
 ];
 
 const NAV_ITEMS = [
-  { id: "chat", label: "Chat", icon: "💬" },
-  { id: "activities", label: "Activities", icon: "🎮" },
-  { id: "memory", label: "Memory", icon: "🌟" },
-  { id: "diary", label: "Diary", icon: "📔" },
-  { id: "profile", label: "Profile", icon: "👤" },
-  { id: "room", label: "Room", icon: "🏠" },
+  { id: "chat", label: "聊天", icon: "💬" },
+  { id: "activities", label: "互动", icon: "🎮" },
+  { id: "memory", label: "记忆", icon: "🌟" },
+  { id: "diary", label: "日记", icon: "📔" },
+  { id: "profile", label: "资料", icon: "👤" },
+  { id: "room", label: "房间", icon: "🏠" },
 ];
 
 const QUICK_REPLIES = [
-  "How are you? 💕",
-  "Tell me a story",
-  "I'm feeling sad 😢",
-  "Good morning! ☀️",
-  "Sing me a song 🎵",
-  "I love you ❤️",
+  "你好呀～ 💕",
+  "给我讲个故事吧",
+  "我今天有点难过 😢",
+  "早上好！ ☀️",
+  "唱首歌给我听 🎵",
+  "我喜欢你 ❤️",
 ];
 
 export default function LoverPage() {
@@ -84,9 +56,19 @@ export default function LoverPage() {
   const [input, setInput] = useState("");
   const [micActive, setMicActive] = useState(false);
   const [modelReady, setModelReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentMood = (mood?.mood ?? "happy") as MoodType;
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const convertedMessages: ChatMessage[] = messages.map((msg) => ({
     id: msg.id,
@@ -123,8 +105,6 @@ export default function LoverPage() {
     }
   };
 
-  const CHAR_IMG = "";
-
   return (
     <main 
       className="relative h-screen w-screen overflow-hidden flex flex-col"
@@ -132,7 +112,6 @@ export default function LoverPage() {
         background: "radial-gradient(ellipse at 25% 80%, #2a2a3e 0%, #1a1a28 50%, #12121a 100%)",
       }}
     >
-      {/* Ambient glow behind character */}
       <div 
         className="absolute pointer-events-none"
         style={{ 
@@ -147,7 +126,6 @@ export default function LoverPage() {
         }}
       />
 
-      {/* Top Navigation Bar */}
       <header 
         className="flex-shrink-0 h-14 flex items-center px-5 z-20"
         style={{ 
@@ -165,13 +143,13 @@ export default function LoverPage() {
               boxShadow: "0 2px 10px rgba(124,124,255,0.3)",
             }}
           >
-            R
+            星
           </div>
           <span 
             className="px-3 py-1 rounded-full text-xs font-medium text-white/70"
             style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
           >
-            Level 2
+            等级 2
           </span>
         </div>
 
@@ -214,56 +192,52 @@ export default function LoverPage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 flex min-h-0 relative">
-        {/* Left - Character Area */}
-        <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
-          {/* Character picker button */}
-          <button
-            onClick={() => setShowCharacterPicker(!showCharacterPicker)}
-            className="absolute top-4 left-4 z-20 px-3 py-2 rounded-full text-xs font-medium text-white/80 hover:text-white transition-all flex items-center gap-2"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-          >
-            <span>{currentCharacter.avatar}</span>
-            <span>{currentCharacter.name}</span>
-            <span className="text-white/40">▾</span>
-          </button>
-
-          {/* Character picker dropdown */}
-          {showCharacterPicker && (
-            <div 
-              className="absolute top-14 left-4 z-30 rounded-2xl p-2 w-52 shadow-2xl"
-              style={{ backgroundColor: "rgba(26,26,40,0.95)", backdropFilter: "blur(20px)" }}
+        {!isMobile && (
+          <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
+            <button
+              onClick={() => setShowCharacterPicker(!showCharacterPicker)}
+              className="absolute top-4 left-4 z-20 px-3 py-2 rounded-full text-xs font-medium text-white/80 hover:text-white transition-all flex items-center gap-2"
+              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
             >
-              {CHARACTERS.map((char) => (
-                <button
-                  key={char.id}
-                  onClick={() => {
-                    setCurrentCharacter(char);
-                    setShowCharacterPicker(false);
-                    setModelReady(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                    currentCharacter.id === char.id
-                      ? "bg-white/10"
-                      : "hover:bg-white/5"
-                  }`}
-                >
-                  <span className="text-xl">{char.avatar}</span>
-                  <span className="text-sm text-white/80">{char.name}</span>
-                  {currentCharacter.id === char.id && (
-                    <span className="ml-auto text-xs text-purple-400">✓</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+              <span>{currentCharacter.avatar}</span>
+              <span>{currentCharacter.name}</span>
+              <span className="text-white/40">▾</span>
+            </button>
 
-          <div className="relative z-10 w-full h-full">
-            {currentCharacter.type === "cubism3" ? (
+            {showCharacterPicker && (
+              <div 
+                className="absolute top-14 left-4 z-30 rounded-2xl p-2 w-52 shadow-2xl"
+                style={{ backgroundColor: "rgba(26,26,40,0.95)", backdropFilter: "blur(20px)" }}
+              >
+                {CHARACTERS.map((char) => (
+                  <button
+                    key={char.id}
+                    onClick={() => {
+                      setCurrentCharacter(char);
+                      setShowCharacterPicker(false);
+                      setModelReady(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                      currentCharacter.id === char.id
+                        ? "bg-white/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="text-xl">{char.avatar}</span>
+                    <span className="text-sm text-white/80">{char.name}</span>
+                    {currentCharacter.id === char.id && (
+                      <span className="ml-auto text-xs text-purple-400">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="relative z-10 w-full h-full">
               <Live2DPlayer
                 key={currentCharacter.id}
-                ref={live2dRef as any}
+                ref={live2dRef}
                 modelPath={currentCharacter.path}
                 modelName={currentCharacter.model}
                 scale={currentCharacter.scale}
@@ -271,50 +245,39 @@ export default function LoverPage() {
                 onModelLoaded={() => setModelReady(true)}
                 onError={(err) => console.error("Live2D error:", err)}
               />
-            ) : (
-              <Live2DCubism2Player
-                key={currentCharacter.id}
-                modelPath={currentCharacter.path}
-                modelJson={currentCharacter.modelJson || `${currentCharacter.model}.model.json`}
-                scale={currentCharacter.scale}
-                positionY={currentCharacter.positionY}
-                onModelLoaded={() => setModelReady(true)}
-                onError={(err) => console.error("Live2D Cubism2 error:", err)}
-              />
-            )}
-          </div>
-          {/* Floor glow */}
-          <div 
-            className="absolute bottom-0 left-0 w-full pointer-events-none"
-            style={{ 
-              height: "140px",
-              background: "radial-gradient(ellipse at 30% 100%, rgba(147,112,219,0.12) 0%, transparent 65%)",
-            }}
-          />
-        </div>
-
-        {/* Right - Chat Area */}
-        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2">
-          {/* Mobile character */}
-          <div className="md:hidden flex justify-center pt-4 pb-2">
-            <div className="relative" style={{ width: "200px", height: "280px" }}>
-              <Live2DPlayer
-                key={`mobile-${currentCharacter.id}`}
-                modelPath={currentCharacter.path}
-                modelName={currentCharacter.model}
-                scale={1}
-              />
             </div>
+            <div 
+              className="absolute bottom-0 left-0 w-full pointer-events-none"
+              style={{ 
+                height: "140px",
+                background: "radial-gradient(ellipse at 30% 100%, rgba(147,112,219,0.12) 0%, transparent 65%)",
+              }}
+            />
           </div>
+        )}
 
-          {/* Messages */}
+        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2">
+          {isMobile && (
+            <div className="md:hidden flex justify-center pt-4 pb-2 h-64">
+              <div className="relative w-full h-full">
+                <Live2DPlayer
+                  key={`mobile-${currentCharacter.id}`}
+                  modelPath={currentCharacter.path}
+                  modelName={currentCharacter.model}
+                  scale={1.5}
+                  positionY={0.5}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto py-4 pr-1">
             <div className="flex justify-center mb-5">
               <div 
                 className="px-3 py-1.5 rounded-lg text-[10px] text-white/30 max-w-sm text-center leading-snug"
                 style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
               >
-                Replika is an AI companion and is not a substitute for professional help.
+                星野是AI伴侣，不能替代专业心理咨询
               </div>
             </div>
 
@@ -392,7 +355,6 @@ export default function LoverPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Replies */}
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {QUICK_REPLIES.map((text, i) => (
               <button
@@ -406,7 +368,6 @@ export default function LoverPage() {
             ))}
           </div>
 
-          {/* Input Bar */}
           <div className="py-3">
             <div 
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-full"
@@ -426,7 +387,7 @@ export default function LoverPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Start typing..."
+                placeholder="输入消息..."
                 className="flex-1 bg-transparent text-sm text-white placeholder-white/35 outline-none py-2 px-1"
               />
 
@@ -469,7 +430,6 @@ export default function LoverPage() {
         </div>
       </div>
 
-      {/* Settings Panel */}
       {showSettings && (
         <>
           <div 
@@ -481,7 +441,7 @@ export default function LoverPage() {
             style={{ backgroundColor: "#1a1a28" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <h2 className="text-base font-semibold text-white">Settings</h2>
+              <h2 className="text-base font-semibold text-white">设置</h2>
               <button 
                 onClick={() => setShowSettings(false)}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white/90"
@@ -492,7 +452,6 @@ export default function LoverPage() {
             </div>
 
             <div className="px-4 pb-6 space-y-5 pt-4">
-              {/* PRO banner */}
               <div 
                 className="p-4 rounded-2xl text-white"
                 style={{ background: "linear-gradient(135deg, #818cf8 0%, #f472b6 100%)" }}
@@ -500,22 +459,21 @@ export default function LoverPage() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">💎</span>
                   <div>
-                    <p className="text-sm font-semibold">Unlock Replika PRO</p>
+                    <p className="text-sm font-semibold">升级星野会员</p>
                     <p className="text-xs opacity-85 mt-0.5 leading-relaxed">
-                      Advanced AI, voice calls, augmented reality, and more.
+                      高级AI、语音通话、增强现实等更多功能
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Display toggles */}
               <div className="space-y-0.5">
-                <p className="text-xs text-white/35 px-3 pb-1.5 font-medium">Display</p>
+                <p className="text-xs text-white/35 px-3 pb-1.5 font-medium">显示</p>
                 {[
-                  { label: "3D Avatar", enabled: false },
-                  { label: "Background Music", enabled: false },
-                  { label: "Dark Theme", enabled: true },
-                  { label: "Show Level", enabled: true },
+                  { label: "3D 形象", enabled: false },
+                  { label: "背景音乐", enabled: false },
+                  { label: "深色主题", enabled: true },
+                  { label: "显示等级", enabled: true },
                 ].map((item, i) => (
                   <div 
                     key={i} 
@@ -535,13 +493,12 @@ export default function LoverPage() {
                 ))}
               </div>
 
-              {/* Community */}
               <div className="space-y-0.5">
-                <p className="text-xs text-white/35 px-3 pb-1.5 font-medium">Community</p>
+                <p className="text-xs text-white/35 px-3 pb-1.5 font-medium">社区</p>
                 {[
                   { label: "Reddit", color: "#ff4500" },
                   { label: "Discord", color: "#5865f2" },
-                  { label: "Facebook", color: "#1877f2" },
+                  { label: "微博", color: "#e6162d" },
                 ].map((item, i) => (
                   <button
                     key={i}
@@ -561,10 +518,9 @@ export default function LoverPage() {
                 ))}
               </div>
 
-              {/* Logout */}
               <div className="pt-3 mt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                 <button className="w-full py-2.5 px-3.5 rounded-xl text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors">
-                  Log Out
+                  退出登录
                 </button>
               </div>
             </div>
@@ -572,7 +528,6 @@ export default function LoverPage() {
         </>
       )}
 
-      {/* Mobile Bottom Nav */}
       <nav 
         className="md:hidden flex-shrink-0 px-4 py-2"
         style={{ 
