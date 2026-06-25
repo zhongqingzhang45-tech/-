@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { LoverParticles } from "@/components/Lover/LoverParticles";
-import { LoverAvatar } from "@/components/Lover/LoverAvatar";
 import { ChatPanel } from "@/components/Lover/ChatPanel";
+
+const Live2DCharacter = dynamic(
+  () => import("@/components/Lover/Live2DCharacter").then((mod) => mod.Live2DCharacter),
+  { ssr: false, loading: () => (
+    <div className="w-[280px] h-[360px] flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-pink-300/30 border-t-pink-400 rounded-full animate-spin" />
+    </div>
+  )}
+);
 import { Sidebar } from "@/components/Lover/Sidebar";
 import { SettingsPanel } from "@/components/Lover/SettingsPanel";
 import { GameModal } from "@/components/Lover/GameModal";
@@ -169,28 +178,29 @@ export default function LoverPage() {
           <div className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-4 p-3 sm:p-4 lg:p-6 overflow-auto">
             <div className="lg:w-80 flex-shrink-0 space-y-3 sm:space-y-4">
               <div
-                className="p-4 sm:p-6 rounded-2xl backdrop-blur-xl border border-white/10
-                  flex flex-col items-center"
+                className="p-2 sm:p-4 rounded-2xl backdrop-blur-xl border border-white/10
+                  flex flex-col items-center overflow-hidden"
                 style={{
                   background: `linear-gradient(180deg, ${profile.accentColor}08, transparent)`,
                 }}
               >
-                <LoverAvatar
-                  profile={{
-                    name: profile.name,
-                    nickname: profile.nickname,
-                    userNickname: profile.userNickname,
-                    personality: profile.persona,
-                    birthday: profile.birthday,
-                    anniversary: profile.anniversary,
-                    avatar: profile.avatar,
-                    accentColor: profile.accentColor,
-                    secondaryColor: profile.secondaryColor,
-                  }}
+                <Live2DCharacter
+                  model="mao_pro"
                   mood={currentMood}
                   isTyping={isTyping}
-                  size="xl"
+                  isSpeaking={isSpeaking}
+                  size="lg"
+                  width={280}
+                  height={360}
                 />
+                <div className="mt-2 text-center">
+                  <p className="text-sm font-medium bg-gradient-to-r from-pink-300 to-violet-300 bg-clip-text text-transparent">
+                    {profile.nickname}
+                  </p>
+                  <p className="text-[10px] text-white/40 mt-0.5">
+                    {moodConfig.label}中...
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
