@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
-import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender } from "@/lib/core/digital-life";
+import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode } from "@/lib/core/digital-life";
 import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
 
 const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
@@ -29,6 +29,19 @@ const QUICK_REPLIES = [
   "唱首歌给我听 🎵",
   "我喜欢你 ❤️",
 ];
+
+function getModeColor(mode?: string): string {
+  switch (mode) {
+    case "affectionate": return "#ec4899";
+    case "tsundere": return "#f87171";
+    case "cold": return "#64748b";
+    case "aggressive": return "#ef4444";
+    case "silent_treatment": return "#475569";
+    case "pua": return "#8b5cf6";
+    case "reconciliation": return "#10b981";
+    default: return "#6366f1";
+  }
+}
 
 export default function LoverPage() {
   const { messages, mood, isTyping, sendMessage, profile, lifeState } = useCharacterAgent();
@@ -251,6 +264,76 @@ export default function LoverPage() {
           )}
 
           <div className="flex-1 overflow-y-auto py-4 pr-1">
+            <div className="mb-4 px-1">
+              <div className="rounded-2xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{currentCharacter.avatar}</span>
+                    <span className="text-sm font-medium text-white/90">{currentCharacter.name}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full text-white/60" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+                      Lv.{lifeState?.growth?.level || 1}
+                    </span>
+                  </div>
+                  <div className="text-[10px] px-2 py-1 rounded-full" style={{ 
+                    backgroundColor: getModeColor(lifeState?.currentMode),
+                    color: "#fff"
+                  }}>
+                    {PERSONA_MODE_LABELS[(lifeState?.currentMode || "normal") as PersonaMode] || "正常模式"}
+                  </div>
+                </div>
+                
+                <div className="space-y-2.5">
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-pink-400">❤️ 好感度</span>
+                      <span className="text-white/70">{Math.round(lifeState?.persona?.affection || 50)}/100</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${lifeState?.persona?.affection || 50}%`,
+                          background: "linear-gradient(90deg, #fb7185, #f472b6)"
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-orange-400">💢 怨念值</span>
+                      <span className="text-white/70">{Math.round(lifeState?.persona?.resentment || 0)}/100</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${lifeState?.persona?.resentment || 0}%`,
+                          background: "linear-gradient(90deg, #f97316, #ef4444)"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {lifeState?.relationship?.coldTreatmentActive && (
+                    <div className="mt-3 p-3 rounded-xl text-center" style={{ backgroundColor: "rgba(239,68,68,0.15)" }}>
+                      <p className="text-xs text-red-300 mb-2">😔 正在冷战中...</p>
+                      <p className="text-[10px] text-white/50">ta现在不想理你，试着哄哄ta吧</p>
+                    </div>
+                  )}
+
+                  {lifeState?.relationship?.reconciliationAvailable && (
+                    <button 
+                      className="w-full mt-2 py-2 rounded-xl text-xs font-medium text-white transition-all hover:opacity-90"
+                      style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }}
+                    >
+                      💝 送礼物和解
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-center mb-5">
               <div 
                 className="px-3 py-1.5 rounded-lg text-[10px] text-white/30 max-w-sm text-center leading-snug"

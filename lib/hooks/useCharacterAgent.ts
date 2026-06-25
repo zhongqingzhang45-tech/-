@@ -57,6 +57,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
         content: `${fullProfile.userNickname}，你来啦～ 等你好久了呢 🥰`,
         timestamp: Date.now() - 300000,
         emotion: newAgent.getMood(),
+        personaMode: "affectionate",
       },
       {
         id: "2",
@@ -64,6 +65,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
         content: "今天过得怎么样？有没有想我呀？",
         timestamp: Date.now() - 240000,
         emotion: newAgent.getMood(),
+        personaMode: "normal",
       },
     ];
     setMessages(initialMessages);
@@ -81,6 +83,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
       content: text,
       timestamp: Date.now(),
       emotion: currentMood,
+      personaMode: "normal",
       imageUrl,
     };
 
@@ -100,6 +103,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
         content: result.text,
         timestamp: Date.now(),
         emotion: result.emotion,
+        personaMode: result.personaMode,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);

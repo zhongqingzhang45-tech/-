@@ -1,96 +1,77 @@
 import {
-  LifeState,
-  BodilyState,
-  InstinctState,
-  EmotionState,
-  RelationshipState,
-  GrowthState,
-  ValueSystem,
-  MoodType,
-  CharacterProfile,
-  ChatMessage,
-  MemoryEntry,
-  DecisionResult,
-  DEFAULT_LIFE_STATE,
-} from "./types";
+  EmotionState, MoodType, BodilyState, InstinctState, PersonaMatrix, RelationshipState, DecisionResult, TriggerState, MoodLogEntry, BehaviorTag, MemoryEntry, MemoryType, LifeState, CharacterProfile, MOOD_CONFIG } from "./types";
+
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 export class EventUnderstandingLayer {
-  analyzeInput(input: string, imageUrl?: string): {
-    intent: string;
-    sentiment: { valence: number; arousal: number };
-    keywords: string[];
-    hasImage: boolean;
-    imageDescription?: string;
-  } {
-    const lower = input.toLowerCase();
-    let intent = "default";
-    let valence = 0;
-    let arousal = 0;
+  analyze(userInput: string, imageUrl?: string) {
+    const lower = userInput.toLowerCase();
     const keywords: string[] = [];
 
-    const intents: Record<string, string[]> = {
-      greeting: ["你好", "在吗", "嗨", "hi", "hello", "早", "晚安", "醒了", "来啦", "我来啦"],
-      love: ["爱你", "喜欢", "love", "想你", "想念", "miss", "亲亲", "抱抱", "宝贝"],
-      compliment: ["漂亮", "好看", "可爱", "帅", "美", "优秀", "厉害"],
-      angry: ["生气", "讨厌", "滚", "烦", "恨", "笨蛋", "傻瓜", "去死", "分手", "不理你"],
-      sad: ["难过", "伤心", "哭", "累", "不开心", "委屈", "郁闷", "sad", "tired"],
-      jealous: ["吃醋", "嫉妒", "别的女生", "别的男生", "前任", "前女友", "前男友"],
-      question: ["为什么", "怎么", "什么", "吗", "?", "？", "怎么看", "觉得"],
-      comfort: ["安慰", "哄我", "抱抱我", "求安慰", "我好难"],
-      apologize: ["对不起", "抱歉", "我错了", "原谅", "不好意思", "sorry"],
-      playful: ["哈哈", "嘿嘿", "嘻嘻", "逗你", "开玩笑", "来玩", "游戏"],
-      sleepy: ["困", "睡", "累了", "晚安", "sleepy", "sleep"],
-      pua_test: ["你是不是不爱我了", "你变了", "你是不是烦我了", "你根本就不懂我"],
-      coax: ["别生气了", "我错了", "原谅我吧", "好不好嘛", "求求你"],
+    const keywordCategories: Record<string, string[]> = {
+      apology: ["对不起", "抱歉", "我错了", "原谅", "道歉", "sorry", "apologize"],
+      compliment: ["好看", "可爱", "漂亮", "帅", "聪明", "喜欢", "爱你", "love"],
+      ignore: ["很忙", "没时间", "以后再说", "等等", "忙", "ignore"],
+      jealousy: ["别的女生", "别的男生", "别人", "前女友", "前男友", "其他"],
+      clingy: ["好想你", "想你了", "你在哪", "你在干嘛", "陪陪我"],
+      rejection: ["不要", "不想", "不喜欢", "讨厌", "拒绝"],
+      sarcasm: ["呵呵", "行吧", "随便", "都行", "你说了算"],
+      affectionate: ["抱抱", "亲亲", "摸头", "牵手", "想抱着你"],
+      question: ["吗？", "为什么", "怎么", "什么", "?", "？"],
     };
 
-    for (const [intentName, patterns] of Object.entries(intents)) {
-      for (const pattern of patterns) {
-        if (lower.includes(pattern)) {
-          intent = intentName;
-          keywords.push(pattern);
-          break;
-        }
+    for (const [category, words] of Object.entries(keywordCategories)) {
+      if (words.some((w) => lower.includes(w))) {
+        keywords.push(category);
       }
     }
 
-    const positiveWords = [
-      "喜欢", "爱", "想你", "开心", "快乐", "高兴", "幸福", "棒", "好",
-      "love", "like", "happy", "miss you", "❤️", "💕", "💖", "💗", "💓",
-      "抱抱", "亲亲", "宝贝", "亲爱的", "可爱", "漂亮", "帅",
-    ];
-    const negativeWords = [
-      "讨厌", "生气", "难过", "伤心", "累", "烦", "不开心", "痛苦",
-      "hate", "sad", "tired", "angry", "😢", "😭", "😤", "💔",
-      "笨蛋", "傻瓜", "滚", "分手", "不理你", "去死", "恨",
-    ];
+    let valence = 0;
+    let arousal = 0.3;
+    let dominantIntent = "casual_chat";
 
-    for (const word of positiveWords) {
-      if (lower.includes(word)) {
-        valence += 0.15;
-        arousal += 0.1;
-      }
-    }
-    for (const word of negativeWords) {
-      if (lower.includes(word)) {
-        valence -= 0.2;
-        arousal += 0.15;
-      }
+    if (keywords.includes("apology")) { valence += 0.3; dominantIntent = "apology"; arousal = 0.6; }
+    if (keywords.includes("compliment")) { valence += 0.4; dominantIntent = "compliment"; arousal = 0.5; }
+    if (keywords.includes("ignore")) { valence -= 0.4; dominantIntent = "ignored"; arousal = 0.3; }
+    if (keywords.includes("jealousy")) { valence -= 0.6; dominantIntent = "jealousy_trigger"; arousal = 0.8; }
+    if (keywords.includes("clingy")) { valence += 0.2; dominantIntent = "affection_seeking"; arousal = 0.4; }
+    if (keywords.includes("rejection")) { valence -= 0.3; dominantIntent = "rejection"; arousal = 0.5; }
+    if (keywords.includes("sarcasm")) { valence -= 0.2; dominantIntent = "sarcasm"; arousal = 0.4; }
+    if (keywords.includes("affectionate")) { valence += 0.5; dominantIntent = "affection"; arousal = 0.6; }
+    if (keywords.includes("question")) { dominantIntent = "question"; arousal = 0.3; }
+
+    if (imageUrl) {
+      arousal += 0.2;
+      dominantIntent = "image_sharing";
     }
 
-    if (lower.includes("!") || lower.includes("！")) arousal += 0.15;
-    if (lower.includes("?") || lower.includes("？")) arousal += 0.1;
+    if (userInput.length > 100) { arousal += 0.2; }
 
     valence = Math.max(-1, Math.min(1, valence));
-    arousal = Math.max(-1, Math.min(1, arousal));
+    arousal = Math.max(0, Math.min(1, arousal));
+
+    const dominant = 0.5 + (valence > 0 ? 0.1 : -0.1);
 
     return {
-      intent,
-      sentiment: { valence, arousal },
+      sentiment: { valence, arousal, dominance: dominant },
+      intent: dominantIntent,
       keywords,
       hasImage: !!imageUrl,
-      imageDescription: imageUrl ? "图片内容" : undefined,
+      messageLength: userInput.length,
     };
+  }
+
+  detectBehaviorTags(userInput: string, history: any[]): BehaviorTag[] {
+    const tags: BehaviorTag[] = [];
+    const lower = userInput.toLowerCase();
+
+    if (lower.includes("我不行") || lower.includes("我好没用") || lower.includes("我配不上")) tags.push("self_abased");
+    if (lower.includes("你会不会离开我") || lower.includes("你不爱我了") || lower.includes("别离开我")) tags.push("insecure");
+    if (lower.includes("我一直") && lower.length > 50) tags.push("clingy");
+    if (lower.includes("我自己") || lower.includes("不用管我") || lower.includes("我没事")) tags.push("independent");
+    if (lower.includes("真的不骗你") || lower.includes("骗你我是")) tags.push("lying");
+
+    return [...new Set(tags)];
   }
 }
 
@@ -101,56 +82,40 @@ export class BodilySystem {
     this.state = { ...initial };
   }
 
-  update(deltaTimeMs: number): void {
-    const hours = deltaTimeMs / (1000 * 60 * 60);
-    
-    this.state.energy = Math.max(0, Math.min(100, this.state.energy - hours * 2));
-    this.state.hunger = Math.min(100, this.state.hunger + hours * 5);
-    this.state.sleepiness = Math.min(100, this.state.sleepiness + hours * 3);
+  update(timeDelta: number = 1): BodilyState {
+    this.state.energy = Math.max(0, Math.min(100, this.state.energy - 0.5 * timeDelta));
+    this.state.hunger = Math.min(100, this.state.hunger + 0.3 * timeDelta);
+    this.state.sleepiness = Math.min(100, this.state.sleepiness + 0.2 * timeDelta);
+
+    const energyFactor = this.state.energy / 100;
+    const sleepFactor = 1 - this.state.sleepiness / 100;
+
+    this.state.attractiveness = Math.max(0, Math.min(100,
+      70 + energyFactor * 15 + sleepFactor * 15
+    ));
+
+    return { ...this.state };
   }
 
-  getEnergyModifier(): number {
-    return 0.5 + (this.state.energy / 100) * 0.5;
+  getInfluence(): { valence: number; arousal: number } {
+    const energy = this.state.energy / 100;
+    const hunger = this.state.hunger / 100;
+    const sleep = this.state.sleepiness / 100;
+
+    return {
+      valence: (energy * 0.3 - hunger * 0.2 - sleep * 0.2),
+      arousal: Math.max(0, energy * 0.4 - sleep * 0.3),
+    };
   }
 
-  getMoodInfluence(): { valence: number; arousal: number } {
-    let valence = 0;
-    let arousal = 0;
-
-    if (this.state.sleepiness > 70) {
-      valence -= 0.2;
-      arousal -= 0.4;
-    }
-    if (this.state.hunger > 80) {
-      valence -= 0.15;
-      arousal += 0.1;
-    }
-    if (this.state.energy < 30) {
-      valence -= 0.1;
-      arousal -= 0.3;
-    }
-
-    return { valence, arousal };
+  rest(amount: number = 20): void {
+    this.state.energy = Math.min(100, this.state.energy + amount);
+    this.state.sleepiness = Math.max(0, this.state.sleepiness - amount * 0.8);
   }
 
-  interact(interactionType: string): void {
-    switch (interactionType) {
-      case "chat":
-        this.state.energy = Math.max(0, this.state.energy - 1);
-        break;
-      case "play":
-        this.state.energy = Math.max(0, this.state.energy - 5);
-        this.state.sleepiness = Math.max(0, this.state.sleepiness - 5);
-        break;
-      case "sleep":
-        this.state.energy = Math.min(100, this.state.energy + 30);
-        this.state.sleepiness = Math.max(0, this.state.sleepiness - 50);
-        break;
-      case "feed":
-        this.state.hunger = Math.max(0, this.state.hunger - 40);
-        this.state.energy = Math.min(100, this.state.energy + 10);
-        break;
-    }
+  eat(amount: number = 30): void {
+    this.state.hunger = Math.max(0, this.state.hunger - amount);
+    this.state.energy = Math.min(100, this.state.energy + amount * 0.3);
   }
 }
 
@@ -161,47 +126,147 @@ export class InstinctSystem {
     this.state = { ...initial };
   }
 
-  update(deltaTimeMs: number): void {
-    const hours = deltaTimeMs / (1000 * 60 * 60);
-    
-    this.state.companionshipNeed = Math.min(100, this.state.companionshipNeed + hours * 2);
-    this.state.attentionNeed = Math.min(100, this.state.attentionNeed + hours * 3);
-    this.state.securityNeed = Math.min(100, this.state.securityNeed + hours * 1);
-    this.state.intimacyNeed = Math.min(100, this.state.intimacyNeed + hours * 1.5);
-    this.state.curiosity = Math.min(100, this.state.curiosity + hours * 0.5);
+  update(interactionQuality: number, attention: number, updateDelta: number = 1): InstinctState {
+    this.state.companionshipNeed = Math.min(100, this.state.companionshipNeed + 0.1 * updateDelta);
+    this.state.attentionNeed = Math.min(100, this.state.attentionNeed + 0.15 * updateDelta);
+    this.state.securityNeed = Math.max(20, Math.min(100, this.state.securityNeed + interactionQuality * 5));
+    this.state.intimacyNeed = Math.min(100, this.state.intimacyNeed + 0.05 * updateDelta);
+    this.state.curiosity = Math.max(30, Math.min(100, this.state.curiosity + 0.05 * updateDelta));
+
+    if (interactionQuality > 0) {
+      this.state.companionshipNeed = Math.max(0, this.state.companionshipNeed - interactionQuality * 3);
+      this.state.attentionNeed = Math.max(0, this.state.attentionNeed - attention * 4);
+    }
+
+    return { ...this.state };
   }
 
-  satisfy(needType: keyof InstinctState, amount: number): void {
-    this.state[needType] = Math.max(0, this.state[needType] - amount);
+  getInfluence(): { valence: number; arousal: number } {
+    const companionship = this.state.companionshipNeed / 100;
+    const attention = this.state.attentionNeed / 100;
+    const security = this.state.securityNeed / 100;
+    const intimacy = this.state.intimacyNeed / 100;
+    const ego = this.state.ego / 100;
+
+    return {
+      valence: security * 0.2 + intimacy * 0.15 - (1 - security) * 0.3,
+      arousal: companionship * 0.3 + attention * 0.3 + ego * 0.2,
+    };
   }
 
-  getUrgentNeeds(): { need: keyof InstinctState; urgency: number }[] {
-    const needs: { need: keyof InstinctState; urgency: number }[] = [];
-    
-    for (const [key, value] of Object.entries(this.state) as [keyof InstinctState, number][]) {
-      if (value > 60) {
-        needs.push({ need: key, urgency: value });
+  satisfyCompanionship(amount: number): void {
+    this.state.companionshipNeed = Math.max(0, this.state.companionshipNeed - amount);
+  }
+
+  satisfyAttention(amount: number): void {
+    this.state.attentionNeed = Math.max(0, this.state.attentionNeed - amount);
+  }
+}
+
+export class PersonaMatrixSystem {
+  state: PersonaMatrix;
+  private profile: CharacterProfile;
+
+  constructor(initial: PersonaMatrix, profile: CharacterProfile) {
+    this.state = { ...initial };
+    this.profile = profile;
+  }
+
+  update(
+    inputAnalysis: { sentiment: { valence: number; arousal: number }; intent: string; keywords: string[] },
+    relationship: RelationshipState,
+    behaviorTags: BehaviorTag[]
+  ): PersonaMatrix {
+    const { sentiment, intent, keywords } = inputAnalysis;
+
+    let affectionDelta = 0;
+    let resentmentDelta = 0;
+    let trustDelta = 0;
+
+    if (sentiment.valence > 0.3) {
+      affectionDelta += sentiment.valence * 3;
+      resentmentDelta = Math.max(resentmentDelta - 1, -sentiment.valence * 2);
+    }
+
+    if (sentiment.valence < -0.2) {
+      resentmentDelta += Math.abs(sentiment.valence) * 4;
+      affectionDelta -= Math.abs(sentiment.valence) * 1.5;
+    }
+
+    if (keywords.includes("apology")) {
+      resentmentDelta -= 8;
+      trustDelta += 2;
+      affectionDelta += 2;
+    }
+    if (keywords.includes("compliment")) {
+      affectionDelta += 3;
+      if (Math.random() < this.profile.puaTendency * 0.3) {
+        resentmentDelta += 1;
       }
     }
-    
-    return needs.sort((a, b) => b.urgency - a.urgency);
-  }
-
-  getMoodInfluence(): { valence: number; arousal: number } {
-    let valence = 0;
-    let arousal = 0;
-
-    const avgNeed = (this.state.companionshipNeed + this.state.attentionNeed + this.state.intimacyNeed) / 3;
-    
-    if (avgNeed > 80) {
-      valence -= 0.3;
-      arousal += 0.2;
-    } else if (avgNeed > 60) {
-      valence -= 0.15;
-      arousal += 0.1;
+    if (keywords.includes("ignore")) {
+      resentmentDelta += 6;
+      trustDelta -= 2;
+    }
+    if (keywords.includes("jealousy")) {
+      resentmentDelta += 10;
+      affectionDelta -= 3;
+    }
+    if (keywords.includes("sarcasm")) {
+      resentmentDelta += 4;
+    }
+    if (keywords.includes("affectionate")) {
+      affectionDelta += 4;
+      resentmentDelta = Math.max(resentmentDelta - 2, -3);
+      trustDelta += 1;
     }
 
-    return { valence, arousal };
+    if (behaviorTags.includes("self_abased")) {
+      if (Math.random() < this.profile.puaTendency * 0.5) {
+        resentmentDelta += 2;
+      } else {
+        affectionDelta += 1;
+      }
+    }
+    if (behaviorTags.includes("insecure")) {
+      if (Math.random() < this.profile.puaTendency * 0.4) {
+        resentmentDelta += 1;
+      }
+    }
+    if (behaviorTags.includes("clingy")) {
+      resentmentDelta += 2;
+      affectionDelta += 1;
+    }
+    if (behaviorTags.includes("independent")) {
+      resentmentDelta -= 1;
+      affectionDelta -= 1;
+    }
+
+    const volatility = this.state.volatility;
+    affectionDelta *= (0.8 + volatility * 0.4);
+    resentmentDelta *= (0.7 + volatility * 0.6);
+
+    this.state.affection = Math.max(0, Math.min(100, this.state.affection + affectionDelta));
+    this.state.resentment = Math.max(0, Math.min(100, this.state.resentment + resentmentDelta));
+    this.state.trust = Math.max(0, Math.min(100, this.state.trust + trustDelta));
+
+    const baseVolatility = 0.5;
+    const neuroticism = this.profile.personality.find(p => p.id === "neuroticism")?.value || 0.5;
+    this.state.volatility = Math.max(0.2, Math.min(1, baseVolatility + neuroticism * 0.3 + (this.state.resentment / 100) * 0.3));
+
+    this.state.dominance = 0.5 + (this.profile.personality.find(p => p.id === "extraversion")?.value || 0.5) * 0.3 + this.state.resentment / 200;
+
+    this.state.selfEsteem = 0.6 + (this.profile.personality.find(p => p.id === "agreeableness")?.value || 0.5);
+
+    this.state.attachmentAnxiety = 0.4 + (this.state.resentment / 100) * 0.4 + (1 - this.state.trust / 100) * 0.3;
+
+    return { ...this.state };
+  }
+
+  naturalDecay(hoursPassed: number): void {
+    const decayRate = 0.5 * hoursPassed;
+    this.state.resentment = Math.max(0, this.state.resentment - decayRate * 0.3);
+    this.state.affection = Math.max(20, this.state.affection - decayRate * 0.1);
   }
 }
 
@@ -210,6 +275,7 @@ export class EmotionSystem {
   private personality: any[];
   private tsundereLevel: number;
   private puaTendency: number;
+  private moodHistory: MoodLogEntry[] = [];
 
   constructor(initial: EmotionState, personality: any[], tsundereLevel: number, puaTendency: number) {
     this.state = { ...initial };
@@ -219,259 +285,431 @@ export class EmotionSystem {
   }
 
   update(
-    inputAnalysis: { sentiment: { valence: number; arousal: number }; intent: string },
+    inputAnalysis: { sentiment: { valence: number; arousal: number }; intent: string; keywords: string[] },
     relationship: RelationshipState,
+    persona: PersonaMatrix,
     bodilyInfluence: { valence: number; arousal: number },
     instinctInfluence: { valence: number; arousal: number }
   ): EmotionState {
-    const neuroticism = this.personality.find((t) => t.id === "neuroticism")?.value ?? 0.5;
-    const agreeableness = this.personality.find((t) => t.id === "agreeableness")?.value ?? 0.5;
-    
-    const personalityModifier = 1 + (neuroticism - 0.5) * 0.4;
-    const relationshipModifier = 0.7 + (relationship.intimacy / 100) * 0.5;
+    const { sentiment, intent, keywords } = inputAnalysis;
 
-    let targetValence = 
-      inputAnalysis.sentiment.valence * personalityModifier * relationshipModifier +
-      bodilyInfluence.valence +
-      instinctInfluence.valence;
-    
-    let targetArousal = 
-      inputAnalysis.sentiment.arousal * personalityModifier +
-      bodilyInfluence.arousal +
-      instinctInfluence.arousal;
+    let targetValence = sentiment.valence * 0.4 + bodilyInfluence.valence * 0.15 + instinctInfluence.valence * 0.15;
+    let targetArousal = sentiment.arousal * 0.4 + bodilyInfluence.arousal * 0.2 + instinctInfluence.arousal * 0.2;
 
-    let dominanceShift = 0.5;
-    if (inputAnalysis.intent === "angry" || inputAnalysis.intent === "jealous") {
-      dominanceShift += 0.2;
+    targetValence += (persona.affection - 50) / 100 * 0.2;
+    targetValence -= (persona.resentment / 100) * 0.4;
+    targetArousal += (persona.resentment / 100) * 0.3;
+
+    const neuroticism = this.personality.find(p => p.id === "neuroticism")?.value || 0.5;
+    targetValence *= (1 - neuroticism * 0.2);
+    targetArousal *= (1 + neuroticism * 0.3);
+
+    targetValence = this.state.valence + (targetValence - this.state.valence) * 0.4;
+    targetArousal = this.state.arousal + (targetArousal - this.state.arousal) * 0.35;
+
+    const targetDominance = 0.5 + persona.dominance * 0.3 + (persona.resentment > 50 ? 0.2 : 0);
+
+    const targetMood = this.calculateMood(targetValence, targetArousal, targetDominance, persona, keywords);
+
+    this.state.valence = Math.max(-1, Math.min(1, targetValence));
+    this.state.arousal = Math.max(0, Math.min(1, targetArousal));
+    this.state.dominance = Math.max(0, Math.min(1, targetDominance));
+    this.state.mood = targetMood;
+    this.state.intensity = Math.abs(targetValence) * 0.5 + targetArousal * 0.5;
+
+    this.moodHistory.push({
+      timestamp: Date.now(),
+      mood: this.state.mood,
+      intensity: this.state.intensity,
+      trigger: intent,
+    });
+
+    if (this.moodHistory.length > 100) {
+      this.moodHistory.shift();
     }
-    if (inputAnalysis.intent === "apologize" || inputAnalysis.intent === "comfort") {
-      dominanceShift -= 0.1;
-    }
-
-    this.state.valence = this.lerp(this.state.valence, targetValence, 0.3);
-    this.state.arousal = this.lerp(this.state.arousal, targetArousal, 0.4);
-    this.state.dominance = this.lerp(this.state.dominance, dominanceShift, 0.2);
-    
-    this.state.mood = this.mapToMood(this.state.valence, this.state.arousal, inputAnalysis.intent);
-    this.state.intensity = Math.min(
-      1,
-      Math.abs(this.state.valence) + Math.abs(this.state.arousal) * 0.5
-    );
 
     return { ...this.state };
   }
 
-  triggerMood(mood: MoodType, intensity: number = 0.8): void {
-    const moodMapping: Record<MoodType, { valence: number; arousal: number; dominance: number }> = {
-      neutral: { valence: 0, arousal: 0, dominance: 0.5 },
-      happy: { valence: 0.7, arousal: 0.4, dominance: 0.5 },
-      excited: { valence: 0.9, arousal: 0.8, dominance: 0.6 },
-      shy: { valence: 0.5, arousal: 0.3, dominance: 0.3 },
-      love: { valence: 0.95, arousal: 0.6, dominance: 0.4 },
-      sad: { valence: -0.7, arousal: -0.3, dominance: 0.3 },
-      angry: { valence: -0.6, arousal: 0.7, dominance: 0.7 },
-      jealous: { valence: -0.4, arousal: 0.5, dominance: 0.6 },
-      sleepy: { valence: 0.1, arousal: -0.6, dominance: 0.4 },
-      thoughtful: { valence: 0.2, arousal: -0.2, dominance: 0.5 },
-      playful: { valence: 0.6, arousal: 0.7, dominance: 0.55 },
-      surprised: { valence: 0.3, arousal: 0.9, dominance: 0.5 },
-      cold: { valence: -0.2, arousal: -0.2, dominance: 0.6 },
-      disdain: { valence: -0.3, arousal: -0.1, dominance: 0.7 },
-      tsundere: { valence: 0.4, arousal: 0.3, dominance: 0.6 },
-      coquettish: { valence: 0.5, arousal: 0.5, dominance: 0.4 },
-      pua: { valence: 0.3, arousal: 0.2, dominance: 0.8 },
-    };
-
-    const target = moodMapping[mood];
-    if (!target) return;
-
-    this.state.valence = this.lerp(this.state.valence, target.valence * intensity, 0.6);
-    this.state.arousal = this.lerp(this.state.arousal, target.arousal * intensity, 0.7);
-    this.state.dominance = this.lerp(this.state.dominance, target.dominance, 0.5);
-    this.state.mood = mood;
-    this.state.intensity = intensity;
-  }
-
-  decay(deltaTimeMs: number): void {
-    const decayRate = 0.02;
-    const decayFactor = Math.exp(-decayRate * (deltaTimeMs / 1000));
-    this.state.valence *= decayFactor;
-    this.state.arousal *= decayFactor;
-    this.state.intensity *= decayFactor;
-
-    if (Math.abs(this.state.valence) < 0.05 && Math.abs(this.state.arousal) < 0.05) {
-      this.state.mood = "neutral";
-      this.state.valence = 0;
-      this.state.arousal = 0;
+  private calculateMood(
+    valence: number,
+    arousal: number,
+    dominance: number,
+    persona: PersonaMatrix,
+    keywords: string[]
+  ): MoodType {
+    if (persona.resentment > 70) {
+      return "angry";
     }
-  }
 
-  private mapToMood(valence: number, arousal: number, intent: string): MoodType {
-    if (intent === "jealous") return "jealous";
-    if (intent === "pua_test") return this.puaTendency > 0.3 ? "pua" : "sad";
-    if (intent === "coax" && this.tsundereLevel > 0.5) return "tsundere";
-    
-    if (Math.abs(valence) < 0.15 && Math.abs(arousal) < 0.15) {
-      return "neutral";
+    if (keywords.includes("jealousy") && persona.resentment > 40) {
+      return "jealous";
     }
-    if (valence > 0.6) {
-      if (arousal > 0.5) return "excited";
-      if (arousal < -0.3) return "thoughtful";
-      if (valence > 0.8) return "love";
+
+    if (keywords.includes("apology") && persona.resentment > 30) {
+      if (Math.random() < this.tsundereLevel) {
+        return "tsundere";
+      }
+    }
+
+    if (valence > 0.5 && arousal > 0.6) {
+      if (Math.random() < this.tsundereLevel * 0.4) {
+        return "tsundere";
+      }
+      return "excited";
+    }
+    if (valence > 0.3 && arousal > 0.4) {
       return "happy";
     }
-    if (valence > 0.2) {
-      if (arousal > 0.5) return "playful";
-      if (arousal < 0) return "shy";
-      return "happy";
+    if (valence > 0.6 && dominance < 0.5) {
+      return "shy";
     }
-    if (valence < -0.4) {
-      if (arousal > 0.4) return "angry";
+    if (valence > 0.5 && keywords.includes("affectionate")) {
+      return "love";
+    }
+    if (valence < -0.4 && arousal > 0.5) {
+      if (Math.random() < this.puaTendency) {
+        return "pua";
+      }
+      return "angry";
+    }
+    if (valence < -0.3 && arousal < 0.4) {
+      if (dominance > 0.6) {
+        return "cold";
+      }
       return "sad";
     }
-    if (arousal > 0.6) return "surprised";
-    if (arousal < -0.5) return "sleepy";
+    if (valence < -0.5 && dominance > 0.6 && Math.random() < this.puaTendency * 0.7) {
+      return "pua";
+    }
+    if (arousal < 0.25 && valence > -0.2 && valence < 0.2) {
+      return "sleepy";
+    }
+    if (keywords.includes("compliment") && Math.random() < this.tsundereLevel * 0.6) {
+      return "tsundere";
+    }
+    if (keywords.includes("sarcasm")) {
+      if (dominance > 0.5) return "disdain";
+      return "cold";
+    }
+    if (keywords.includes("question") && arousal > 0.4 && valence > 0) {
+      return "playful";
+    }
+
+    if (persona.resentment > 50 && Math.random() < this.tsundereLevel * 0.3) {
+      return "tsundere";
+    }
+
+    if (persona.resentment > 40 && Math.random() < this.puaTendency * 0.4) {
+      return "pua";
+    }
+
     return "neutral";
   }
 
-  private lerp(a: number, b: number, t: number): number {
-    return a + (b - a) * t;
+  triggerMood(mood: MoodType, intensity: number = 0.8): void {
+    this.state.mood = mood;
+    this.state.intensity = intensity;
+    const config = MOOD_CONFIG[mood];
+    if (config) {
+      switch (mood) {
+        case "happy":
+        case "excited":
+        case "love":
+        case "shy":
+          this.state.valence = intensity;
+          break;
+        case "angry":
+        case "sad":
+        case "jealous":
+          this.state.valence = -intensity;
+          break;
+        default:
+          this.state.valence = 0;
+      }
+      this.state.arousal = intensity * 0.7;
+    }
+  }
+
+  getMoodHistory(): MoodLogEntry[] {
+    return [...this.moodHistory];
+  }
+
+  getDominantMood(hours: number = 24): MoodType {
+    const cutoff = Date.now() - hours * 3600 * 1000;
+    const recent = this.moodHistory.filter(m => m.timestamp > cutoff);
+    if (recent.length === 0) return this.state.mood;
+    
+    const counts: Record<string, number> = {};
+    recent.forEach(m => {
+      counts[m.mood] = (counts[m.mood] || 0) + m.intensity;
+    });
+    
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] as MoodType || this.state.mood;
+  }
+}
+
+export class TriggerEngine {
+  private profile: CharacterProfile;
+
+  constructor(profile: CharacterProfile) {
+    this.profile = profile;
+  }
+
+  evaluate(lifeState: LifeState): TriggerState {
+    const now = Date.now();
+    const timeSinceLastInteraction = now - lifeState.relationship.lastInteractionTime;
+    const hoursSinceLastInteraction = timeSinceLastInteraction / (1000 * 60 * 60);
+
+    const resentmentAboveThreshold = lifeState.persona.resentment >= this.profile.aggressiveThreshold;
+
+    const inactivityAboveThreshold = timeSinceLastInteraction > TWELVE_HOURS_MS;
+
+    const coldTreatmentActive = lifeState.relationship.coldTreatmentActive;
+
+    const aggressionActive = resentmentAboveThreshold && !coldTreatmentActive;
+
+    return {
+      resentmentAboveThreshold,
+      inactivityAboveThreshold,
+      coldTreatmentActive,
+      aggressionActive,
+      timeSinceLastInteraction: hoursSinceLastInteraction,
+    };
+  }
+
+  shouldStartColdTreatment(triggerState: TriggerState, lifeState: LifeState): boolean {
+    if (triggerState.coldTreatmentActive) return false;
+    
+    const resentment = lifeState.persona.resentment;
+    const coldThreshold = this.profile.coldThreshold;
+
+    if (resentment < coldThreshold) return false;
+    if (triggerState.inactivityAboveThreshold) return true;
+    if (resentment > coldThreshold + 15 && Math.random() < 0.3) return true;
+
+    return false;
+  }
+
+  shouldEndColdTreatment(lifeState: LifeState): boolean {
+    if (!lifeState.relationship.coldTreatmentActive) return false;
+
+    const coldDuration = Date.now() - lifeState.relationship.coldTreatmentStartTime;
+    const coldHours = coldDuration / (1000 * 60 * 60);
+    const minColdHours = 2 + (lifeState.persona.resentment / 30);
+
+    if (coldHours < minColdHours) return false;
+    if (lifeState.persona.resentment < 30) return true;
+    if (coldHours > minColdHours * 2 && Math.random() < 0.2) return true;
+
+    return false;
+  }
+
+  shouldOfferReconciliation(lifeState: LifeState): boolean {
+    if (!lifeState.relationship.coldTreatmentActive) return false;
+    if (lifeState.relationship.reconciliationAvailable) return false;
+
+    const coldDuration = Date.now() - lifeState.relationship.coldTreatmentStartTime;
+    const coldHours = coldDuration / (1000 * 60 * 60);
+
+    if (coldHours > 4 && lifeState.persona.affection > 40) {
+      return Math.random() < 0.3;
+    }
+
+    return false;
+  }
+}
+
+export class MemorySystem {
+  private shortTerm: MemoryEntry[] = [];
+  private longTerm: MemoryEntry[] = [];
+  private behaviorLogs: { timestamp: number; tags: BehaviorTag[]; content: string }[] = [];
+  private maxShortTerm = 50;
+  private maxLongTerm = 500;
+
+  addMemory(type: MemoryType, content: string, importance: number = 0.5, emotionalImpact: number = 0, behaviorTags?: BehaviorTag[]): void {
+    const entry: MemoryEntry = {
+      id: `mem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      content,
+      timestamp: Date.now(),
+      importance,
+      emotionalImpact,
+      valence: emotionalImpact,
+      behaviorTags,
+    };
+
+    this.shortTerm.push(entry);
+    if (this.shortTerm.length > this.maxShortTerm) {
+      this.shortTerm.shift();
+    }
+
+    if (importance > 0.7 || Math.abs(emotionalImpact) > 0.5) {
+      this.longTerm.push(entry);
+      if (this.longTerm.length > this.maxLongTerm) {
+        this.longTerm.shift();
+      }
+    }
+  }
+
+  addBehaviorLog(content: string, tags: BehaviorTag[]): void {
+    this.behaviorLogs.push({ timestamp: Date.now(), tags, content });
+    if (this.behaviorLogs.length > 200) {
+      this.behaviorLogs.shift();
+    }
+  }
+
+  getRecentMemories(hours: number = 24): MemoryEntry[] {
+    const cutoff = Date.now() - hours * 3600 * 1000;
+    return this.shortTerm.filter(m => m.timestamp > cutoff);
+  }
+
+  getImportantMemories(limit: number = 10): MemoryEntry[] {
+    return [...this.longTerm]
+      .sort((a, b) => b.importance + Math.abs(b.emotionalImpact) - (a.importance + Math.abs(a.emotionalImpact)))
+      .slice(0, limit);
+  }
+
+  getBehaviorProfile(): { dominantTags: BehaviorTag[]; tagCounts: Record<BehaviorTag, number> } {
+    const tagCounts: Record<string, number> = {};
+    this.behaviorLogs.forEach(log => {
+      log.tags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    });
+
+    const dominantTags = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag]) => tag as BehaviorTag);
+
+    return { dominantTags, tagCounts: tagCounts as Record<BehaviorTag, number> };
+  }
+
+  getResentmentMemories(): MemoryEntry[] {
+    return this.longTerm.filter(m => m.type === "resentment");
+  }
+
+  consolidate(): void {
+    const oneWeekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+    const toPromote = this.shortTerm.filter(m =>
+      m.timestamp > oneWeekAgo && (m.importance > 0.6 || Math.abs(m.emotionalImpact) > 0.4)
+    );
+
+    toPromote.forEach(m => {
+      if (!this.longTerm.find(l => l.id === m.id)) {
+        this.longTerm.push(m);
+      }
+    });
+
+    if (this.longTerm.length > this.maxLongTerm) {
+      this.longTerm.sort((a, b) => b.importance + Math.abs(b.emotionalImpact) - (a.importance + Math.abs(a.emotionalImpact)));
+      this.longTerm = this.longTerm.slice(0, this.maxLongTerm);
+    }
   }
 }
 
 export class DecisionEngine {
   private profile: CharacterProfile;
-  private lifeState: LifeState;
+  private triggerEngine: TriggerEngine;
 
-  constructor(profile: CharacterProfile, lifeState: LifeState) {
+  constructor(profile: CharacterProfile) {
     this.profile = profile;
-    this.lifeState = lifeState;
+    this.triggerEngine = new TriggerEngine(profile);
   }
 
   decide(
-    inputAnalysis: { intent: string; sentiment: { valence: number; arousal: number }; keywords: string[] },
-    currentEmotion: EmotionState
+    inputAnalysis: { sentiment: { valence: number; arousal: number }; intent: string; keywords: string[] },
+    lifeState: LifeState,
+    behaviorTags: BehaviorTag[]
   ): DecisionResult {
-    let responseType = "default";
-    let emotionTarget: MoodType = currentEmotion.mood;
+    const triggerState = this.triggerEngine.evaluate(lifeState);
+
+    let personaMode: DecisionResult["personaMode"] = "normal";
     let puaLevel = 0;
-
-    const intimacy = this.lifeState.relationship.intimacy;
-    const puaTendency = this.profile.puaTendency;
-    const tsundereLevel = this.profile.tsundereLevel;
-
-    switch (inputAnalysis.intent) {
-      case "greeting":
-        responseType = "greeting";
-        emotionTarget = intimacy > 60 ? "love" : "happy";
-        break;
-      case "love":
-        responseType = "love";
-        emotionTarget = tsundereLevel > 0.6 ? "tsundere" : "love";
-        break;
-      case "compliment":
-        responseType = "shy";
-        emotionTarget = "shy";
-        break;
-      case "angry":
-        responseType = "angry_response";
-        emotionTarget = "angry";
-        break;
-      case "sad":
-        responseType = "comfort";
-        emotionTarget = "sad";
-        break;
-      case "jealous":
-        responseType = "jealous";
-        emotionTarget = "jealous";
-        break;
-      case "question":
-        responseType = "thoughtful";
-        emotionTarget = "thoughtful";
-        break;
-      case "comfort":
-        responseType = "touched";
-        emotionTarget = "love";
-        break;
-      case "apologize":
-        responseType = "forgive";
-        if (tsundereLevel > 0.5 && currentEmotion.mood === "angry") {
-          emotionTarget = "tsundere";
-        } else {
-          emotionTarget = "shy";
-        }
-        break;
-      case "playful":
-        responseType = "playful";
-        emotionTarget = "playful";
-        break;
-      case "sleepy":
-        responseType = "sleepy";
-        emotionTarget = "sleepy";
-        break;
-      case "pua_test":
-        if (puaTendency > 0.3) {
-          responseType = "pua";
-          emotionTarget = "pua";
-          puaLevel = puaTendency;
-        } else {
-          responseType = "reassurance";
-          emotionTarget = "love";
-        }
-        break;
-      case "coax":
-        if (currentEmotion.mood === "angry") {
-          responseType = "being_coaxed";
-          emotionTarget = tsundereLevel > 0.5 ? "tsundere" : "shy";
-        } else {
-          responseType = "happy";
-          emotionTarget = "happy";
-        }
-        break;
-      default:
-        responseType = "default";
-        emotionTarget = "happy";
-    }
-
-    const urgentNeeds = this.getUrgentInstinctNeeds();
+    let shouldColdTreat = false;
+    let reconciliationOffer = false;
     let shouldInitiate = false;
-    let actionPlan: string[] = [];
 
-    if (urgentNeeds.length > 0 && Math.random() < 0.3) {
-      shouldInitiate = true;
-      const topNeed = urgentNeeds[0];
-      actionPlan = this.getInitiativeActions(topNeed.need);
+    const resentment = lifeState.persona.resentment;
+    const affection = lifeState.persona.affection;
+    const tsundereLevel = this.profile.tsundereLevel;
+    const puaTendency = this.profile.puaTendency;
+
+    if (lifeState.relationship.coldTreatmentActive) {
+      if (this.triggerEngine.shouldEndColdTreatment(lifeState)) {
+        personaMode = "reconciliation";
+        reconciliationOffer = true;
+      } else {
+        personaMode = "silent_treatment";
+        shouldColdTreat = true;
+      }
+    } else if (this.triggerEngine.shouldStartColdTreatment(triggerState, lifeState)) {
+      personaMode = "silent_treatment";
+      shouldColdTreat = true;
+    } else if (triggerState.resentmentAboveThreshold) {
+      personaMode = "aggressive";
+    } else if (resentment > this.profile.coldThreshold) {
+      personaMode = "cold";
+    } else if (resentment > 30 && Math.random() < puaTendency * 0.5) {
+      personaMode = "pua";
+      puaLevel = 0.3 + (resentment / 100) * 0.5;
+    } else if (resentment > 20 && Math.random() < tsundereLevel * 0.6) {
+      personaMode = "tsundere";
+    } else if (affection > 70 && inputAnalysis.sentiment.valence > 0.3) {
+      personaMode = "affectionate";
     }
+
+    if (triggerState.inactivityAboveThreshold && affection > 40) {
+      shouldInitiate = true;
+    }
+
+    if (this.triggerEngine.shouldOfferReconciliation(lifeState)) {
+      reconciliationOffer = true;
+      personaMode = "reconciliation";
+    }
+
+    if (inputAnalysis.keywords.includes("apology") && resentment > 20 && resentment < 60) {
+      if (Math.random() < tsundereLevel * 0.7) {
+        personaMode = "tsundere";
+      } else {
+        personaMode = "reconciliation";
+        reconciliationOffer = true;
+      }
+    }
+
+    let responseType = "text_response";
+    if (personaMode === "aggressive") responseType = "argument";
+    if (personaMode === "silent_treatment") responseType = "cold_short";
+    if (personaMode === "pua") responseType = "pua_response";
+    if (personaMode === "tsundere") responseType = "tsundere_response";
+    if (personaMode === "reconciliation") responseType = "reconciliation_response";
+
+    const actionPlan: string[] = [];
+
+    if (shouldColdTreat && !lifeState.relationship.coldTreatmentActive) {
+      actionPlan.push("start_cold_treatment");
+    }
+    if (reconciliationOffer && lifeState.relationship.coldTreatmentActive) {
+      actionPlan.push("end_cold_treatment");
+    }
+    if (puaLevel > 0) actionPlan.push("apply_pua");
+    if (shouldInitiate) actionPlan.push("initiate_contact");
+    if (personaMode === "aggressive") actionPlan.push("attack");
 
     return {
       responseType,
       actionPlan,
-      emotionTarget,
+      emotionTarget: lifeState.emotion.mood,
+      personaMode,
       shouldInitiate,
       puaLevel,
+      shouldColdTreat,
+      reconciliationOffer,
     };
   }
 
-  private getUrgentInstinctNeeds(): { need: string; urgency: number }[] {
-    const needs = [];
-    if (this.lifeState.instinct.companionshipNeed > 70) {
-      needs.push({ need: "companionship", urgency: this.lifeState.instinct.companionshipNeed });
-    }
-    if (this.lifeState.instinct.attentionNeed > 75) {
-      needs.push({ need: "attention", urgency: this.lifeState.instinct.attentionNeed });
-    }
-    if (this.lifeState.instinct.intimacyNeed > 65) {
-      needs.push({ need: "intimacy", urgency: this.lifeState.instinct.intimacyNeed });
-    }
-    return needs.sort((a, b) => b.urgency - a.urgency);
-  }
-
-  private getInitiativeActions(needType: string): string[] {
-    const actions: Record<string, string[]> = {
-      companionship: ["主动找话题聊天", "问对方在干嘛", "说想对方了"],
-      attention: ["撒娇求关注", "分享有趣的事", "发小脾气引起注意"],
-      intimacy: ["说情话", "要抱抱", "聊暧昧话题"],
-    };
-    return actions[needType] || [];
+  getTriggerEngine(): TriggerEngine {
+    return this.triggerEngine;
   }
 }

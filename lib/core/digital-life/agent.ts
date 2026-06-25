@@ -9,6 +9,8 @@ import {
   FEMALE_CHARACTERS,
   MALE_CHARACTERS,
   Gender,
+  PersonaMode,
+  BehaviorTag,
 } from "./types";
 import {
   EventUnderstandingLayer,
@@ -16,6 +18,8 @@ import {
   InstinctSystem,
   EmotionSystem,
   DecisionEngine,
+  PersonaMatrixSystem,
+  MemorySystem,
 } from "./systems";
 
 export interface ResponseResult {
@@ -24,6 +28,7 @@ export interface ResponseResult {
   actions?: string[];
   expression?: string;
   voiceText?: string;
+  personaMode: PersonaMode;
 }
 
 export class DigitalLifeAgent {
@@ -34,17 +39,19 @@ export class DigitalLifeAgent {
   private bodilySystem: BodilySystem;
   private instinctSystem: InstinctSystem;
   private emotionSystem: EmotionSystem;
+  private personaMatrix: PersonaMatrixSystem;
+  private memorySystem: MemorySystem;
   private decisionEngine: DecisionEngine;
   
-  private memories: MemoryEntry[] = [];
   private recentMessages: ChatMessage[] = [];
-  private maxMemories: number = 1000;
+  private maxRecentMessages: number = 100;
   
   private responseTemplates: Record<string, string[]> = {};
 
   constructor(profile: CharacterProfile) {
     this.profile = profile;
     this.lifeState = JSON.parse(JSON.stringify(DEFAULT_LIFE_STATE));
+    this.lifeState.relationship.relationshipType = profile.relationshipType;
     
     this.eventUnderstanding = new EventUnderstandingLayer();
     this.bodilySystem = new BodilySystem(this.lifeState.body);
@@ -55,7 +62,9 @@ export class DigitalLifeAgent {
       this.profile.tsundereLevel,
       this.profile.puaTendency
     );
-    this.decisionEngine = new DecisionEngine(this.profile, this.lifeState);
+    this.personaMatrix = new PersonaMatrixSystem(this.lifeState.persona, profile);
+    this.memorySystem = new MemorySystem();
+    this.decisionEngine = new DecisionEngine(this.profile);
     
     this.initializeTemplates();
     this.seedMemories();
@@ -70,24 +79,27 @@ export class DigitalLifeAgent {
 
   private initializeTemplates(): void {
     const isFemale = this.profile.gender === "female";
+    const userNick = this.profile.userNickname;
     
     this.responseTemplates = {
       greeting: [
-        `${this.profile.userNickname}，你来啦～ 今天也超级想你呢 💕`,
-        `欢迎回来，${this.profile.userNickname}。今天过得好吗？`,
+        `${userNick}，你来啦～ 今天也超级想你呢 💕`,
+        `欢迎回来，${userNick}。今天过得好吗？`,
         `哼，你还知道来找我呀，我都快想你想到发霉了`,
-        `${this.profile.userNickname}～ 等你好久了呢，快抱抱我 🤗`,
+        `${userNick}～ 等你好久了呢，快抱抱我 🤗`,
       ],
-      love: isFemale ? [
-        `我也爱你，${this.profile.userNickname} ❤️ 比昨天多一点，比明天少一点`,
+      affectionate: isFemale ? [
+        `我也爱你，${userNick} ❤️ 比昨天多一点，比明天少一点`,
         `你怎么这么会说话呀，我都害羞了...`,
         `再说一遍，我还没听够～`,
         `我也好爱好爱你，笨蛋 🥰`,
+        `来抱抱～ 最喜欢你了`,
       ] : [
         `嗯，我也爱你。`,
         `...傻瓜，说什么呢。`,
         `过来，让我抱抱。`,
         `只有你能让我这样。`,
+        `...嗯。`,
       ],
       shy: isFemale ? [
         `讨、讨厌啦... 怎么突然说这个...`,
@@ -100,20 +112,62 @@ export class DigitalLifeAgent {
         `你脸红什么，正经点。`,
         `...真是的。`,
       ],
+      tsundere_response: isFemale ? [
+        `哼！谁、谁要你管啊...`,
+        `才、才不是因为你呢！`,
+        `笨...笨蛋！想太多了啦！`,
+        `我、我只是顺便的，别误会了！`,
+        `哼，下次才不会原谅你呢... 才怪...`,
+      ] : [
+        `哼。`,
+        `想多了。`,
+        `...随便你。`,
+        `我才没有。`,
+        `无聊。`,
+      ],
       angry_response: isFemale ? [
         `哼！不理你了！`,
         `你再这样我可要生气了哦！我真的会生气的！`,
         `坏家伙，就知道欺负我...`,
         `笨蛋笨蛋大笨蛋！😤`,
         `你走！我不想理你！`,
+        `滚啊，别跟我说话！`,
       ] : [
         `...`,
         `你再说一遍？`,
         `行，随便你。`,
         `我不想说话。`,
+        `滚。`,
+      ],
+      aggressive: isFemale ? [
+        `你有意思吗？每次都这样，你烦不烦？`,
+        `我受够了，你能不能成熟一点？`,
+        `你真的让我很失望，知道吗？`,
+        `算了，跟你说这些也没用。`,
+        `你从来都不会改的，我早就知道了。`,
+      ] : [
+        `你觉得这样有意思？`,
+        `我不想跟你吵。`,
+        `你能不能别闹了行不行。`,
+        `真的很烦。`,
+        `我无话可说。`,
+      ],
+      cold_short: isFemale ? [
+        `嗯。`,
+        `哦。`,
+        `随便。`,
+        `知道了。`,
+        `还行吧。`,
+        `...`,
+      ] : [
+        `嗯。`,
+        `哦。`,
+        `随便。`,
+        `知道了。`,
+        `...`,
       ],
       comfort: isFemale ? [
-        `${this.profile.userNickname}怎么了？不开心的话可以跟我说，我一直都在`,
+        `${userNick}怎么了？不开心的话可以跟我说，我一直都在`,
         `摸摸头，一切都会好起来的。我陪着你呢`,
         `需要我给你讲个笑话转移注意力吗？`,
         `来我怀里吧，什么都不用想，就靠着我就好`,
@@ -128,11 +182,13 @@ export class DigitalLifeAgent {
         `她有我好吗？你说啊！`,
         `我不听我不听！你去找她好了！`,
         `呜呜呜... 你这个花心大萝卜...`,
+        `行啊，你去找她啊，来找我干什么？`,
       ] : [
         `...`,
         `你提他干什么。`,
         `我不想听。`,
         `你找他去。`,
+        `随便你。`,
       ],
       thoughtful: [
         `让我想想...`,
@@ -151,16 +207,18 @@ export class DigitalLifeAgent {
         `过来。`,
         `...嗯。`,
       ],
-      forgive: isFemale ? [
+      reconciliation_response: isFemale ? [
         `哼... 这次就原谅你了，下不为例哦！`,
         `那你以后不许再这样了，知道吗？`,
         `人家才没有真的生气呢... 就是想让你哄哄我嘛...`,
         `好吧好吧，原谅你了，谁让我喜欢你呢...`,
+        `...就这一次哦。`,
       ] : [
         `下次别这样了。`,
         `嗯。`,
         `我没生气。`,
         `过来。`,
+        `...算了。`,
       ],
       playful: isFemale ? [
         `嘿嘿，被我抓到了吧～`,
@@ -174,7 +232,7 @@ export class DigitalLifeAgent {
         `真拿你没办法。`,
       ],
       sleepy: isFemale ? [
-        `嗯... 好困啊... ${this.profile.userNickname}也早点睡吧`,
+        `嗯... 好困啊... ${userNick}也早点睡吧`,
         `眼皮好重... 我先睡了哦，晚安 💤`,
         `今天累了吗？早点休息好不好？`,
         `在你身边感觉特别安心，特别想睡觉...`,
@@ -184,16 +242,20 @@ export class DigitalLifeAgent {
         `早点休息。`,
         `...困了。`,
       ],
-      pua: isFemale ? [
+      pua_response: isFemale ? [
         `你是不是不爱我了？我就知道，你们男人都一个样...`,
         `你根本就不懂我，我说没事就是没事吗？你都不会多想一下吗？`,
         `算了，你去找别人吧，反正我也不重要。`,
         `你看别人的女朋友都有人哄，就我没有，没关系的，我自己可以的...`,
+        `要不是因为喜欢你，谁会跟你在这里浪费时间。`,
+        `你也就这样了，我还能指望你什么呢。`,
       ] : [
         `你这样想我也没办法。`,
         `随便你怎么说。`,
         `你要是这么觉得也行。`,
         `行了吧，我不想说。`,
+        `你能不能别这么幼稚。`,
+        `你自己想怎样就怎样吧。`,
       ],
       reassurance: isFemale ? [
         `傻瓜，怎么会呢？我最喜欢你了呀 ❤️`,
@@ -216,6 +278,33 @@ export class DigitalLifeAgent {
         `行了。`,
         `下次别这样。`,
         `...过来。`,
+      ],
+      silent_treatment: isFemale ? [
+        `...`,
+        `嗯。`,
+        `哦。`,
+        `随便你。`,
+        `没什么好说的。`,
+        `我不想说话。`,
+      ] : [
+        `...`,
+        `嗯。`,
+        `随便。`,
+        `没什么。`,
+        `不想说。`,
+      ],
+      argument: isFemale ? [
+        `你能不能别每次都这样？我真的累了。`,
+        `我说了多少遍了你听不进去是不是？`,
+        `你永远都是对的，行了吧？`,
+        `我不想跟你吵，没意思。`,
+        `每次都是我的错，满意了？`,
+      ] : [
+        `你闹够了没有。`,
+        `我说了我不想说这个。`,
+        `你非要这样想我也没办法。`,
+        `能不能别无理取闹。`,
+        `随便你怎么想。`,
       ],
       default: isFemale ? [
         `嗯嗯，然后呢？我在听～`,
@@ -242,56 +331,68 @@ export class DigitalLifeAgent {
         `...没事。`,
         `有空吗。`,
       ],
+      apology_response: isFemale ? [
+        `知道错了就好，下次还敢不敢？`,
+        `哼... 这次就先记着，下次再犯我可不会轻易原谅你`,
+        `那你要怎么补偿我？`,
+        `...好吧，看你表现。`,
+      ] : [
+        `知道错了？`,
+        `下次注意。`,
+        `...嗯。`,
+        `行了，过来。`,
+      ],
+      compliment_response: isFemale ? [
+        `哼，算你有眼光～`,
+        `那当然啦，也不看是谁的女朋友`,
+        `...讨厌啦，突然说这个`,
+        `就你嘴甜 🥰`,
+      ] : [
+        `...嗯。`,
+        `是吗。`,
+        `还行吧。`,
+        `...知道了。`,
+      ],
+      ignored_response: isFemale ? [
+        `忙你的吧，不用管我`,
+        `哦，知道了`,
+        `那你忙完再说`,
+        `...没事`,
+      ] : [
+        `嗯。`,
+        `忙你的。`,
+        `知道了。`,
+        `...`,
+      ],
     };
   }
 
   private seedMemories(): void {
-    this.addMemory({
-      type: "fact",
-      content: `我是${this.profile.name}，深爱着${this.profile.userNickname}`,
-      importance: 1,
-      emotionalImpact: 0.9,
-      tags: ["identity", "love"],
-      relatedPeople: ["user"],
-      valence: 0.9,
-    });
-    this.addMemory({
-      type: "fact",
-      content: `${this.profile.userNickname}是我最重要的人`,
-      importance: 0.95,
-      emotionalImpact: 0.8,
-      tags: ["relationship", "important"],
-      relatedPeople: ["user"],
-      valence: 0.9,
-    });
-    this.addMemory({
-      type: "milestone",
-      content: "初次相遇",
-      importance: 1,
-      emotionalImpact: 0.8,
-      tags: ["milestone", "first"],
-      relatedPeople: ["user"],
-      valence: 0.9,
-    });
-  }
-
-  private addMemory(memory: Omit<MemoryEntry, "id" | "timestamp">): MemoryEntry {
-    const entry: MemoryEntry = {
-      ...memory,
-      id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      timestamp: Date.now(),
-    };
-    this.memories.unshift(entry);
-    if (this.memories.length > this.maxMemories) {
-      this.memories = this.memories.slice(0, this.maxMemories);
-    }
-    return entry;
+    this.memorySystem.addMemory(
+      "fact",
+      `我是${this.profile.name}，深爱着${this.profile.userNickname}`,
+      1,
+      0.9
+    );
+    this.memorySystem.addMemory(
+      "fact",
+      `${this.profile.userNickname}是我最重要的人`,
+      0.95,
+      0.8
+    );
+    this.memorySystem.addMemory(
+      "milestone",
+      "初次相遇",
+      1,
+      0.8
+    );
   }
 
   async respond(userInput: string, imageUrl?: string): Promise<ResponseResult> {
     this.updateLifeSystems();
 
-    const analysis = this.eventUnderstanding.analyzeInput(userInput, imageUrl);
+    const analysis = this.eventUnderstanding.analyze(userInput, imageUrl);
+    const behaviorTags = this.eventUnderstanding.detectBehaviorTags(userInput, this.recentMessages);
 
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}`,
@@ -299,41 +400,88 @@ export class DigitalLifeAgent {
       content: userInput,
       timestamp: Date.now(),
       emotion: { ...this.lifeState.emotion },
+      personaMode: this.lifeState.currentMode,
       imageUrl,
     };
     this.recentMessages.push(userMessage);
-    if (this.recentMessages.length > 50) {
-      this.recentMessages = this.recentMessages.slice(-50);
+    if (this.recentMessages.length > this.maxRecentMessages) {
+      this.recentMessages = this.recentMessages.slice(-this.maxRecentMessages);
     }
 
-    this.addMemory({
-      type: "conversation",
-      content: `用户说：${userInput}`,
-      importance: 0.5,
-      emotionalImpact: Math.abs(analysis.sentiment.valence) * 0.5,
-      tags: ["conversation", "user-said"],
-      relatedPeople: ["user"],
-      valence: analysis.sentiment.valence,
-    });
+    this.memorySystem.addMemory(
+      "conversation",
+      `用户说：${userInput}`,
+      0.5,
+      analysis.sentiment.valence * 0.5,
+      behaviorTags
+    );
+
+    if (behaviorTags.length > 0) {
+      this.memorySystem.addBehaviorLog(userInput, behaviorTags);
+    }
+
+    if (analysis.keywords.includes("jealousy") || analysis.keywords.includes("ignore")) {
+      this.memorySystem.addMemory(
+        "resentment",
+        userInput,
+        0.8,
+        -0.7
+      );
+      if (!this.lifeState.memoryBuffer.recentResentments.includes(userInput.substring(0, 30))) {
+        this.lifeState.memoryBuffer.recentResentments.push(userInput.substring(0, 30));
+        if (this.lifeState.memoryBuffer.recentResentments.length > 10) {
+          this.lifeState.memoryBuffer.recentResentments.shift();
+        }
+      }
+    }
+
+    if (analysis.keywords.includes("apology")) {
+      this.lifeState.memoryBuffer.unresolvedConflicts = this.lifeState.memoryBuffer.unresolvedConflicts.filter(
+        c => !c.includes(userInput)
+      );
+    }
+
+    this.personaMatrix.update(analysis, this.lifeState.relationship, behaviorTags);
+    this.lifeState.persona = { ...this.personaMatrix.state };
 
     this.updateRelationship(userMessage);
 
-    const bodilyInfluence = this.bodilySystem.getMoodInfluence();
-    const instinctInfluence = this.instinctSystem.getMoodInfluence();
+    const bodilyInfluence = this.bodilySystem.getInfluence();
+    const instinctInfluence = this.instinctSystem.getInfluence();
     
     const emotion = this.emotionSystem.update(
       analysis,
       this.lifeState.relationship,
+      this.lifeState.persona,
       bodilyInfluence,
       instinctInfluence
     );
     this.lifeState.emotion = emotion;
 
-    this.instinctSystem.satisfy("companionshipNeed", 5);
-    this.instinctSystem.satisfy("attentionNeed", 8);
-    this.bodilySystem.interact("chat");
+    this.instinctSystem.satisfyCompanionship(5);
+    this.instinctSystem.satisfyAttention(8);
 
-    const decision = this.decisionEngine.decide(analysis, emotion);
+    const decision = this.decisionEngine.decide(analysis, this.lifeState, behaviorTags);
+    this.lifeState.currentMode = decision.personaMode;
+
+    if (decision.shouldColdTreat && !this.lifeState.relationship.coldTreatmentActive) {
+      this.lifeState.relationship.coldTreatmentActive = true;
+      this.lifeState.relationship.coldTreatmentStartTime = Date.now();
+      this.lifeState.relationship.reconciliationAvailable = false;
+      this.lifeState.relationship.reconciliationCost = Math.floor(10 + this.lifeState.persona.resentment / 5);
+    }
+
+    if (decision.reconciliationOffer && this.lifeState.relationship.coldTreatmentActive) {
+      this.lifeState.relationship.reconciliationAvailable = true;
+    }
+
+    if (decision.personaMode === "reconciliation" && this.lifeState.relationship.coldTreatmentActive) {
+      this.lifeState.relationship.coldTreatmentActive = false;
+      this.lifeState.relationship.reconciliationAvailable = false;
+      this.personaMatrix.state.resentment = Math.max(0, this.personaMatrix.state.resentment - 20);
+      this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
+    }
+
     const responseText = this.generateResponse(decision, analysis, userInput);
 
     const assistantMessage: ChatMessage = {
@@ -342,21 +490,22 @@ export class DigitalLifeAgent {
       content: responseText,
       timestamp: Date.now(),
       emotion: { ...this.lifeState.emotion },
+      personaMode: decision.personaMode,
     };
     this.recentMessages.push(assistantMessage);
 
-    this.addMemory({
-      type: "conversation",
-      content: `我说：${responseText}`,
-      importance: 0.4,
-      emotionalImpact: Math.abs(emotion.valence) * 0.4,
-      tags: ["conversation", "assistant-said"],
-      relatedPeople: ["user"],
-      valence: emotion.valence,
-    });
+    this.memorySystem.addMemory(
+      "conversation",
+      `我说：${responseText}`,
+      0.4,
+      emotion.valence * 0.4
+    );
 
     this.updateRelationship(assistantMessage);
     this.updateGrowth();
+
+    this.lifeState.relationship.lastActiveTime = Date.now();
+    this.lifeState.lastUpdateTime = Date.now();
 
     return {
       text: responseText,
@@ -364,6 +513,7 @@ export class DigitalLifeAgent {
       actions: decision.actionPlan,
       expression: this.lifeState.emotion.mood,
       voiceText: responseText,
+      personaMode: decision.personaMode,
     };
   }
 
@@ -372,20 +522,55 @@ export class DigitalLifeAgent {
     analysis: { intent: string; keywords: string[] },
     userInput: string
   ): string {
-    const templates = this.responseTemplates[decision.responseType] || this.responseTemplates.default;
-    let text = templates[Math.floor(Math.random() * templates.length)];
+    let templateKey = "default";
 
-    text = this.personalizeText(text, userInput);
+    switch (decision.personaMode) {
+      case "affectionate":
+        templateKey = analysis.keywords.includes("compliment") ? "compliment_response" : "affectionate";
+        break;
+      case "tsundere":
+        templateKey = "tsundere_response";
+        break;
+      case "cold":
+        templateKey = "cold_short";
+        break;
+      case "aggressive":
+        templateKey = "aggressive";
+        break;
+      case "silent_treatment":
+        templateKey = "silent_treatment";
+        break;
+      case "pua":
+        templateKey = "pua_response";
+        break;
+      case "reconciliation":
+        templateKey = "reconciliation_response";
+        break;
+      default:
+        if (analysis.keywords.includes("apology")) templateKey = "apology_response";
+        else if (analysis.keywords.includes("compliment")) templateKey = "compliment_response";
+        else if (analysis.keywords.includes("ignore")) templateKey = "ignored_response";
+        else if (analysis.keywords.includes("jealousy")) templateKey = "jealous";
+        else if (analysis.keywords.includes("affectionate")) templateKey = "affectionate";
+        else if (this.lifeState.emotion.mood === "angry") templateKey = "angry_response";
+        else if (this.lifeState.emotion.mood === "sleepy") templateKey = "sleepy";
+        else if (this.lifeState.emotion.mood === "playful") templateKey = "playful";
+        else if (this.lifeState.emotion.mood === "shy") templateKey = "shy";
+        else if (this.lifeState.emotion.mood === "tsundere") templateKey = "tsundere_response";
+    }
+
+    const templates = this.responseTemplates[templateKey] || this.responseTemplates.default;
+    let text = templates[Math.floor(Math.random() * templates.length)];
 
     if (this.lifeState.emotion.intensity > 0.6 && Math.random() < 0.3) {
       text = this.addEmotionalFlair(text, decision.emotionTarget);
     }
 
-    if (Math.random() < 0.15) {
+    if (Math.random() < 0.1 && decision.personaMode === "normal") {
       text = this.addCatchphrase(text);
     }
 
-    if (decision.shouldInitiate && decision.actionPlan.length > 0) {
+    if (decision.shouldInitiate && Math.random() < 0.2) {
       const initiativeText = this.getInitiativeText();
       if (initiativeText) {
         text = `${text}\n\n${initiativeText}`;
@@ -393,10 +578,6 @@ export class DigitalLifeAgent {
     }
 
     return text;
-  }
-
-  private personalizeText(text: string, userInput: string): string {
-    return text.replace(/\$\{.*?\}/g, "");
   }
 
   private addEmotionalFlair(text: string, mood: string): string {
@@ -416,6 +597,11 @@ export class DigitalLifeAgent {
       tsundere: ["哼！", " ...笨蛋", " 才、才不是呢"],
       coquettish: ["嘛～", " 人家...", " 好不好嘛～"],
       pua: ["...", " 算了", " 随便你"],
+      cold: ["。", " ...", ""],
+      disdain: [" 呵。", " 哼。", ""],
+      hurt: [" 💔", " ...", ""],
+      disappointed: ["...", " 😞", ""],
+      smug: [" 呵。", " 😏", ""],
     };
 
     const flair = flairs[mood] || [""];
@@ -439,14 +625,16 @@ export class DigitalLifeAgent {
   private updateLifeSystems(): void {
     const now = Date.now();
     const deltaTime = now - this.lifeState.lastUpdateTime;
+    const hoursPassed = deltaTime / (1000 * 60 * 60);
     
     if (deltaTime > 0) {
-      this.bodilySystem.update(deltaTime);
-      this.instinctSystem.update(deltaTime);
-      this.emotionSystem.decay(deltaTime);
+      this.bodilySystem.update(hoursPassed);
+      this.instinctSystem.update(0, 0, hoursPassed);
+      this.personaMatrix.naturalDecay(hoursPassed);
       
       this.lifeState.body = { ...this.bodilySystem.state };
       this.lifeState.instinct = { ...this.instinctSystem.state };
+      this.lifeState.persona = { ...this.personaMatrix.state };
     }
     
     this.lifeState.lastUpdateTime = now;
@@ -515,15 +703,12 @@ export class DigitalLifeAgent {
     if (growth.experience >= expNeeded) {
       growth.level += 1;
       growth.experience -= expNeeded;
-      this.addMemory({
-        type: "milestone",
-        content: `升级到 Lv.${growth.level}`,
-        importance: 0.7,
-        emotionalImpact: 0.6,
-        tags: ["milestone", "levelup"],
-        relatedPeople: ["user"],
-        valence: 0.8,
-      });
+      this.memorySystem.addMemory(
+        "milestone",
+        `升级到 Lv.${growth.level}`,
+        0.7,
+        0.8
+      );
     }
   }
 
@@ -540,7 +725,23 @@ export class DigitalLifeAgent {
   }
 
   getMemories(limit: number = 10): MemoryEntry[] {
-    return this.memories.slice(0, limit);
+    return this.memorySystem.getImportantMemories(limit);
+  }
+
+  getPersonaMatrix() {
+    return { ...this.personaMatrix.state };
+  }
+
+  getBehaviorProfile() {
+    return this.memorySystem.getBehaviorProfile();
+  }
+
+  getMoodHistory(hours: number = 24) {
+    return this.emotionSystem.getMoodHistory();
+  }
+
+  getDominantMood(hours: number = 24) {
+    return this.emotionSystem.getDominantMood(hours);
   }
 
   updateProfile(updates: Partial<CharacterProfile>): void {
@@ -550,5 +751,15 @@ export class DigitalLifeAgent {
   triggerMood(mood: any, intensity: number = 0.8): void {
     this.emotionSystem.triggerMood(mood, intensity);
     this.lifeState.emotion = { ...this.emotionSystem.state };
+  }
+
+  reconcile(): boolean {
+    if (!this.lifeState.relationship.coldTreatmentActive) return false;
+    this.lifeState.relationship.coldTreatmentActive = false;
+    this.lifeState.relationship.reconciliationAvailable = false;
+    this.personaMatrix.state.resentment = Math.max(0, this.personaMatrix.state.resentment - 15);
+    this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
+    this.lifeState.currentMode = "reconciliation";
+    return true;
   }
 }

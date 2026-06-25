@@ -7,4 +7,7 @@ export {
   InstinctSystem,
   EmotionSystem,
   DecisionEngine,
+  PersonaMatrixSystem,
+  MemorySystem,
+  TriggerEngine,
 } from "./systems";
