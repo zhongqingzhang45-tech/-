@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Application } from "pixi.js";
-import { Live2DModel, Live2DFactory, MotionPriority } from "pixi-live2d-display/cubism4";
+import * as PIXI from "pixi.js";
+import { Live2DModel } from "pixi-live2d-display/cubism4";
 
 export interface Live2DPlayerProps {
   modelUrl: string;
@@ -20,14 +20,6 @@ export interface Live2DPlayerProps {
   eyeTracking?: boolean;
   onModelLoaded?: () => void;
   onError?: (error: Error) => void;
-}
-
-interface ExpressionEntry {
-  name: string;
-  parameterId: string;
-  blend: "Add" | "Multiply" | "Overwrite";
-  value: number;
-  defaultValue: number;
 }
 
 export function Live2DPlayer({
@@ -48,9 +40,8 @@ export function Live2DPlayer({
   onError,
 }: Live2DPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const appRef = useRef<Application | null>(null);
+  const appRef = useRef<PIXI.Application | null>(null);
   const modelRef = useRef<Live2DModel | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -65,11 +56,8 @@ export function Live2DPlayer({
 
   const lastUpdateTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
-  const expressionsRef = useRef<Map<string, ExpressionEntry[]>>(new Map());
-  const activeExpressionRef = useRef<string | null>(null);
 
   const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-
   const easeOutQuad = (t: number) => 1 - (1 - t) * (1 - t);
   const easeInQuad = (t: number) => t * t;
 
@@ -82,8 +70,8 @@ export function Live2DPlayer({
       if (state.delayMs <= 0) {
         state.phase = "closing";
         state.progress = 0;
-        const leftEye = coreModel.getParameterValueById("ParamEyeLOpen") ?? 1;
-        const rightEye = coreModel.getParameterValueById("ParamEyeROpen") ?? 1;
+        const leftEye = coreModel.getParameterValueById?.("ParamEyeLOpen") ?? 1;
+        const rightEye = coreModel.getParameterValueById?.("ParamEyeROpen") ?? 1;
         state.startLeft = leftEye;
         state.startRight = rightEye;
       }
@@ -95,8 +83,8 @@ export function Live2DPlayer({
       const eased = easeOutQuad(state.progress);
       const eyeLOpen = clamp01(state.startLeft * (1 - eased));
       const eyeROpen = clamp01(state.startRight * (1 - eased));
-      coreModel.setParameterValueById("ParamEyeLOpen", eyeLOpen);
-      coreModel.setParameterValueById("ParamEyeROpen", eyeROpen);
+      coreModel.setParameterValueById?.("ParamEyeLOpen", eyeLOpen);
+      coreModel.setParameterValueById?.("ParamEyeROpen", eyeROpen);
 
       if (state.progress >= 1) {
         state.phase = "opening";
@@ -111,71 +99,13 @@ export function Live2DPlayer({
       const eased = easeInQuad(state.progress);
       const eyeLOpen = clamp01(state.startLeft * eased);
       const eyeROpen = clamp01(state.startRight * eased);
-      coreModel.setParameterValueById("ParamEyeLOpen", eyeLOpen);
-      coreModel.setParameterValueById("ParamEyeROpen", eyeROpen);
+      coreModel.setParameterValueById?.("ParamEyeLOpen", eyeLOpen);
+      coreModel.setParameterValueById?.("ParamEyeROpen", eyeROpen);
 
       if (state.progress >= 1) {
         state.phase = "idle";
         state.delayMs = 3000 + Math.random() * 5000;
       }
-    }
-  }, []);
-
-  const loadExpressions = useCallback(async (model: Live2DModel) => {
-    const internalModel = (model as any).internalModel;
-    const settings = internalModel?.settings;
-    if (!settings?.expressions) return;
-
-    const expMap = new Map<string, ExpressionEntry[]>();
-
-    for (const expRef of settings.expressions) {
-      try {
-        const expUrl = settings.resolveURL?.(expRef.File) ?? expRef.File;
-        const response = await fetch(expUrl);
-        const expData = await response.json();
-
-        const entries: ExpressionEntry[] = [];
-        if (expData.Parameters) {
-          for (const param of expData.Parameters) {
-            entries.push({
-              name: expRef.Name,
-              parameterId: param.Id,
-              blend: param.Blend || "Overwrite",
-              value: param.Value,
-              defaultValue: 0,
-            });
-          }
-        }
-        expMap.set(expRef.Name, entries);
-      } catch (err) {
-        console.warn(`Failed to load expression ${expRef.Name}:`, err);
-      }
-    }
-
-    expressionsRef.current = expMap;
-  }, []);
-
-  const applyExpression = useCallback((expressionName: string | null, coreModel: any) => {
-    if (!expressionName) {
-      activeExpressionRef.current = null;
-      return;
-    }
-
-    const entries = expressionsRef.current.get(expressionName);
-    if (!entries) return;
-
-    activeExpressionRef.current = expressionName;
-
-    for (const entry of entries) {
-      let targetValue = entry.value;
-      if (entry.blend === "Add") {
-        const current = coreModel.getParameterValueById(entry.parameterId) ?? 0;
-        targetValue = current + entry.value;
-      } else if (entry.blend === "Multiply") {
-        const current = coreModel.getParameterValueById(entry.parameterId) ?? 1;
-        targetValue = current * entry.value;
-      }
-      coreModel.setParameterValueById(entry.parameterId, targetValue);
     }
   }, []);
 
@@ -186,21 +116,25 @@ export function Live2DPlayer({
 
     const initApp = async () => {
       try {
-        const app = new Application();
-        await app.init({
-          canvas: canvasRef.current!,
+        if (typeof window === "undefined") return;
+
+        (window as any).PIXI = PIXI;
+
+        const app = new PIXI.Application({
+          view: canvasRef.current!,
           width,
           height,
           backgroundAlpha: 0,
           antialias: true,
           autoDensity: true,
-          resolution: window.devicePixelRatio || 2,
+          resolution: Math.min(window.devicePixelRatio || 2, 2),
         });
 
         appRef.current = app;
 
-        const model = new Live2DModel();
-        await Live2DFactory.setupLive2DModel(model, { url: modelUrl }, { autoInteract: false });
+        const model = await Live2DModel.from(modelUrl, {
+          autoInteract: eyeTracking,
+        });
 
         if (!isMounted) {
           model.destroy();
@@ -218,54 +152,49 @@ export function Live2DPlayer({
         const baseScale = Math.min(width / model.width, height / model.height) * scale;
         model.scale.set(baseScale, baseScale);
 
-        await loadExpressions(model);
-
         const internalModel = (model as any).internalModel;
         const coreModel = internalModel?.coreModel;
         const motionManager = internalModel?.motionManager;
 
         if (coreModel) {
-          coreModel.setParameterValueById("ParamMouthOpenY", mouthOpenSize);
+          coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
         }
 
         if (motionManager && idleAnimation) {
           setTimeout(() => {
-            model.motion("Idle", 0, MotionPriority.IDLE);
-          }, 300);
+            try {
+              model.motion("Idle", 0);
+            } catch (e) {
+              // ignore
+            }
+          }, 500);
         }
 
-        if (motionManager) {
-          const originalUpdate = motionManager.update.bind(motionManager);
-          lastUpdateTimeRef.current = performance.now();
+        lastUpdateTimeRef.current = performance.now();
 
-          const tick = () => {
-            if (!modelRef.current || !appRef.current) return;
+        const tick = () => {
+          if (!modelRef.current || !appRef.current) return;
 
-            const now = performance.now();
-            const dt = now - lastUpdateTimeRef.current;
-            lastUpdateTimeRef.current = now;
+          const now = performance.now();
+          const dt = now - lastUpdateTimeRef.current;
+          lastUpdateTimeRef.current = now;
 
-            const coreModel = (modelRef.current as any).internalModel?.coreModel;
+          const coreModel = (modelRef.current as any).internalModel?.coreModel;
 
-            if (coreModel) {
-              if (autoBlink) {
-                updateAutoBlink(dt, coreModel);
-              }
-
-              if (nowSpeaking) {
-                coreModel.setParameterValueById("ParamMouthOpenY", mouthOpenSize);
-              }
-
-              if (activeExpressionRef.current) {
-                applyExpression(activeExpressionRef.current, coreModel);
-              }
+          if (coreModel) {
+            if (autoBlink) {
+              updateAutoBlink(dt, coreModel);
             }
 
-            animationFrameRef.current = requestAnimationFrame(tick);
-          };
+            if (nowSpeaking) {
+              coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
+            }
+          }
 
           animationFrameRef.current = requestAnimationFrame(tick);
-        }
+        };
+
+        animationFrameRef.current = requestAnimationFrame(tick);
 
         setIsLoading(false);
         onModelLoaded?.();
@@ -277,7 +206,16 @@ export function Live2DPlayer({
       }
     };
 
-    initApp();
+    if (typeof window !== "undefined") {
+      const checkCubism = () => {
+        if (typeof (window as any).Live2DCubismCore !== "undefined") {
+          initApp();
+        } else {
+          setTimeout(checkCubism, 100);
+        }
+      };
+      checkCubism();
+    }
 
     return () => {
       isMounted = false;
@@ -308,25 +246,28 @@ export function Live2DPlayer({
 
   useEffect(() => {
     if (!modelRef.current) return;
-    const model = modelRef.current;
-    const coreModel = (model as any).internalModel?.coreModel;
+    const coreModel = (modelRef.current as any).internalModel?.coreModel;
     if (coreModel && nowSpeaking) {
-      coreModel.setParameterValueById("ParamMouthOpenY", mouthOpenSize);
+      coreModel.setParameterValueById?.("ParamMouthOpenY", mouthOpenSize);
     }
   }, [mouthOpenSize, nowSpeaking]);
 
   useEffect(() => {
-    if (!modelRef.current) return;
-    const model = modelRef.current;
-    const coreModel = (model as any).internalModel?.coreModel;
-    if (coreModel) {
-      applyExpression(expression ?? null, coreModel);
+    if (!modelRef.current || !expression) return;
+    try {
+      (modelRef.current as any).expression(expression);
+    } catch (e) {
+      // ignore
     }
-  }, [expression, applyExpression]);
+  }, [expression]);
 
   useEffect(() => {
     if (!modelRef.current || !motion) return;
-    modelRef.current.motion(motion, motionIndex, MotionPriority.FORCE);
+    try {
+      modelRef.current.motion(motion, motionIndex);
+    } catch (e) {
+      // ignore
+    }
   }, [motion, motionIndex]);
 
   useEffect(() => {
@@ -341,7 +282,6 @@ export function Live2DPlayer({
 
   return (
     <div
-      ref={containerRef}
       className="relative w-full h-full overflow-hidden"
       style={{ width, height }}
     >

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import { LoverParticles } from "@/components/Lover/LoverParticles";
 import { ChatPanel } from "@/components/Lover/ChatPanel";
 
@@ -101,6 +102,7 @@ export default function LoverPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden">
+      <Script src="/live2dcubismcore.min.js" strategy="afterInteractive" />
       <LoverParticles />
 
       <div className="relative z-10 h-screen flex flex-col">
