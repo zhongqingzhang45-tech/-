@@ -5,11 +5,21 @@ import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType } from "@/lib/core";
+import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
 
 const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
   ssr: false,
   loading: () => null,
 });
+
+const CHARACTERS = [
+  { id: "HaruGreeter", name: "Haru", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸" },
+  { id: "Epsilon", name: "Epsilon", path: "/live2d-models/Epsilon", model: "Epsilon", avatar: "💜" },
+  { id: "Chitose", name: "Chitose", path: "/live2d-models/Chitose", model: "Chitose", avatar: "🌺" },
+  { id: "lafei", name: "Lafei", path: "/live2d-models/lafei", model: "lafei", avatar: "⚓" },
+  { id: "mao_pro", name: "Mao", path: "/live2d-models/mao_pro/runtime", model: "mao_pro", avatar: "🐱" },
+  { id: "shizuku", name: "Shizuku", path: "/live2d-models/shizuku/runtime", model: "shizuku", avatar: "💧" },
+];
 
 const NAV_ITEMS = [
   { id: "chat", label: "Chat", icon: "💬" },
@@ -34,9 +44,12 @@ export default function LoverPage() {
   const { isListening, startListening, stopListening } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
+  const [showCharacterPicker, setShowCharacterPicker] = useState(false);
+  const [currentCharacter, setCurrentCharacter] = useState(CHARACTERS[0]);
   const [input, setInput] = useState("");
   const [micActive, setMicActive] = useState(false);
   const [modelReady, setModelReady] = useState(false);
+  const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentMood = (mood?.mood ?? "happy") as MoodType;
 
@@ -170,10 +183,53 @@ export default function LoverPage() {
       <div className="flex-1 flex min-h-0 relative">
         {/* Left - Character Area */}
         <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
+          {/* Character picker button */}
+          <button
+            onClick={() => setShowCharacterPicker(!showCharacterPicker)}
+            className="absolute top-4 left-4 z-20 px-3 py-2 rounded-full text-xs font-medium text-white/80 hover:text-white transition-all flex items-center gap-2"
+            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+          >
+            <span>{currentCharacter.avatar}</span>
+            <span>{currentCharacter.name}</span>
+            <span className="text-white/40">▾</span>
+          </button>
+
+          {/* Character picker dropdown */}
+          {showCharacterPicker && (
+            <div 
+              className="absolute top-14 left-4 z-30 rounded-2xl p-2 w-52 shadow-2xl"
+              style={{ backgroundColor: "rgba(26,26,40,0.95)", backdropFilter: "blur(20px)" }}
+            >
+              {CHARACTERS.map((char) => (
+                <button
+                  key={char.id}
+                  onClick={() => {
+                    setCurrentCharacter(char);
+                    setShowCharacterPicker(false);
+                    setModelReady(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                    currentCharacter.id === char.id
+                      ? "bg-white/10"
+                      : "hover:bg-white/5"
+                  }`}
+                >
+                  <span className="text-xl">{char.avatar}</span>
+                  <span className="text-sm text-white/80">{char.name}</span>
+                  {currentCharacter.id === char.id && (
+                    <span className="ml-auto text-xs text-purple-400">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="relative z-10 w-full h-full">
             <Live2DPlayer
-              modelPath="/live2d-models/shizuku/runtime"
-              modelName="shizuku"
+              key={currentCharacter.id}
+              ref={live2dRef}
+              modelPath={currentCharacter.path}
+              modelName={currentCharacter.model}
               scale={1.1}
               onModelLoaded={() => setModelReady(true)}
               onError={(err) => console.error("Live2D error:", err)}
@@ -193,10 +249,11 @@ export default function LoverPage() {
         <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2">
           {/* Mobile character */}
           <div className="md:hidden flex justify-center pt-4 pb-2">
-            <div className="relative" style={{ width: "180px", height: "260px" }}>
+            <div className="relative" style={{ width: "200px", height: "280px" }}>
               <Live2DPlayer
-                modelPath="/live2d-models/shizuku/runtime"
-                modelName="shizuku"
+                key={`mobile-${currentCharacter.id}`}
+                modelPath={currentCharacter.path}
+                modelName={currentCharacter.model}
                 scale={1}
               />
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 
 interface Live2DPlayerProps {
   modelPath: string;
@@ -8,6 +8,12 @@ interface Live2DPlayerProps {
   scale?: number;
   onModelLoaded?: () => void;
   onError?: (error: string) => void;
+}
+
+export interface Live2DPlayerRef {
+  playMotion: (motionId: string) => void;
+  setExpression: (name: string) => void;
+  getModelInfo: () => { motions: string[]; expressions: string[] };
 }
 
 declare global {
@@ -56,18 +62,51 @@ async function loadAllScripts(): Promise<void> {
   return scriptsPromise;
 }
 
-export default function Live2DPlayer({
-  modelPath,
-  modelName,
-  scale = 1,
-  onModelLoaded,
-  onError,
-}: Live2DPlayerProps) {
+const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Live2DPlayer(
+  { modelPath, modelName, scale = 1, onModelLoaded, onError },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<any>(null);
   const modelRef = useRef<any>(null);
+  const motionsRef = useRef<Map<string, any>>(new Map());
+  const expressionsRef = useRef<Map<string, any>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    playMotion: (motionId: string) => {
+      const model = modelRef.current;
+      const motions = motionsRef.current;
+      if (!model || !model.animator) return;
+      
+      const motion = motions.get(motionId);
+      if (motion) {
+        const layer = model.animator.getLayer("base");
+        if (layer) {
+          layer.play(motion);
+        }
+      } else {
+        const allMotions = Array.from(motions.values());
+        if (allMotions.length > 0) {
+          const layer = model.animator.getLayer("base");
+          if (layer) {
+            layer.play(allMotions[0]);
+          }
+        }
+      }
+    },
+    setExpression: (_name: string) => {
+    },
+    getModelInfo: () => {
+      const motions = motionsRef.current;
+      const expressions = expressionsRef.current;
+      return {
+        motions: Array.from(motions.keys()),
+        expressions: Array.from(expressions.keys()),
+      };
+    },
+  }));
 
   const setupModel = useCallback(async () => {
     if (!containerRef.current) return;
@@ -107,9 +146,9 @@ export default function Live2DPlayer({
       const loader = new PIXI.loaders.Loader(basePath);
       const textures: any[] = [];
       const motionNames: string[] = [];
+      const expressionNames: string[] = [];
       let textureCount = 0;
 
-      // Step 1: Load model3.json first
       loader.add("model", modelJsonPath, {
         xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
       });
@@ -117,22 +156,23 @@ export default function Live2DPlayer({
       loader.load((_l1: any, resources1: any) => {
         const model3Obj = resources1.model.data;
 
-        // Step 2: Add all other resources based on model3.json
+        const loader2 = new PIXI.loaders.Loader(basePath);
+
         if (model3Obj.FileReferences?.Moc) {
-          loader.add("moc", model3Obj.FileReferences.Moc, {
+          loader2.add("moc", model3Obj.FileReferences.Moc, {
             xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER,
           });
         }
 
         if (model3Obj.FileReferences?.Textures) {
           model3Obj.FileReferences.Textures.forEach((tex: string, i: number) => {
-            loader.add(`texture${i}`, tex);
+            loader2.add(`texture${i}`, tex);
             textureCount++;
           });
         }
 
         if (model3Obj.FileReferences?.Physics) {
-          loader.add("physics", model3Obj.FileReferences.Physics, {
+          loader2.add("physics", model3Obj.FileReferences.Physics, {
             xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
           });
         }
@@ -140,13 +180,29 @@ export default function Live2DPlayer({
         if (model3Obj.FileReferences?.Motions) {
           for (const group in model3Obj.FileReferences.Motions) {
             model3Obj.FileReferences.Motions[group].forEach((mot: any) => {
-              const motionName = mot.File.split("/").pop().split(".").shift();
-              loader.add(`motion_${motionName}`, mot.File, {
-                xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
-              });
-              motionNames.push(motionName);
+              const motionFile = mot.File;
+              const motionName = motionFile.split("/").pop().split(".").shift();
+              const resourceKey = `motion_${motionName}`;
+              if (!motionNames.includes(resourceKey)) {
+                loader2.add(resourceKey, motionFile, {
+                  xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
+                });
+                motionNames.push(resourceKey);
+              }
             });
           }
+        }
+
+        if (model3Obj.FileReferences?.Expressions) {
+          model3Obj.FileReferences.Expressions.forEach((expr: any) => {
+            const exprName = expr.Name;
+            const exprFile = expr.File;
+            const resourceKey = `expr_${exprName}`;
+            loader2.add(resourceKey, exprFile, {
+              xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
+            });
+            expressionNames.push(resourceKey);
+          });
         }
 
         let groups = null;
@@ -154,8 +210,7 @@ export default function Live2DPlayer({
           groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3Obj);
         }
 
-        // Step 3: Load all remaining resources
-        loader.load((_l2: any, r: any) => {
+        loader2.load((_l2: any, r: any) => {
           try {
             let moc = null;
             if (r.moc) {
@@ -187,31 +242,46 @@ export default function Live2DPlayer({
                 .build();
             }
 
-            const motions = new Map();
-            motionNames.forEach((name) => {
-              const res = r[`motion_${name}`];
+            const motions = new Map<string, any>();
+            motionNames.forEach((key) => {
+              const res = r[key];
               if (res) {
-                motions.set(
-                  name,
-                  LIVE2DCUBISMFRAMEWORK.Animation.fromMotion3Json(res.data)
-                );
+                const motionName = key.replace("motion_", "");
+                const anim = LIVE2DCUBISMFRAMEWORK.Animation.fromMotion3Json(res.data);
+                motions.set(motionName, anim);
               }
             });
+            motionsRef.current = motions;
+
+            const expressions = new Map<string, any>();
+            expressionNames.forEach((key) => {
+              const res = r[key];
+              if (res) {
+                const exprName = key.replace("expr_", "");
+                expressions.set(exprName, res.data);
+              }
+            });
+            expressionsRef.current = expressions;
+
+            let userData = null;
 
             const model = LIVE2DCUBISMPIXI.Model._create(
               coreModel,
               textures,
               animator,
               physicsRig,
-              null,
+              userData,
               groups
             );
 
             model.motions = motions;
             modelRef.current = model;
-            app.stage.addChild(model);
 
-            // Position and scale
+            model.animator.addLayer("base", LIVE2DCUBISMFRAMEWORK.BuiltinAnimationBlenders.OVERRIDE, 1);
+
+            app.stage.addChild(model);
+            app.stage.addChild(model.masks);
+
             const bounds = model.getBounds();
             const modelWidth = bounds.width;
             const modelHeight = bounds.height;
@@ -224,25 +294,23 @@ export default function Live2DPlayer({
             model.x = width / 2;
             model.y = height - modelHeight * modelScale * 0.05;
 
-            // Animation loop
+            model.masks.resize(app.view.width, app.view.height);
+
             app.ticker.add((delta: number) => {
-              const dt = delta / 60;
-              if (model.animator) {
-                model.animator.update(dt);
-              }
-              if (model.physicsRig) {
-                model.physicsRig.update(dt);
-              }
-              if (model._updater) {
-                model._updater.update(dt);
-              }
+              if (!model) return;
+              model.update(delta);
+              model.masks.update(app.renderer);
             });
 
-            // Play idle motion if available
-            if (model.motions && model.motions.has("idle")) {
-              const idleAnim = model.motions.get("idle");
-              if (model.animator) {
-                model.animator.addAnimation(idleAnim, 0, true);
+            const idleMotion = motions.get("idle") || 
+                              motions.get("Idle") || 
+                              motions.get("微笑-正常") ||
+                              Array.from(motions.values())[0];
+            
+            if (idleMotion && model.animator) {
+              const layer = model.animator.getLayer("base");
+              if (layer) {
+                layer.play(idleMotion);
               }
             }
 
@@ -313,6 +381,10 @@ export default function Live2DPlayer({
       model.scale.set(modelScale);
       model.x = width / 2;
       model.y = height - modelHeight * modelScale * 0.05;
+      
+      if (model.masks) {
+        model.masks.resize(app.view.width, app.view.height);
+      }
     };
 
     window.addEventListener("resize", handleResize);
@@ -343,4 +415,6 @@ export default function Live2DPlayer({
       )}
     </div>
   );
-}
+});
+
+export default Live2DPlayer;
