@@ -4,29 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
-import { MoodType } from "@/lib/core";
+import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender } from "@/lib/core/digital-life";
 import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
 
 const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
   ssr: false,
   loading: () => null,
 });
-
-interface Character {
-  id: string;
-  name: string;
-  path: string;
-  model: string;
-  avatar: string;
-  scale: number;
-  positionY: number;
-  type: "cubism3";
-  gender: "female" | "male";
-}
-
-const CHARACTERS: Character[] = [
-  { id: "HaruGreeter", name: "小春", path: "/live2d-models", model: "HaruGreeter", avatar: "🌸", scale: 2, positionY: 0.55, type: "cubism3", gender: "female" },
-];
 
 const NAV_ITEMS = [
   { id: "chat", label: "聊天", icon: "💬" },
@@ -47,19 +31,30 @@ const QUICK_REPLIES = [
 ];
 
 export default function LoverPage() {
-  const { messages, mood, isTyping, sendMessage } = useCharacterAgent();
+  const { messages, mood, isTyping, sendMessage, profile, lifeState } = useCharacterAgent();
   const { isListening, startListening, stopListening } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
-  const [showCharacterPicker, setShowCharacterPicker] = useState(false);
-  const [currentCharacter, setCurrentCharacter] = useState(CHARACTERS[0]);
   const [input, setInput] = useState("");
   const [micActive, setMicActive] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [userGender, setUserGender] = useState<Gender>("male");
   const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentMood = (mood?.mood ?? "happy") as MoodType;
+
+  const currentCharacter = {
+    id: profile?.live2dModel || "HaruGreeter",
+    name: profile?.name || "小春",
+    path: "/live2d-models",
+    model: profile?.live2dModel || "HaruGreeter",
+    avatar: profile?.gender === "male" ? "👨" : "👩",
+    scale: 2,
+    positionY: 0.55,
+    type: "cubism3" as const,
+    gender: profile?.gender || "female",
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -68,6 +63,13 @@ export default function LoverPage() {
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("lover_user_gender") as Gender | null;
+      if (stored) setUserGender(stored);
+    }
   }, []);
 
   const convertedMessages: ChatMessage[] = messages.map((msg) => ({
@@ -139,18 +141,23 @@ export default function LoverPage() {
           <div 
             className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base"
             style={{ 
-              background: "linear-gradient(135deg, #7c7cff 0%, #b084ff 100%)",
+              background: profile?.gender === "male" 
+                ? "linear-gradient(135deg, #60a5fa 0%, #818cf8 100%)"
+                : "linear-gradient(135deg, #f472b6 0%, #a78bfa 100%)",
               boxShadow: "0 2px 10px rgba(124,124,255,0.3)",
             }}
           >
-            星
+            {profile?.name?.[0] || "星"}
           </div>
-          <span 
-            className="px-3 py-1 rounded-full text-xs font-medium text-white/70"
-            style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-          >
-            等级 2
-          </span>
+          <div>
+            <div className="text-white font-semibold text-sm">{profile?.name || "星野"}</div>
+            <span 
+              className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white/70"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            >
+              等级 {lifeState?.growth?.level || 1}
+            </span>
+          </div>
         </div>
 
         <nav className="hidden md:flex items-center justify-center flex-1 gap-1">
@@ -195,44 +202,16 @@ export default function LoverPage() {
       <div className="flex-1 flex min-h-0 relative">
         {!isMobile && (
           <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
-            <button
-              onClick={() => setShowCharacterPicker(!showCharacterPicker)}
-              className="absolute top-4 left-4 z-20 px-3 py-2 rounded-full text-xs font-medium text-white/80 hover:text-white transition-all flex items-center gap-2"
+            <div
+              className="absolute top-4 left-4 z-20 px-3 py-2 rounded-full text-xs font-medium text-white/80 flex items-center gap-2"
               style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
             >
               <span>{currentCharacter.avatar}</span>
               <span>{currentCharacter.name}</span>
-              <span className="text-white/40">▾</span>
-            </button>
-
-            {showCharacterPicker && (
-              <div 
-                className="absolute top-14 left-4 z-30 rounded-2xl p-2 w-52 shadow-2xl"
-                style={{ backgroundColor: "rgba(26,26,40,0.95)", backdropFilter: "blur(20px)" }}
-              >
-                {CHARACTERS.map((char) => (
-                  <button
-                    key={char.id}
-                    onClick={() => {
-                      setCurrentCharacter(char);
-                      setShowCharacterPicker(false);
-                      setModelReady(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                      currentCharacter.id === char.id
-                        ? "bg-white/10"
-                        : "hover:bg-white/5"
-                    }`}
-                  >
-                    <span className="text-xl">{char.avatar}</span>
-                    <span className="text-sm text-white/80">{char.name}</span>
-                    {currentCharacter.id === char.id && (
-                      <span className="ml-auto text-xs text-purple-400">✓</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+              <span className="text-white/40 text-[10px]">
+                Lv.{lifeState?.growth?.level || 1}
+              </span>
+            </div>
 
             <div className="relative z-10 w-full h-full">
               <Live2DPlayer
@@ -277,7 +256,7 @@ export default function LoverPage() {
                 className="px-3 py-1.5 rounded-lg text-[10px] text-white/30 max-w-sm text-center leading-snug"
                 style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
               >
-                星野是AI伴侣，不能替代专业心理咨询
+                {profile?.name || "星野"}是AI伴侣，不能替代专业心理咨询
               </div>
             </div>
 
@@ -459,7 +438,7 @@ export default function LoverPage() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">💎</span>
                   <div>
-                    <p className="text-sm font-semibold">升级星野会员</p>
+                    <p className="text-sm font-semibold">升级{profile?.name || "星野"}会员</p>
                     <p className="text-xs opacity-85 mt-0.5 leading-relaxed">
                       高级AI、语音通话、增强现实等更多功能
                     </p>

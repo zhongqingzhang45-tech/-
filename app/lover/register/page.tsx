@@ -3,24 +3,46 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Gender } from "@/lib/core/digital-life";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [userGender, setUserGender] = useState<Gender | null>(null);
+  const [characterName, setCharacterName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const totalSteps = 3;
+
+  const suggestedNames = userGender === "male"
+    ? ["小春", "小星", "月月", "糖糖", "暖暖", "念念"]
+    : ["陈默", "林深", "顾言", "江辰", "陆屿", "沈舟"];
+
+  const canProceed = () => {
+    if (step === 1) return email && password.length >= 8;
+    if (step === 2) return userGender !== null;
+    if (step === 3) return characterName.length > 0;
+    return false;
+  };
+
   const handleNext = () => {
-    if (step === 1 && email && password) {
-      setStep(2);
+    if (!canProceed()) return;
+    if (step < totalSteps) {
+      setStep(step + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (step > 1) {
+      setStep(step - 1);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
+    if (!canProceed()) return;
     
     setIsLoading(true);
 
@@ -28,10 +50,23 @@ export default function RegisterPage() {
       setIsLoading(false);
       localStorage.setItem("lover_logged_in", "true");
       localStorage.setItem("lover_email", email);
-      localStorage.setItem("lover_name", name);
+      localStorage.setItem("lover_user_gender", userGender || "male");
+      localStorage.setItem("lover_character_name", characterName);
       router.push("/lover");
     }, 1500);
   };
+
+  const stepTitles = [
+    "创建你的账户",
+    "选择你的性别",
+    "给你的AI伴侣起个名字",
+  ];
+
+  const stepDescriptions = [
+    "开始你的AI陪伴之旅",
+    "我们将为你匹配最合适的伴侣",
+    "这将是你的专属虚拟伴侣",
+  ];
 
   return (
     <div 
@@ -49,24 +84,24 @@ export default function RegisterPage() {
               boxShadow: "0 8px 32px rgba(124,124,255,0.4)",
             }}
           >
-            星
+            💕
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
-            {step === 1 ? "创建你的账户" : "给你的AI伴侣起个名字"}
+            {stepTitles[step - 1]}
           </h1>
           <p className="text-white/60 text-sm">
-            {step === 1 ? "开始你的AI陪伴之旅" : "这将是你的专属虚拟伴侣"}
+            {stepDescriptions[step - 1]}
           </p>
         </div>
 
         <div className="flex justify-center mb-6 gap-2">
-          {[1, 2].map((s) => (
+          {Array.from({ length: totalSteps }).map((_, i) => (
             <div
-              key={s}
+              key={i}
               className="h-1 rounded-full transition-all"
               style={{ 
-                width: s === step ? "40px" : "24px",
-                backgroundColor: s <= step ? "#8b7cf8" : "rgba(255,255,255,0.1)",
+                width: i + 1 === step ? "40px" : "24px",
+                backgroundColor: i + 1 <= step ? "#8b7cf8" : "rgba(255,255,255,0.1)",
               }}
             />
           ))}
@@ -80,7 +115,7 @@ export default function RegisterPage() {
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          {step === 1 ? (
+          {step === 1 && (
             <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
@@ -135,7 +170,8 @@ export default function RegisterPage() {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+                disabled={!canProceed()}
+                className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ 
                   background: "linear-gradient(135deg, #6c63ff 0%, #8b7cf8 100%)",
                   boxShadow: "0 4px 20px rgba(108,99,255,0.4)",
@@ -144,18 +180,107 @@ export default function RegisterPage() {
                 下一步
               </button>
             </form>
-          ) : (
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              <p className="text-center text-white/70 text-sm">
+                选择你的性别，我们将为你匹配最合适的AI伴侣
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setUserGender("male")}
+                  className={`p-6 rounded-2xl transition-all hover:scale-[1.02] ${
+                    userGender === "male"
+                      ? "ring-2 ring-purple-500"
+                      : ""
+                  }`}
+                  style={{
+                    backgroundColor: userGender === "male" 
+                      ? "rgba(139,124,248,0.2)" 
+                      : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${
+                      userGender === "male" 
+                        ? "rgba(139,124,248,0.5)" 
+                        : "rgba(255,255,255,0.08)"
+                    }`,
+                  }}
+                >
+                  <div className="text-5xl mb-3">👨</div>
+                  <div className="text-white font-semibold">男生</div>
+                  <div className="text-white/50 text-xs mt-1">匹配女生伴侣</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUserGender("female")}
+                  className={`p-6 rounded-2xl transition-all hover:scale-[1.02] ${
+                    userGender === "female"
+                      ? "ring-2 ring-pink-500"
+                      : ""
+                  }`}
+                  style={{
+                    backgroundColor: userGender === "female" 
+                      ? "rgba(244,114,182,0.2)" 
+                      : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${
+                      userGender === "female" 
+                        ? "rgba(244,114,182,0.5)" 
+                        : "rgba(255,255,255,0.08)"
+                    }`,
+                  }}
+                >
+                  <div className="text-5xl mb-3">👩</div>
+                  <div className="text-white font-semibold">女生</div>
+                  <div className="text-white/50 text-xs mt-1">匹配男生伴侣</div>
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="px-6 py-3.5 rounded-xl font-medium text-white/70 hover:text-white transition-all"
+                  style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+                >
+                  上一步
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canProceed()}
+                  className="flex-1 py-3.5 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ 
+                    background: "linear-gradient(135deg, #6c63ff 0%, #8b7cf8 100%)",
+                    boxShadow: "0 4px 20px rgba(108,99,255,0.4)",
+                  }}
+                >
+                  下一步
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
             <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="text-center mb-2">
+                <div className="text-6xl mb-3">
+                  {userGender === "male" ? "👩" : "👨"}
+                </div>
+                <p className="text-white/70 text-sm">
+                  给你的{userGender === "male" ? "女" : "男"}朋友起个名字吧
+                </p>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">
-                  伴侣名称
-                </label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={characterName}
+                  onChange={(e) => setCharacterName(e.target.value)}
                   placeholder="给TA起个名字吧"
-                  className="w-full px-4 py-3 rounded-xl text-white placeholder-white/30 outline-none transition-all focus:ring-2 focus:ring-purple-500/50 text-center text-lg"
+                  className="w-full px-4 py-4 rounded-xl text-white placeholder-white/30 outline-none transition-all focus:ring-2 focus:ring-purple-500/50 text-center text-xl font-medium"
                   style={{ 
                     backgroundColor: "rgba(255,255,255,0.06)",
                     border: "1px solid rgba(255,255,255,0.08)",
@@ -166,19 +291,19 @@ export default function RegisterPage() {
               </div>
 
               <div className="flex gap-2 flex-wrap justify-center">
-                {["小春", "小星", "月月", "阳阳", "星星", "糖糖"].map((n) => (
+                {suggestedNames.map((name) => (
                   <button
-                    key={n}
+                    key={name}
                     type="button"
-                    onClick={() => setName(n)}
+                    onClick={() => setCharacterName(name)}
                     className={`px-4 py-2 rounded-full text-sm transition-all ${
-                      name === n
+                      characterName === name
                         ? "bg-purple-500/30 text-purple-300 border-purple-500/50"
                         : "bg-white/5 text-white/60 hover:bg-white/10 border-white/10"
                     }`}
                     style={{ border: "1px solid" }}
                   >
-                    {n}
+                    {name}
                   </button>
                 ))}
               </div>
@@ -186,7 +311,7 @@ export default function RegisterPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={handlePrev}
                   className="px-6 py-3.5 rounded-xl font-medium text-white/70 hover:text-white transition-all"
                   style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
                 >
@@ -194,7 +319,7 @@ export default function RegisterPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || !name}
+                  disabled={isLoading || !canProceed()}
                   className="flex-1 py-3.5 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ 
                     background: "linear-gradient(135deg, #6c63ff 0%, #8b7cf8 100%)",
