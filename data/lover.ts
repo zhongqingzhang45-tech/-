@@ -1,4 +1,4 @@
-export type MoodType = "happy" | "shy" | "angry" | "sad" | "sleepy" | "thoughtful" | "playful" | "love";
+export type MoodType = "happy" | "shy" | "angry" | "sad" | "sleepy" | "thoughtful" | "playful" | "love" | "neutral" | "excited" | "jealous" | "surprised";
 
 export interface LoverProfile {
   name: string;
@@ -56,11 +56,23 @@ export const DEFAULT_PROFILE: LoverProfile = {
 };
 
 export const MOOD_CONFIG: Record<MoodType, { emoji: string; label: string; color: string; bgGradient: string }> = {
+  neutral: {
+    emoji: "😐",
+    label: "平静",
+    color: "#94a3b8",
+    bgGradient: "from-slate-400/20 to-gray-400/20",
+  },
   happy: {
     emoji: "😊",
     label: "开心",
     color: "#fbbf24",
     bgGradient: "from-amber-400/20 to-orange-400/20",
+  },
+  excited: {
+    emoji: "🤩",
+    label: "兴奋",
+    color: "#f59e0b",
+    bgGradient: "from-amber-400/20 to-yellow-400/20",
   },
   shy: {
     emoji: "🥰",
@@ -68,17 +80,29 @@ export const MOOD_CONFIG: Record<MoodType, { emoji: string; label: string; color
     color: "#f472b6",
     bgGradient: "from-pink-400/20 to-rose-400/20",
   },
-  angry: {
-    emoji: "😤",
-    label: "生气",
-    color: "#f87171",
-    bgGradient: "from-red-400/20 to-rose-500/20",
+  love: {
+    emoji: "🥰",
+    label: "爱你",
+    color: "#fb7185",
+    bgGradient: "from-rose-400/20 to-pink-500/20",
   },
   sad: {
     emoji: "🥺",
     label: "难过",
     color: "#60a5fa",
     bgGradient: "from-blue-400/20 to-indigo-400/20",
+  },
+  angry: {
+    emoji: "😤",
+    label: "生气",
+    color: "#f87171",
+    bgGradient: "from-red-400/20 to-rose-500/20",
+  },
+  jealous: {
+    emoji: "😾",
+    label: "吃醋",
+    color: "#a78bfa",
+    bgGradient: "from-violet-400/20 to-purple-500/20",
   },
   sleepy: {
     emoji: "😴",
@@ -98,11 +122,11 @@ export const MOOD_CONFIG: Record<MoodType, { emoji: string; label: string; color
     color: "#f472b6",
     bgGradient: "from-fuchsia-400/20 to-pink-400/20",
   },
-  love: {
-    emoji: "🥰",
-    label: "爱你",
-    color: "#fb7185",
-    bgGradient: "from-rose-400/20 to-pink-500/20",
+  surprised: {
+    emoji: "😮",
+    label: "惊讶",
+    color: "#facc15",
+    bgGradient: "from-yellow-400/20 to-amber-400/20",
   },
 };
 

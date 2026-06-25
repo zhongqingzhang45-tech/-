@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LoverParticles } from "@/components/Lover/LoverParticles";
 import { LoverAvatar } from "@/components/Lover/LoverAvatar";
 import { ChatPanel } from "@/components/Lover/ChatPanel";
@@ -8,117 +8,103 @@ import { Sidebar } from "@/components/Lover/Sidebar";
 import { SettingsPanel } from "@/components/Lover/SettingsPanel";
 import { GameModal } from "@/components/Lover/GameModal";
 import {
-  DEFAULT_PROFILE,
-  INITIAL_MESSAGES,
   INITIAL_DIARY,
   INITIAL_SCHEDULE,
   MINI_GAMES,
-  LOVER_RESPONSES,
-  MoodType,
-  ChatMessage,
-  LoverProfile,
 } from "@/data/lover";
+import { useCharacterAgent, useSpeech } from "@/lib/hooks";
+import { DEFAULT_MOOD_CONFIG, MoodType } from "@/lib/core";
+import { ChatMessage } from "@/data/lover";
 
 export default function LoverPage() {
-  const [profile, setProfile] = useState<LoverProfile>(DEFAULT_PROFILE);
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [currentMood, setCurrentMood] = useState<MoodType>("happy");
-  const [isTyping, setIsTyping] = useState(false);
+  const { messages, mood, isTyping, relationship, sendMessage, triggerMood, profile } =
+    useCharacterAgent();
+  const {
+    enabled: speechEnabled,
+    isSpeaking,
+    isListening,
+    speak,
+    stopSpeaking,
+    startListening,
+    stopListening,
+  } = useSpeech();
+
   const [showSettings, setShowSettings] = useState(false);
   const [activeGame, setActiveGame] = useState<string | null>(null);
-  const [intimacy, setIntimacy] = useState(72);
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [mobileTab, setMobileTab] = useState<"diary" | "schedule" | "games">("games");
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [micActive, setMicActive] = useState(false);
 
-  const generateResponse = (userMessage: string): { text: string; mood: MoodType } => {
-    const msg = userMessage.toLowerCase();
+  const currentMood = (mood?.mood ?? "happy") as MoodType;
+  const intimacy = relationship?.intimacy ?? 72;
 
-    if (msg.includes("想你") || msg.includes("想念") || msg.includes("miss")) {
-      const responses = LOVER_RESPONSES.miss;
-      return responses[Math.floor(Math.random() * responses.length)];
+  useEffect(() => {
+    if (voiceEnabled && isSpeaking === false && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.sender === "assistant" && lastMsg.content) {
+        const timer = setTimeout(() => {
+          speak(lastMsg.content);
+        }, 300);
+        return () => clearTimeout(timer);
+      }
     }
-    if (msg.includes("爱你") || msg.includes("喜欢你") || msg.includes("love")) {
-      const responses = LOVER_RESPONSES.love;
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-    if (msg.includes("累") || msg.includes("难过") || msg.includes("不开心") || msg.includes("伤心")) {
-      const responses = LOVER_RESPONSES.sad;
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-    if (msg.includes("你好") || msg.includes("在吗") || msg.includes("嗨") || msg.includes("hi") || msg.includes("hello")) {
-      const responses = LOVER_RESPONSES.greeting;
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-    if (msg.includes("笨蛋") || msg.includes("讨厌") || msg.includes("坏人") || msg.includes("哼")) {
-      const responses = LOVER_RESPONSES.angry_tease;
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-
-    const responses = LOVER_RESPONSES.default;
-    const response = responses[Math.floor(Math.random() * responses.length)];
-
-    const moodChance = Math.random();
-    let finalMood: MoodType = response.mood;
-    if (moodChance < 0.15) {
-      const moods: MoodType[] = ["shy", "playful", "love", "thoughtful"];
-      finalMood = moods[Math.floor(Math.random() * moods.length)];
-    }
-
-    return { text: response.text, mood: finalMood };
-  };
+  }, [messages, voiceEnabled, isSpeaking, speak]);
 
   const handleSendMessage = (text: string) => {
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "user",
-      content: text,
-      timestamp: new Date(),
-      mood: "happy",
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setIsTyping(true);
-    setCurrentMood("thoughtful");
-
-    const delay = 1000 + Math.random() * 1500;
-    setTimeout(() => {
-      const response = generateResponse(text);
-      const loverMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: "lover",
-        content: response.text,
-        timestamp: new Date(),
-        mood: response.mood,
-      };
-      setMessages((prev) => [...prev, loverMsg]);
-      setCurrentMood(response.mood);
-      setIsTyping(false);
-      setIntimacy((prev) => Math.min(100, prev + 1));
-    }, delay);
-  };
-
-  const handleUpdateProfile = (updates: Partial<LoverProfile>) => {
-    setProfile((prev) => ({ ...prev, ...updates }));
+    sendMessage(text);
   };
 
   const handleGameSelect = (gameId: string) => {
     setActiveGame(gameId);
   };
 
-  const handleMoodChange = (mood: string) => {
-    setCurrentMood(mood as MoodType);
+  const handleMoodChange = (m: string) => {
+    triggerMood(m as MoodType, 0.8);
   };
+
+  const handleMicToggle = () => {
+    if (isListening) {
+      stopListening();
+      setMicActive(false);
+    } else {
+      startListening();
+      setMicActive(true);
+    }
+  };
+
+  const handleVoiceToggle = () => {
+    if (voiceEnabled) {
+      stopSpeaking();
+    }
+    setVoiceEnabled(!voiceEnabled);
+  };
+
+  const convertedMessages: ChatMessage[] = messages.map((msg) => ({
+    id: msg.id,
+    sender: msg.sender === "assistant" ? "lover" : "user",
+    content: msg.content,
+    timestamp: new Date(msg.timestamp),
+    mood: msg.emotion.mood as any,
+  }));
+
+  const moodConfig = DEFAULT_MOOD_CONFIG[currentMood];
 
   return (
     <main className="relative min-h-screen overflow-hidden">
       <LoverParticles />
 
       <div className="relative z-10 h-screen flex flex-col">
-        <header className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-violet-500/20
-              border border-white/10 flex items-center justify-center text-xl">
-              💝
+            <div
+              className="w-10 h-10 rounded-xl
+                border border-white/10 flex items-center justify-center text-xl"
+              style={{
+                background: `linear-gradient(135deg, ${profile.accentColor}20, ${profile.secondaryColor}20)`,
+              }}
+            >
+              {moodConfig.emoji}
             </div>
             <div>
               <h1 className="text-base font-semibold bg-gradient-to-r from-pink-300 to-violet-300 bg-clip-text text-transparent">
@@ -127,8 +113,11 @@ export default function LoverPage() {
               <div className="flex items-center gap-2">
                 <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-pink-400 to-violet-400 rounded-full transition-all duration-500"
-                    style={{ width: `${intimacy}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${intimacy}%`,
+                      background: `linear-gradient(90deg, ${profile.accentColor}, ${profile.secondaryColor})`,
+                    }}
                   />
                 </div>
                 <span className="text-[10px] text-white/40">亲密度 {intimacy}%</span>
@@ -137,6 +126,34 @@ export default function LoverPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {speechEnabled && (
+              <>
+                <button
+                  onClick={handleVoiceToggle}
+                  className={`w-10 h-10 rounded-xl border transition-all duration-200
+                    flex items-center justify-center ${
+                      voiceEnabled
+                        ? "bg-pink-500/20 border-pink-400/40"
+                        : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-pink-400/30"
+                    }`}
+                  title={voiceEnabled ? "关闭语音" : "开启语音"}
+                >
+                  <span className="text-lg">{voiceEnabled ? "🔊" : "🔈"}</span>
+                </button>
+                <button
+                  onClick={handleMicToggle}
+                  className={`w-10 h-10 rounded-xl border transition-all duration-200
+                    flex items-center justify-center ${
+                      micActive
+                        ? "bg-rose-500/20 border-rose-400/40 animate-pulse"
+                        : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-pink-400/30"
+                    }`}
+                  title={micActive ? "停止录音" : "开始说话"}
+                >
+                  <span className="text-lg">{micActive ? "🎤" : "🎙️"}</span>
+                </button>
+              </>
+            )}
             <button
               onClick={() => setShowSettings(true)}
               className="w-10 h-10 rounded-xl bg-white/5 border border-white/10
@@ -145,87 +162,115 @@ export default function LoverPage() {
             >
               <span className="text-lg">⚙️</span>
             </button>
-            <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10
-              hover:bg-white/10 hover:border-pink-400/30
-              transition-all duration-200 flex items-center justify-center">
-              <span className="text-lg">📞</span>
-            </button>
           </div>
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 lg:p-6 overflow-auto">
-            <div className="lg:w-80 flex-shrink-0">
-              <div className="lg:sticky lg:top-4 space-y-4">
-                <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl
-                  border border-white/10 flex flex-col items-center">
-                  <LoverAvatar profile={profile} mood={currentMood} isTyping={isTyping} size="xl" />
-                </div>
+          <div className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-4 p-3 sm:p-4 lg:p-6 overflow-auto">
+            <div className="lg:w-80 flex-shrink-0 space-y-3 sm:space-y-4">
+              <div
+                className="p-4 sm:p-6 rounded-2xl backdrop-blur-xl border border-white/10
+                  flex flex-col items-center"
+                style={{
+                  background: `linear-gradient(180deg, ${profile.accentColor}08, transparent)`,
+                }}
+              >
+                <LoverAvatar
+                  profile={{
+                    name: profile.name,
+                    nickname: profile.nickname,
+                    userNickname: profile.userNickname,
+                    personality: profile.persona,
+                    birthday: profile.birthday,
+                    anniversary: profile.anniversary,
+                    avatar: profile.avatar,
+                    accentColor: profile.accentColor,
+                    secondaryColor: profile.secondaryColor,
+                  }}
+                  mood={currentMood}
+                  isTyping={isTyping}
+                  size="xl"
+                />
+              </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <button className="p-3 rounded-xl bg-white/[0.03] border border-white/10
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => triggerMood("love", 0.8)}
+                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10
                     hover:bg-pink-500/10 hover:border-pink-400/20
-                    transition-all duration-200 flex flex-col items-center gap-1">
-                    <span className="text-xl">🎁</span>
-                    <span className="text-[10px] text-white/50">送礼物</span>
-                  </button>
-                  <button className="p-3 rounded-xl bg-white/[0.03] border border-white/10
+                    transition-all duration-200 flex flex-col items-center gap-1"
+                >
+                  <span className="text-xl">🎁</span>
+                  <span className="text-[10px] text-white/50">送礼物</span>
+                </button>
+                <button
+                  onClick={() => triggerMood("shy", 0.6)}
+                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10
                     hover:bg-violet-500/10 hover:border-violet-400/20
-                    transition-all duration-200 flex flex-col items-center gap-1">
-                    <span className="text-xl">📸</span>
-                    <span className="text-[10px] text-white/50">合影</span>
-                  </button>
-                  <button className="p-3 rounded-xl bg-white/[0.03] border border-white/10
+                    transition-all duration-200 flex flex-col items-center gap-1"
+                >
+                  <span className="text-xl">📸</span>
+                  <span className="text-[10px] text-white/50">合影</span>
+                </button>
+                <button
+                  onClick={() => triggerMood("sleepy", 0.5)}
+                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10
                     hover:bg-amber-500/10 hover:border-amber-400/20
-                    transition-all duration-200 flex flex-col items-center gap-1">
-                    <span className="text-xl">🎵</span>
-                    <span className="text-[10px] text-white/50">听歌</span>
-                  </button>
-                </div>
+                    transition-all duration-200 flex flex-col items-center gap-1"
+                >
+                  <span className="text-xl">🎵</span>
+                  <span className="text-[10px] text-white/50">听歌</span>
+                </button>
+              </div>
 
+              {relationship && (
                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-white/60">今日状态</span>
-                    <span className="text-[10px] text-emerald-400">✨ 心情不错</span>
+                    <span className="text-xs text-white/60">关系状态</span>
+                    <span className="text-[10px] text-emerald-400">✨ 热恋中</span>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/50">能量值</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full w-4/5 bg-gradient-to-r from-amber-400 to-orange-400 rounded-full" />
-                        </div>
-                        <span className="text-white/40 text-[10px] w-8">80%</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/50">好感度</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full w-[72%] bg-gradient-to-r from-pink-400 to-rose-400 rounded-full" />
-                        </div>
-                        <span className="text-white/40 text-[10px] w-8">72%</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/50">依赖值</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                          <div className="h-full w-3/5 bg-gradient-to-r from-violet-400 to-purple-400 rounded-full" />
-                        </div>
-                        <span className="text-white/40 text-[10px] w-8">60%</span>
-                      </div>
+                    <StatBar
+                      label="亲密度"
+                      value={relationship.intimacy}
+                      color="from-pink-400 to-rose-400"
+                    />
+                    <StatBar
+                      label="信任度"
+                      value={relationship.trust}
+                      color="from-violet-400 to-purple-400"
+                    />
+                    <StatBar
+                      label="依赖值"
+                      value={relationship.dependence}
+                      color="from-amber-400 to-orange-400"
+                    />
+                    <StatBar
+                      label="吸引力"
+                      value={relationship.attraction}
+                      color="from-rose-400 to-pink-500"
+                    />
+                    <StatBar
+                      label="熟悉度"
+                      value={relationship.familiarity}
+                      color="from-cyan-400 to-blue-400"
+                    />
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-white/5">
+                    <div className="flex justify-between text-xs text-white/50">
+                      <span>连续陪伴</span>
+                      <span className="text-pink-300">{relationship.streakDays} 天</span>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex-1 min-h-0 xl:pb-0 pb-20">
-              <div className="h-full min-h-[500px] rounded-2xl bg-white/[0.02] backdrop-blur-xl
+              <div className="h-full min-h-[400px] sm:min-h-[500px] rounded-2xl bg-white/[0.02] backdrop-blur-xl
                 border border-white/10 overflow-hidden flex flex-col">
                 <ChatPanel
-                  messages={messages}
+                  messages={convertedMessages}
                   onSendMessage={handleSendMessage}
                   isTyping={isTyping}
                   currentMood={currentMood}
@@ -249,8 +294,18 @@ export default function LoverPage() {
 
       {showSettings && (
         <SettingsPanel
-          profile={profile}
-          onUpdateProfile={handleUpdateProfile}
+          profile={{
+            name: profile.name,
+            nickname: profile.nickname,
+            userNickname: profile.userNickname,
+            personality: profile.persona,
+            birthday: profile.birthday,
+            anniversary: profile.anniversary,
+            avatar: profile.avatar,
+            accentColor: profile.accentColor,
+            secondaryColor: profile.secondaryColor,
+          }}
+          onUpdateProfile={(updates) => {}}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -330,5 +385,30 @@ export default function LoverPage() {
         </div>
       </nav>
     </main>
+  );
+}
+
+function StatBar({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-white/50">{label}</span>
+      <div className="flex items-center gap-2">
+        <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className={`h-full bg-gradient-to-r ${color} rounded-full`}
+            style={{ width: `${value}%` }}
+          />
+        </div>
+        <span className="text-white/40 text-[10px] w-8 text-right">{Math.round(value)}%</span>
+      </div>
+    </div>
   );
 }
