@@ -21,6 +21,8 @@ import {
   PersonaMatrixSystem,
   MemorySystem,
 } from "./systems";
+import { SkillSystem, SkillResult } from "./skills";
+import { ImageRecognition } from "./image-recognition";
 
 export interface ResponseResult {
   text: string;
@@ -42,6 +44,8 @@ export class DigitalLifeAgent {
   private personaMatrix: PersonaMatrixSystem;
   private memorySystem: MemorySystem;
   private decisionEngine: DecisionEngine;
+  private skillSystem: SkillSystem;
+  private imageRecognition: ImageRecognition;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -65,6 +69,8 @@ export class DigitalLifeAgent {
     this.personaMatrix = new PersonaMatrixSystem(this.lifeState.persona, profile);
     this.memorySystem = new MemorySystem();
     this.decisionEngine = new DecisionEngine(this.profile);
+    this.skillSystem = new SkillSystem();
+    this.imageRecognition = new ImageRecognition();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -391,8 +397,24 @@ export class DigitalLifeAgent {
   async respond(userInput: string, imageUrl?: string): Promise<ResponseResult> {
     this.updateLifeSystems();
 
-    const analysis = this.eventUnderstanding.analyze(userInput, imageUrl);
+    let imageAnalysis: any = null;
+    let enrichedInput = userInput;
+
+    const emojis = this.imageRecognition.detectEmojis(userInput);
+    if (emojis.length > 0) {
+      const emojiAnalysis = this.imageRecognition.analyzeEmoji(emojis[0]);
+      enrichedInput = `${userInput} [发了个${emojiAnalysis.keywords[0] || "表情"}]`;
+    }
+
+    if (imageUrl) {
+      imageAnalysis = this.imageRecognition.analyzeImage(imageUrl);
+      enrichedInput = `${userInput} [发了一张图片，${imageAnalysis.description}]`;
+    }
+
+    const analysis = this.eventUnderstanding.analyze(enrichedInput, imageUrl);
     const behaviorTags = this.eventUnderstanding.detectBehaviorTags(userInput, this.recentMessages);
+
+    const detectedSkill = this.skillSystem.detectSkillIntent(userInput);
 
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}`,
@@ -415,6 +437,15 @@ export class DigitalLifeAgent {
       analysis.sentiment.valence * 0.5,
       behaviorTags
     );
+
+    if (imageAnalysis) {
+      this.memorySystem.addMemory(
+        "event",
+        `用户发送了一张图片：${imageAnalysis.description}`,
+        0.6,
+        imageAnalysis.mood === "happy" ? 0.5 : -0.3
+      );
+    }
 
     if (behaviorTags.length > 0) {
       this.memorySystem.addBehaviorLog(userInput, behaviorTags);
@@ -482,7 +513,23 @@ export class DigitalLifeAgent {
       this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
     }
 
-    const responseText = this.generateResponse(decision, analysis, userInput);
+    let responseText: string;
+    let skillResult: SkillResult | null = null;
+
+    if (detectedSkill && decision.personaMode !== "aggressive" && decision.personaMode !== "silent_treatment") {
+      skillResult = this.skillSystem.executeSkill(detectedSkill.id, userInput, this.lifeState.emotion.mood as any);
+      if (skillResult) {
+        responseText = skillResult.response;
+        if (skillResult.shouldChangeMood && skillResult.targetMood) {
+          this.emotionSystem.triggerMood(skillResult.targetMood as any, skillResult.moodIntensity || 0.5);
+          this.lifeState.emotion = { ...this.emotionSystem.state };
+        }
+      } else {
+        responseText = this.generateResponse(decision, analysis, enrichedInput);
+      }
+    } else {
+      responseText = this.generateResponse(decision, analysis, enrichedInput);
+    }
 
     const assistantMessage: ChatMessage = {
       id: `msg_${Date.now() + 1}`,
@@ -761,5 +808,13 @@ export class DigitalLifeAgent {
     this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
     this.lifeState.currentMode = "reconciliation";
     return true;
+  }
+
+  getSkills() {
+    return this.skillSystem.getSkills();
+  }
+
+  getSkillsByCategory(category: any) {
+    return this.skillSystem.getSkillsByCategory(category);
   }
 }

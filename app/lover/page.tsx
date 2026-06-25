@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
-import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode } from "@/lib/core/digital-life";
+import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Skill } from "@/lib/core/digital-life";
 import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
 
 const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
@@ -44,18 +44,26 @@ function getModeColor(mode?: string): string {
 }
 
 export default function LoverPage() {
-  const { messages, mood, isTyping, sendMessage, profile, lifeState } = useCharacterAgent();
-  const { isListening, startListening, stopListening } = useSpeech();
+  const { messages, mood, isTyping, sendMessage, profile, lifeState, agent } = useCharacterAgent();
+  const { isListening, startListening, stopListening, speak, isSpeaking } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
+  const [showSkills, setShowSkills] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [input, setInput] = useState("");
   const [micActive, setMicActive] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [userGender, setUserGender] = useState<Gender>("male");
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const currentMood = (mood?.mood ?? "happy") as MoodType;
+
+  const EMOJI_LIST = ["😊", "😂", "🥰", "😢", "😡", "🤔", "😴", "😏", "👍", "❤️", "🌹", "✨", "😭", "🥺", "😜", "🤩"];
 
   const currentCharacter = {
     id: profile?.live2dModel || "HaruGreeter",
@@ -85,23 +93,44 @@ export default function LoverPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (agent) {
+      setSkills(agent.getSkills());
+    }
+  }, [agent]);
+
+  useEffect(() => {
+    if (voiceEnabled && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.sender === "assistant" && !isTyping) {
+        const text = lastMsg.content.replace(/[^\u4e00-\u9fa5a-zA-Z0-9，。！？、；：""''（）\s]/g, " ");
+        if (text.trim().length > 0 && text.trim().length < 200) {
+          speak(text);
+        }
+      }
+    }
+  }, [messages, isTyping, voiceEnabled]);
+
   const convertedMessages: ChatMessage[] = messages.map((msg) => ({
     id: msg.id,
     sender: msg.sender === "assistant" ? "lover" : "user",
     content: msg.content,
     timestamp: new Date(msg.timestamp),
     mood: msg.emotion.mood as any,
+    imageUrl: (msg as any).imageUrl,
   }));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    sendMessage(input.trim());
+  const handleSend = useCallback(() => {
+    if (!input.trim() && !pendingImage) return;
+    sendMessage(input.trim() || "（发了一张图片）", pendingImage || undefined);
     setInput("");
-  };
+    setPendingImage(null);
+    setShowEmojiPicker(false);
+  }, [input, pendingImage, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -118,6 +147,26 @@ export default function LoverPage() {
       startListening();
       setMicActive(true);
     }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPendingImage(ev.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEmojiClick = (emoji: string) => {
+    setInput((prev) => prev + emoji);
+  };
+
+  const handleSkillClick = (skillId: string, trigger: string) => {
+    sendMessage(trigger);
+    setShowSkills(false);
   };
 
   return (
@@ -430,17 +479,73 @@ export default function LoverPage() {
             ))}
           </div>
 
+          {pendingImage && (
+            <div className="relative mb-2">
+              <img 
+                src={pendingImage} 
+                alt="待发送" 
+                className="w-20 h-20 object-cover rounded-xl"
+              />
+              <button
+                onClick={() => setPendingImage(null)}
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {showEmojiPicker && (
+            <div 
+              className="mb-2 p-3 rounded-2xl grid grid-cols-8 gap-2"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            >
+              {EMOJI_LIST.map((emoji, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleEmojiClick(emoji)}
+                  className="w-8 h-8 flex items-center justify-center text-lg hover:bg-white/10 rounded-lg transition-all"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="py-3">
             <div 
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+
               <button 
+                onClick={() => setShowSkills(!showSkills)}
                 className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                style={{ backgroundColor: showSkills ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.08)" }}
+                title="技能"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </button>
+
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
+                style={{ backgroundColor: pendingImage ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.08)" }}
+                title="发送图片"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
                 </svg>
               </button>
 
@@ -455,21 +560,24 @@ export default function LoverPage() {
 
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button 
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
-                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                  style={{ backgroundColor: showEmojiPicker ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.08)" }}
+                  title="表情"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
+                  <span className="text-sm">😊</span>
                 </button>
 
                 <button 
+                  onClick={() => setVoiceEnabled(!voiceEnabled)}
                   className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
-                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                  style={{ backgroundColor: voiceEnabled ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)" }}
+                  title={voiceEnabled ? "语音已开启" : "语音已关闭"}
                 >
-                  <span className="text-sm">😊</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  </svg>
                 </button>
 
                 <button 
@@ -478,6 +586,7 @@ export default function LoverPage() {
                   style={{ 
                     backgroundColor: micActive ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)",
                   }}
+                  title="语音输入"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -491,6 +600,54 @@ export default function LoverPage() {
           </div>
         </div>
       </div>
+
+      {showSkills && (
+        <>
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setShowSkills(false)}
+          />
+          <div 
+            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-0 md:top-auto md:bottom-24 md:w-80 z-50 md:mr-28 rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto max-h-[60vh] md:max-h-[70vh]"
+            style={{ backgroundColor: "#1a1a28" }}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+              <h2 className="text-base font-semibold text-white">✨ 技能</h2>
+              <button 
+                onClick={() => setShowSkills(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white/90"
+                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            <div className="p-4 space-y-2">
+              {skills.map((skill) => (
+                <button
+                  key={skill.id}
+                  onClick={() => handleSkillClick(skill.id, skill.triggers[0])}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:bg-white/5"
+                  style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                >
+                  <span className="text-2xl">{skill.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white">{skill.name}</p>
+                    <p className="text-xs text-white/50 mt-0.5 truncate">{skill.description}</p>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.3">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              ))}
+
+              {skills.length === 0 && (
+                <p className="text-center text-white/30 text-sm py-8">技能加载中...</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {showSettings && (
         <>
