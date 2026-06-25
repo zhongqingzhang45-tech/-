@@ -26,28 +26,59 @@ declare global {
   }
 }
 
-function waitForLibraries(): Promise<void> {
+const SCRIPTS = [
+  "/vendor/live2dv3/live2dcubismcore.min.js",
+  "/vendor/live2dv3/pixi.min.js",
+  "/vendor/live2dv3/live2dcubismframework.js",
+  "/vendor/live2dv3/live2dcubismpixi.js",
+];
+
+let scriptsLoading = false;
+let scriptsReady = false;
+let scriptsPromise: Promise<void> | null = null;
+
+function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    let attempts = 0;
-    const check = () => {
-      if (
-        window.PIXI &&
-        window.LIVE2DCUBISMFRAMEWORK &&
-        window.LIVE2DCUBISMPIXI &&
-        window.Live2DCubismCore
-      ) {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      if ((existing as any)._loaded) {
         resolve();
         return;
       }
-      attempts++;
-      if (attempts > 100) {
-        reject(new Error("Live2D libraries not loaded"));
-        return;
-      }
-      setTimeout(check, 100);
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    (script as any)._loaded = false;
+    script.onload = () => {
+      (script as any)._loaded = true;
+      resolve();
     };
-    check();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
   });
+}
+
+function loadAllScripts(): Promise<void> {
+  if (scriptsReady) return Promise.resolve();
+  if (scriptsPromise) return scriptsPromise;
+  scriptsLoading = true;
+  scriptsPromise = SCRIPTS.reduce(
+    (p, src) => p.then(() => loadScript(src)),
+    Promise.resolve()
+  )
+    .then(() => {
+      scriptsReady = true;
+      scriptsLoading = false;
+    })
+    .catch((e) => {
+      scriptsLoading = false;
+      scriptsPromise = null;
+      throw e;
+    });
+  return scriptsPromise;
 }
 
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
@@ -82,7 +113,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
       async function init() {
         try {
-          await waitForLibraries();
+          await loadAllScripts();
           if (cancelled) return;
           setupModel();
         } catch (e: any) {
@@ -268,8 +299,6 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
             const originalUpdate = model.update.bind(model);
             model.update = (delta: number) => {
-              const deltaTime = 0.016 * delta;
-
               if (!model.animator.isPlaying) {
                 const idleKeys = ["idle", "Idle", "main_1", "main_2", "main_3", "home"];
                 let idleMotion = null;
@@ -283,7 +312,6 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   model.animator.getLayer("base").play(idleMotion);
                 }
               }
-
               originalUpdate(delta);
             };
 
