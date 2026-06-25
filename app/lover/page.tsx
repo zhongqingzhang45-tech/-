@@ -12,48 +12,55 @@ const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
   loading: () => null,
 });
 
-const CHARACTERS = [
-  { id: "HaruGreeter", name: "春（迎宾）", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸", scale: 0.2, positionY: 0.5 },
-  { id: "lafei", name: "拉菲", path: "/live2d-models/azurlane/lafei", model: "lafei", avatar: "🍷", scale: 0.25, positionY: 0.55 },
-  { id: "lafei_4", name: "拉菲（新春）", path: "/live2d-models/azurlane/lafei_4", model: "lafei_4", avatar: "🧧", scale: 0.25, positionY: 0.55 },
-  { id: "lingbo", name: "绫波", path: "/live2d-models/azurlane/lingbo", model: "lingbo", avatar: "🌊", scale: 0.25, positionY: 0.55 },
-  { id: "biaoqiang", name: "标枪", path: "/live2d-models/azurlane/biaoqiang", model: "biaoqiang", avatar: "🏹", scale: 0.25, positionY: 0.55 },
-  { id: "biaoqiang_3", name: "标枪（泳装）", path: "/live2d-models/azurlane/biaoqiang_3", model: "biaoqiang_3", avatar: "🏖️", scale: 0.25, positionY: 0.55 },
-  { id: "z23", name: "Z23", path: "/live2d-models/azurlane/z23", model: "z23", avatar: "⚓", scale: 0.25, positionY: 0.55 },
-  { id: "z46_2", name: "Z46（夏装）", path: "/live2d-models/azurlane/z46_2", model: "z46_2", avatar: "☀️", scale: 0.25, positionY: 0.55 },
-  { id: "aierdeliqi_4", name: "埃尔德里奇（新春）", path: "/live2d-models/azurlane/aierdeliqi_4", model: "aierdeliqi_4", avatar: "⚡", scale: 0.25, positionY: 0.55 },
-  { id: "aierdeliqi_5", name: "埃尔德里奇", path: "/live2d-models/azurlane/aierdeliqi_5", model: "aierdeliqi_5", avatar: "💫", scale: 0.25, positionY: 0.55 },
-  { id: "xuefeng", name: "雪风", path: "/live2d-models/azurlane/xuefeng", model: "xuefeng", avatar: "❄️", scale: 0.25, positionY: 0.55 },
-  { id: "tianlangxing_3", name: "天狼星（盛夏）", path: "/live2d-models/azurlane/tianlangxing_3", model: "tianlangxing_3", avatar: "⭐", scale: 0.25, positionY: 0.55 },
-  { id: "dafeng_2", name: "大凤（盛宴）", path: "/live2d-models/azurlane/dafeng_2", model: "dafeng_2", avatar: "🦚", scale: 0.25, positionY: 0.55 },
-  { id: "shengluyisi_2", name: "圣路易斯（春辉）", path: "/live2d-models/azurlane/shengluyisi_2", model: "shengluyisi_2", avatar: "🌸", scale: 0.25, positionY: 0.55 },
-  { id: "shengluyisi_3", name: "圣路易斯（微醺）", path: "/live2d-models/azurlane/shengluyisi_3", model: "shengluyisi_3", avatar: "🍷", scale: 0.25, positionY: 0.55 },
-  { id: "beierfasite_2", name: "贝尔法斯特（虹彩）", path: "/live2d-models/azurlane/beierfasite_2", model: "beierfasite_2", avatar: "🌹", scale: 0.25, positionY: 0.55 },
-  { id: "qibolin_2", name: "齐柏林（海滩）", path: "/live2d-models/azurlane/qibolin_2", model: "qibolin_2", avatar: "🖤", scale: 0.25, positionY: 0.55 },
-  { id: "kelifulan_3", name: "克利夫兰（骑士）", path: "/live2d-models/azurlane/kelifulan_3", model: "kelifulan_3", avatar: "🛡️", scale: 0.25, positionY: 0.55 },
-  { id: "dujiaoshou_4", name: "独角兽（游园）", path: "/live2d-models/azurlane/dujiaoshou_4", model: "dujiaoshou_4", avatar: "🦄", scale: 0.25, positionY: 0.55 },
-  { id: "huangjiafangzhou_3", name: "皇家方舟（宴会）", path: "/live2d-models/azurlane/huangjiafangzhou_3", model: "huangjiafangzhou_3", avatar: "🏹", scale: 0.25, positionY: 0.55 },
-  { id: "bisimai_2", name: "俾斯麦（铁血）", path: "/live2d-models/azurlane/bisimai_2", model: "bisimai_2", avatar: "⚔️", scale: 0.25, positionY: 0.55 },
-  { id: "tierbici_2", name: "提尔比茨（融雪）", path: "/live2d-models/azurlane/tierbici_2", model: "tierbici_2", avatar: "🏔️", scale: 0.25, positionY: 0.55 },
-  { id: "genaisennao_2", name: "格奈森瑙", path: "/live2d-models/azurlane/genaisennao_2", model: "genaisennao_2", avatar: "🗡️", scale: 0.25, positionY: 0.55 },
-  { id: "deyizhi_3", name: "德意志（服务）", path: "/live2d-models/azurlane/deyizhi_3", model: "deyizhi_3", avatar: "👑", scale: 0.25, positionY: 0.55 },
-  { id: "aidang_2", name: "爱宕（盛夏）", path: "/live2d-models/azurlane/aidang_2", model: "aidang_2", avatar: "🌺", scale: 0.25, positionY: 0.55 },
-  { id: "xianghe_2", name: "翔鹤", path: "/live2d-models/azurlane/xianghe_2", model: "xianghe_2", avatar: "🕊️", scale: 0.25, positionY: 0.55 },
-  { id: "huonululu_3", name: "火奴鲁鲁（夏日）", path: "/live2d-models/azurlane/huonululu_3", model: "huonululu_3", avatar: "🌴", scale: 0.25, positionY: 0.55 },
-  { id: "huonululu_5", name: "火奴鲁鲁", path: "/live2d-models/azurlane/huonululu_5", model: "huonululu_5", avatar: "🌺", scale: 0.25, positionY: 0.55 },
-  { id: "banrenma_2", name: "半人马（海滩）", path: "/live2d-models/azurlane/banrenma_2", model: "banrenma_2", avatar: "🧜‍♀️", scale: 0.25, positionY: 0.55 },
-  { id: "heitaizi_2", name: "黑太子", path: "/live2d-models/azurlane/heitaizi_2", model: "heitaizi_2", avatar: "🖤", scale: 0.25, positionY: 0.55 },
-  { id: "dunkeerke_2", name: "敦刻尔克（夏日）", path: "/live2d-models/azurlane/dunkeerke_2", model: "dunkeerke_2", avatar: "🍰", scale: 0.25, positionY: 0.55 },
-  { id: "mingshi", name: "明石", path: "/live2d-models/azurlane/mingshi", model: "mingshi", avatar: "🐱", scale: 0.25, positionY: 0.55 },
-  { id: "ninghai_4", name: "宁海（新春）", path: "/live2d-models/azurlane/ninghai_4", model: "ninghai_4", avatar: "🏮", scale: 0.25, positionY: 0.55 },
-  { id: "pinghai_4", name: "平海（新春）", path: "/live2d-models/azurlane/pinghai_4", model: "pinghai_4", avatar: "🧧", scale: 0.25, positionY: 0.55 },
-  { id: "taiyuan_2", name: "太原（闹龟）", path: "/live2d-models/azurlane/taiyuan_2", model: "taiyuan_2", avatar: "🐢", scale: 0.25, positionY: 0.55 },
-  { id: "yichui_2", name: "伊吹（雪女神）", path: "/live2d-models/azurlane/yichui_2", model: "yichui_2", avatar: "⛩️", scale: 0.25, positionY: 0.55 },
-  { id: "sipeibojue_5", name: "斯佩伯爵", path: "/live2d-models/azurlane/sipeibojue_5", model: "sipeibojue_5", avatar: "⚓", scale: 0.25, positionY: 0.55 },
-  { id: "zhala_2", name: "扎拉", path: "/live2d-models/azurlane/zhala_2", model: "zhala_2", avatar: "💎", scale: 0.25, positionY: 0.55 },
-  { id: "xixuegui_4", name: "吸血鬼", path: "/live2d-models/azurlane/xixuegui_4", model: "xixuegui_4", avatar: "🧛", scale: 0.25, positionY: 0.55 },
-  { id: "chuixue_3", name: "吹雪（音乐）", path: "/live2d-models/azurlane/chuixue_3", model: "chuixue_3", avatar: "🎵", scale: 0.25, positionY: 0.55 },
-  { id: "aimierbeierding_2", name: "埃米尔·贝尔汀", path: "/live2d-models/azurlane/aimierbeierding_2", model: "aimierbeierding_2", avatar: "🎨", scale: 0.25, positionY: 0.55 },
+const Live2DCubism2Player = dynamic(() => import("@/components/Lover/Live2DCubism2Player"), {
+  ssr: false,
+  loading: () => null,
+});
+
+interface Character {
+  id: string;
+  name: string;
+  path: string;
+  model: string;
+  modelJson?: string;
+  avatar: string;
+  scale: number;
+  positionY: number;
+  type: "cubism3" | "cubism2";
+  gender: "female" | "male";
+}
+
+const CHARACTERS: Character[] = [
+  { id: "HaruGreeter", name: "春（迎宾）", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸", scale: 0.2, positionY: 0.5, type: "cubism3", gender: "female" },
+  { id: "len", name: "镜音连", path: "/live2d-models/cubism2/len", model: "len", modelJson: "len.model.json", avatar: "🎤", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "len_impact", name: "镜音连·冲击", path: "/live2d-models/cubism2/len_impact", model: "len_impact", modelJson: "len_impact.model.json", avatar: "⚡", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "len_space", name: "镜音连·太空", path: "/live2d-models/cubism2/len_space", model: "len_space", modelJson: "len_space.model.json", avatar: "🚀", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "len_swim", name: "镜音连·泳装", path: "/live2d-models/cubism2/len_swim", model: "len_swim", modelJson: "len_swim.model.json", avatar: "🏊", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "haruto", name: "遥斗", path: "/live2d-models/cubism2/haruto", model: "haruto", modelJson: "haruto.model.json", avatar: "🎸", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "jin", name: "仁", path: "/live2d-models/cubism2/jin", model: "jin", modelJson: "jin.model.json", avatar: "🎵", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "makoto0", name: "诚", path: "/live2d-models/cubism2/makoto0", model: "makoto0", modelJson: "makoto0.model.json", avatar: "📚", scale: 1, positionY: 0.5, type: "cubism2", gender: "male" },
+  { id: "lafei", name: "拉菲", path: "/live2d-models/azurlane/lafei", model: "lafei", avatar: "🍷", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "lafei_4", name: "拉菲（新春）", path: "/live2d-models/azurlane/lafei_4", model: "lafei_4", avatar: "🧧", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "lingbo", name: "绫波", path: "/live2d-models/azurlane/lingbo", model: "lingbo", avatar: "🌊", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "biaoqiang", name: "标枪", path: "/live2d-models/azurlane/biaoqiang", model: "biaoqiang", avatar: "🏹", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "biaoqiang_3", name: "标枪（泳装）", path: "/live2d-models/azurlane/biaoqiang_3", model: "biaoqiang_3", avatar: "🏖️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "z23", name: "Z23", path: "/live2d-models/azurlane/z23", model: "z23", avatar: "⚓", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "z46_2", name: "Z46（夏装）", path: "/live2d-models/azurlane/z46_2", model: "z46_2", avatar: "☀️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "aierdeliqi_5", name: "埃尔德里奇", path: "/live2d-models/azurlane/aierdeliqi_5", model: "aierdeliqi_5", avatar: "💫", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "xuefeng", name: "雪风", path: "/live2d-models/azurlane/xuefeng", model: "xuefeng", avatar: "❄️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "dafeng_2", name: "大凤（盛宴）", path: "/live2d-models/azurlane/dafeng_2", model: "dafeng_2", avatar: "🦚", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "beierfasite_2", name: "贝尔法斯特", path: "/live2d-models/azurlane/beierfasite_2", model: "beierfasite_2", avatar: "🌹", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "dujiaoshou_4", name: "独角兽", path: "/live2d-models/azurlane/dujiaoshou_4", model: "dujiaoshou_4", avatar: "🦄", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "mingshi", name: "明石", path: "/live2d-models/azurlane/mingshi", model: "mingshi", avatar: "🐱", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "ninghai_4", name: "宁海（新春）", path: "/live2d-models/azurlane/ninghai_4", model: "ninghai_4", avatar: "🏮", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "pinghai_4", name: "平海（新春）", path: "/live2d-models/azurlane/pinghai_4", model: "pinghai_4", avatar: "🧧", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "bisimai_2", name: "俾斯麦", path: "/live2d-models/azurlane/bisimai_2", model: "bisimai_2", avatar: "⚔️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "shengluyisi_3", name: "圣路易斯", path: "/live2d-models/azurlane/shengluyisi_3", model: "shengluyisi_3", avatar: "🍷", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "kelifulan_3", name: "克利夫兰", path: "/live2d-models/azurlane/kelifulan_3", model: "kelifulan_3", avatar: "🛡️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "genaisennao_2", name: "格奈森瑙", path: "/live2d-models/azurlane/genaisennao_2", model: "genaisennao_2", avatar: "🗡️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "aidang_2", name: "爱宕", path: "/live2d-models/azurlane/aidang_2", model: "aidang_2", avatar: "🌺", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "tianlangxing_3", name: "天狼星", path: "/live2d-models/azurlane/tianlangxing_3", model: "tianlangxing_3", avatar: "⭐", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
+  { id: "xianghe_2", name: "翔鹤", path: "/live2d-models/azurlane/xianghe_2", model: "xianghe_2", avatar: "🕊️", scale: 0.25, positionY: 0.55, type: "cubism3", gender: "female" },
 ];
 
 const NAV_ITEMS = [
@@ -260,16 +267,28 @@ export default function LoverPage() {
           )}
 
           <div className="relative z-10 w-full h-full">
-            <Live2DPlayer
-              key={currentCharacter.id}
-              ref={live2dRef}
-              modelPath={currentCharacter.path}
-              modelName={currentCharacter.model}
-              scale={currentCharacter.scale}
-              positionY={currentCharacter.positionY}
-              onModelLoaded={() => setModelReady(true)}
-              onError={(err) => console.error("Live2D error:", err)}
-            />
+            {currentCharacter.type === "cubism3" ? (
+              <Live2DPlayer
+                key={currentCharacter.id}
+                ref={live2dRef as any}
+                modelPath={currentCharacter.path}
+                modelName={currentCharacter.model}
+                scale={currentCharacter.scale}
+                positionY={currentCharacter.positionY}
+                onModelLoaded={() => setModelReady(true)}
+                onError={(err) => console.error("Live2D error:", err)}
+              />
+            ) : (
+              <Live2DCubism2Player
+                key={currentCharacter.id}
+                modelPath={currentCharacter.path}
+                modelJson={currentCharacter.modelJson || `${currentCharacter.model}.model.json`}
+                scale={currentCharacter.scale}
+                positionY={currentCharacter.positionY}
+                onModelLoaded={() => setModelReady(true)}
+                onError={(err) => console.error("Live2D Cubism2 error:", err)}
+              />
+            )}
           </div>
           {/* Floor glow */}
           <div 
