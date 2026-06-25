@@ -14,11 +14,7 @@ const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
 
 const CHARACTERS = [
   { id: "HaruGreeter", name: "Haru", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸" },
-  { id: "Epsilon", name: "Epsilon", path: "/live2d-models/Epsilon", model: "Epsilon", avatar: "💜" },
-  { id: "Chitose", name: "Chitose", path: "/live2d-models/Chitose", model: "Chitose", avatar: "🌺" },
   { id: "lafei", name: "Lafei", path: "/live2d-models/lafei", model: "lafei", avatar: "⚓" },
-  { id: "mao_pro", name: "Mao", path: "/live2d-models/mao_pro/runtime", model: "mao_pro", avatar: "🐱" },
-  { id: "shizuku", name: "Shizuku", path: "/live2d-models/shizuku/runtime", model: "shizuku", avatar: "💧" },
 ];
 
 const NAV_ITEMS = [
