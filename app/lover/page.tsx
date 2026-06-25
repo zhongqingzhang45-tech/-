@@ -13,7 +13,18 @@ const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
 });
 
 const CHARACTERS = [
-  { id: "HaruGreeter", name: "Haru", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸", scale: 1.1, positionY: 0.5 },
+  { id: "HaruGreeter", name: "Haru Greeter", path: "/live2d-models/HaruGreeter", model: "HaruGreeter", avatar: "🌸", scale: 1.0, positionY: 0.5 },
+  { id: "Haru", name: "Haru", path: "/live2d-models/Haru", model: "Haru", avatar: "🌷", scale: 1.0, positionY: 0.5 },
+  { id: "Hiyori", name: "Hiyori", path: "/live2d-models/Hiyori", model: "Hiyori", avatar: "🌻", scale: 1.0, positionY: 0.5 },
+  { id: "Epsilon", name: "Epsilon", path: "/live2d-models/Epsilon", model: "Epsilon", avatar: "💜", scale: 1.0, positionY: 0.5 },
+  { id: "Chitose", name: "Chitose", path: "/live2d-models/Chitose", model: "Chitose", avatar: "🍀", scale: 1.0, positionY: 0.5 },
+  { id: "Shizuku", name: "Shizuku", path: "/live2d-models/Shizuku", model: "Shizuku", avatar: "💧", scale: 1.0, positionY: 0.5 },
+  { id: "Tsumiki", name: "Tsumiki", path: "/live2d-models/Tsumiki", model: "Tsumiki", avatar: "🎀", scale: 1.0, positionY: 0.5 },
+  { id: "Mao", name: "Mao", path: "/live2d-models/Mao", model: "Mao", avatar: "🐱", scale: 1.0, positionY: 0.5 },
+  { id: "Rice", name: "Rice", path: "/live2d-models/Rice", model: "Rice", avatar: "🍚", scale: 1.0, positionY: 0.5 },
+  { id: "Izumi", name: "Izumi", path: "/live2d-models/Izumi", model: "Izumi", avatar: "💙", scale: 1.0, positionY: 0.5 },
+  { id: "Hibiki", name: "Hibiki", path: "/live2d-models/Hibiki", model: "Hibiki", avatar: "🎵", scale: 1.0, positionY: 0.5 },
+  { id: "Kei", name: "Kei", path: "/live2d-models/Kei", model: "Kei", avatar: "⭐", scale: 1.0, positionY: 0.5 },
 ];
 
 const NAV_ITEMS = [
