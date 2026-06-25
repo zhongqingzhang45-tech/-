@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,7 +29,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <Script src="/vendor/live2dv3/live2dcubismcore.min.js" strategy="beforeInteractive" />
+        <Script src="/vendor/live2dv3/pixi.min.js" strategy="beforeInteractive" />
+        <Script src="/vendor/live2dv3/live2dcubismframework.js" strategy="beforeInteractive" />
+        <Script src="/vendor/live2dv3/live2dcubismpixi.js" strategy="beforeInteractive" />
+        <Script src="/vendor/live2dv2/live2d.js" strategy="beforeInteractive" />
+        {children}
+      </body>
     </html>
   );
 }

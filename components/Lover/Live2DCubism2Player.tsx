@@ -22,44 +22,23 @@ declare global {
   }
 }
 
-const SCRIPTS = ["/vendor/live2dv2/live2d.js"];
-
-let scriptsLoading = false;
-let scriptsReady = false;
-let scriptsPromise: Promise<void> | null = null;
-
-function loadScript(src: string): Promise<void> {
+function waitForLoadlive2d(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
+    let attempts = 0;
+    const check = () => {
+      if (typeof window.loadlive2d === "function") {
+        resolve();
+        return;
+      }
+      attempts++;
+      if (attempts > 100) {
+        reject(new Error("Cubism 2 library not loaded"));
+        return;
+      }
+      setTimeout(check, 100);
+    };
+    check();
   });
-}
-
-function loadAllScripts(): Promise<void> {
-  if (scriptsReady) return Promise.resolve();
-  if (scriptsPromise) return scriptsPromise;
-  scriptsLoading = true;
-  scriptsPromise = SCRIPTS.reduce(
-    (p, src) => p.then(() => loadScript(src)),
-    Promise.resolve()
-  )
-    .then(() => {
-      scriptsReady = true;
-      scriptsLoading = false;
-    })
-    .catch((e) => {
-      scriptsLoading = false;
-      scriptsPromise = null;
-      throw e;
-    });
-  return scriptsPromise;
 }
 
 let canvasCounter = 0;
@@ -67,10 +46,9 @@ let canvasCounter = 0;
 const Live2DCubism2Player = forwardRef<Live2DCubism2PlayerRef, Live2DCubism2PlayerProps>(
   ({ modelPath, modelJson, scale = 1, positionY = 0.5, onModelLoaded, onError }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const canvasIdRef = useRef(`live2d-cubism2-${++canvasCounter}`);
+    const canvasIdRef = useRef(`live2d-c2-${++canvasCounter}`);
 
     useImperativeHandle(ref, () => ({
       playMotion: (group: string, index = 0) => {},
@@ -82,17 +60,14 @@ const Live2DCubism2Player = forwardRef<Live2DCubism2PlayerRef, Live2DCubism2Play
 
       async function init() {
         try {
-          await loadAllScripts();
+          await waitForLoadlive2d();
           if (cancelled) return;
-          if (!window.loadlive2d) {
-            throw new Error("loadlive2d function not found");
-          }
           loadModel();
         } catch (e: any) {
           if (!cancelled) {
-            setLoadError(e.message || "Failed to load Live2D Cubism 2 libraries");
+            setLoadError(e.message || "Failed to load Cubism 2 library");
             setIsLoading(false);
-            onError?.(e.message || "Failed to load Live2D Cubism 2 libraries");
+            onError?.(e.message || "Failed to load Cubism 2 library");
           }
         }
       }
@@ -106,7 +81,7 @@ const Live2DCubism2Player = forwardRef<Live2DCubism2PlayerRef, Live2DCubism2Play
     }, [modelPath, modelJson]);
 
     const loadModel = () => {
-      if (!canvasRef.current) return;
+      if (!canvasIdRef.current) return;
 
       const basePath = modelPath.endsWith("/") ? modelPath : `${modelPath}/`;
       const fullModelJson = `${basePath}${modelJson}`;
@@ -117,7 +92,7 @@ const Live2DCubism2Player = forwardRef<Live2DCubism2PlayerRef, Live2DCubism2Play
         setTimeout(() => {
           setIsLoading(false);
           onModelLoaded?.();
-        }, 1000);
+        }, 1500);
       } catch (e: any) {
         setLoadError(e.message || "Failed to load model");
         setIsLoading(false);
@@ -128,10 +103,9 @@ const Live2DCubism2Player = forwardRef<Live2DCubism2PlayerRef, Live2DCubism2Play
     return (
       <div ref={containerRef} className="w-full h-full relative">
         <canvas
-          ref={canvasRef}
           id={canvasIdRef.current}
-          width={300}
-          height={600}
+          width={400}
+          height={800}
           className="w-full h-full"
         />
         {isLoading && (

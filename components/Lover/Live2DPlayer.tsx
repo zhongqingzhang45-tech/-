@@ -26,49 +26,28 @@ declare global {
   }
 }
 
-const SCRIPTS = [
-  "/vendor/live2dv3/live2dcubismcore.min.js",
-  "/vendor/live2dv3/pixi.min.js",
-  "/vendor/live2dv3/live2dcubismframework.js",
-  "/vendor/live2dv3/live2dcubismpixi.js",
-];
-
-let scriptsLoading = false;
-let scriptsReady = false;
-let scriptsPromise: Promise<void> | null = null;
-
-function loadScript(src: string): Promise<void> {
+function waitForLibraries(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
+    let attempts = 0;
+    const check = () => {
+      if (
+        window.PIXI &&
+        window.LIVE2DCUBISMFRAMEWORK &&
+        window.LIVE2DCUBISMPIXI &&
+        window.Live2DCubismCore
+      ) {
+        resolve();
+        return;
+      }
+      attempts++;
+      if (attempts > 100) {
+        reject(new Error("Live2D libraries not loaded"));
+        return;
+      }
+      setTimeout(check, 100);
+    };
+    check();
   });
-}
-
-function loadAllScripts(): Promise<void> {
-  if (scriptsReady) return Promise.resolve();
-  if (scriptsPromise) return scriptsPromise;
-  scriptsLoading = true;
-  scriptsPromise = SCRIPTS.reduce(
-    (p, src) => p.then(() => loadScript(src)),
-    Promise.resolve()
-  )
-    .then(() => {
-      scriptsReady = true;
-      scriptsLoading = false;
-    })
-    .catch((e) => {
-      scriptsLoading = false;
-      scriptsPromise = null;
-      throw e;
-    });
-  return scriptsPromise;
 }
 
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
@@ -103,7 +82,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
       async function init() {
         try {
-          await loadAllScripts();
+          await waitForLibraries();
           if (cancelled) return;
           setupModel();
         } catch (e: any) {
