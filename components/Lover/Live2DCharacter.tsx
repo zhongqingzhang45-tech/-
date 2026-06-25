@@ -123,40 +123,6 @@ export function Live2DCharacter({
       className={`relative ${className}`}
       style={{ width: finalWidth, height: finalHeight }}
     >
-      {/* Volumetric glow behind character */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div 
-          className="w-[85%] h-[85%] rounded-full blur-3xl opacity-25"
-          style={{ 
-            background: 'radial-gradient(ellipse at 50% 45%, rgba(236, 72, 153, 0.4), rgba(168, 85, 247, 0.2), transparent 70%)',
-          }} 
-        />
-      </div>
-      
-      {/* Side color accents */}
-      <div 
-        className="absolute top-1/4 -left-4 w-1/3 h-1/2 rounded-full blur-[60px] opacity-20"
-        style={{ background: 'radial-gradient(ellipse at center, rgba(244, 114, 182, 0.5), transparent 70%)' }}
-      />
-      <div 
-        className="absolute top-1/3 -right-4 w-1/3 h-1/2 rounded-full blur-[60px] opacity-15"
-        style={{ background: 'radial-gradient(ellipse at center, rgba(167, 139, 250, 0.5), transparent 70%)' }}
-      />
-
-      {/* Bottom reflection glow */}
-      <div 
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 w-2/3 h-6 rounded-full blur-2xl opacity-40"
-        style={{ background: 'radial-gradient(ellipse at center, rgba(251, 207, 232, 0.6), transparent 70%)' }}
-      />
-
-      {/* Subtle rim light */}
-      <div 
-        className="absolute inset-0 rounded-full opacity-30"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 30%, transparent 40%, rgba(255, 255, 255, 0.1) 70%, transparent 100%)',
-        }}
-      />
-
       <Live2DPlayer
         modelUrl={`/live2d-models/${model}/runtime/${model}.model3.json`}
         width={finalWidth}
