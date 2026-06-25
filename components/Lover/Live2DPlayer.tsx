@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 
 interface Live2DPlayerProps {
   modelPath: string;
@@ -51,389 +51,311 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-async function loadAllScripts(): Promise<void> {
-  if (scriptsReady) return;
+function loadAllScripts(): Promise<void> {
+  if (scriptsReady) return Promise.resolve();
   if (scriptsPromise) return scriptsPromise;
-  scriptsPromise = (async () => {
-    for (const src of SCRIPTS) {
-      await loadScript(src);
-    }
-    scriptsReady = true;
-  })();
+  scriptsLoading = true;
+  scriptsPromise = SCRIPTS.reduce(
+    (p, src) => p.then(() => loadScript(src)),
+    Promise.resolve()
+  )
+    .then(() => {
+      scriptsReady = true;
+      scriptsLoading = false;
+    })
+    .catch((e) => {
+      scriptsLoading = false;
+      scriptsPromise = null;
+      throw e;
+    });
   return scriptsPromise;
 }
 
-const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(function Live2DPlayer(
-  { modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError },
-  ref
-) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const appRef = useRef<any>(null);
-  const modelRef = useRef<any>(null);
-  const motionsRef = useRef<Map<string, any>>(new Map());
-  const expressionsRef = useRef<Map<string, any>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
+  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError }, ref) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const appRef = useRef<any>(null);
+    const modelRef = useRef<any>(null);
+    const motionsRef = useRef<Map<string, any>>(new Map());
+    const expressionsRef = useRef<Map<string, any>>(new Map());
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
-  useImperativeHandle(ref, () => ({
-    playMotion: (motionId: string) => {
-      const model = modelRef.current;
-      const motions = motionsRef.current;
-      if (!model || !model.animator) return;
-      
-      const motion = motions.get(motionId);
-      if (motion) {
+    useImperativeHandle(ref, () => ({
+      playMotion: (motionId: string) => {
+        const model = modelRef.current;
+        if (!model || !model.animator) return;
+        const motion = motionsRef.current.get(motionId);
+        if (!motion) return;
         const layer = model.animator.getLayer("base");
         if (layer) {
           layer.play(motion);
         }
-      } else {
-        const allMotions = Array.from(motions.values());
-        if (allMotions.length > 0) {
-          const layer = model.animator.getLayer("base");
-          if (layer) {
-            layer.play(allMotions[0]);
-          }
-        }
-      }
-    },
-    setExpression: (_name: string) => {
-    },
-    getModelInfo: () => {
-      const motions = motionsRef.current;
-      const expressions = expressionsRef.current;
-      return {
-        motions: Array.from(motions.keys()),
-        expressions: Array.from(expressions.keys()),
-      };
-    },
-  }));
+      },
+      setExpression: (name: string) => {
+        // expressions not implemented in cubism3 sdk same way
+      },
+      getModelInfo: () => ({
+        motions: Array.from(motionsRef.current.keys()),
+        expressions: Array.from(expressionsRef.current.keys()),
+      }),
+    }));
 
-  const setupModel = useCallback(async () => {
-    if (!containerRef.current) return;
+    useEffect(() => {
+      let cancelled = false;
 
-    const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
-    if (!PIXI || !LIVE2DCUBISMFRAMEWORK || !LIVE2DCUBISMPIXI || !Live2DCubismCore) {
-      setLoadError("Live2D libraries not loaded");
-      setIsLoading(false);
-      return;
-    }
-
-    const container = containerRef.current;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-
-    if (appRef.current) {
-      appRef.current.destroy(true);
-      appRef.current = null;
-    }
-
-    const app = new PIXI.Application({
-      width,
-      height,
-      transparent: true,
-      antialias: true,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
-    });
-
-    container.appendChild(app.view);
-    appRef.current = app;
-
-    const basePath = modelPath.endsWith("/") ? modelPath : `${modelPath}/`;
-    const modelJsonPath = `${basePath}${modelName}.model3.json`;
-
-    try {
-      const response = await fetch(modelJsonPath);
-      if (!response.ok) {
-        throw new Error(`Failed to load model json: ${response.status}`);
-      }
-      const model3Obj = await response.json();
-
-      const loader = new PIXI.loaders.Loader(basePath);
-      const textures: any[] = [];
-      const motionNames: string[] = [];
-      const expressionNames: string[] = [];
-      let textureCount = 0;
-
-      if (model3Obj.FileReferences?.Moc) {
-        loader.add("moc", model3Obj.FileReferences.Moc, {
-          xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER,
-        });
-      }
-
-      if (model3Obj.FileReferences?.Textures) {
-        model3Obj.FileReferences.Textures.forEach((tex: string, i: number) => {
-          loader.add(`texture${i}`, tex);
-          textureCount++;
-        });
-      }
-
-      if (model3Obj.FileReferences?.Physics) {
-        loader.add("physics", model3Obj.FileReferences.Physics, {
-          xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
-        });
-      }
-
-      if (model3Obj.FileReferences?.Motions) {
-        for (const group in model3Obj.FileReferences.Motions) {
-          model3Obj.FileReferences.Motions[group].forEach((mot: any) => {
-            const motionFile = mot.File;
-            const motionName = motionFile.split("/").pop().split(".").shift();
-            const resourceKey = `motion_${motionName}`;
-            if (!motionNames.includes(resourceKey)) {
-              loader.add(resourceKey, motionFile, {
-                xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
-              });
-              motionNames.push(resourceKey);
-            }
-          });
-        }
-      }
-
-      if (model3Obj.FileReferences?.Expressions) {
-        model3Obj.FileReferences.Expressions.forEach((expr: any) => {
-          const exprName = expr.Name;
-          const exprFile = expr.File;
-          const resourceKey = `expr_${exprName}`;
-          loader.add(resourceKey, exprFile, {
-            xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
-          });
-          expressionNames.push(resourceKey);
-        });
-      }
-
-      let groups = null;
-      if (model3Obj.Groups) {
-        groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3Obj);
-      }
-
-      loader.load((_l: any, r: any) => {
+      async function init() {
         try {
-          let moc = null;
-          if (r.moc && r.moc.data) {
-            moc = Live2DCubismCore.Moc.fromArrayBuffer(r.moc.data);
-          }
-
-          if (!moc) {
-            throw new Error("Failed to load moc file");
-          }
-
-          for (let i = 0; i < textureCount; i++) {
-            if (r[`texture${i}`] && r[`texture${i}`].texture) {
-              textures[i] = r[`texture${i}`].texture;
-            }
-          }
-
-          const coreModel = Live2DCubismCore.Model.fromMoc(moc);
-          if (coreModel == null) {
-            throw new Error("Failed to create core model from moc");
-          }
-
-          const animatorBuilder = new LIVE2DCUBISMFRAMEWORK.AnimatorBuilder();
-          const animator = animatorBuilder
-            .setTarget(coreModel)
-            .setTimeScale(1)
-            .build();
-
-          let physicsRig = null;
-          if (r.physics && r.physics.data) {
-            const physicsBuilder = new LIVE2DCUBISMFRAMEWORK.PhysicsRigBuilder();
-            physicsBuilder.setPhysics3Json(r.physics.data);
-            physicsRig = physicsBuilder
-              .setTarget(coreModel)
-              .setTimeScale(1)
-              .build();
-          }
-
-          const motions = new Map<string, any>();
-          motionNames.forEach((key) => {
-            const res = r[key];
-            if (res && res.data) {
-              const motionName = key.replace("motion_", "");
-              const anim = LIVE2DCUBISMFRAMEWORK.Animation.fromMotion3Json(res.data);
-              motions.set(motionName, anim);
-            }
-          });
-          motionsRef.current = motions;
-
-          const expressions = new Map<string, any>();
-          expressionNames.forEach((key) => {
-            const res = r[key];
-            if (res && res.data) {
-              const exprName = key.replace("expr_", "");
-              expressions.set(exprName, res.data);
-            }
-          });
-          expressionsRef.current = expressions;
-
-          let userData = null;
-
-          const model = LIVE2DCUBISMPIXI.Model._create(
-            coreModel,
-            textures,
-            animator,
-            physicsRig,
-            userData,
-            groups
-          );
-
-          model.motions = motions;
-          modelRef.current = model;
-
-          model.animator.addLayer("base", LIVE2DCUBISMFRAMEWORK.BuiltinAnimationBlenders.OVERRIDE, 1);
-
-          app.stage.addChild(model);
-          app.stage.addChild(model.masks);
-
-          const modelScale = (width * 0.03) * scale;
-          model.scale.set(modelScale);
-          model.x = width / 2;
-          model.y = height * positionY;
-
-          model.masks.resize(app.view.width, app.view.height);
-
-          const originalUpdate = model.update.bind(model);
-          model.update = (delta: number) => {
-            const deltaTime = 0.016 * delta;
-
-            if (!model.animator.isPlaying) {
-              const idleKeys = ["idle", "Idle", "微笑-正常", "微笑-看着你", "微笑-平淡", "微笑-说话", "平淡"];
-              let idleMotion = null;
-              for (const key of idleKeys) {
-                if (model.motions && model.motions.has(key)) {
-                  idleMotion = model.motions.get(key);
-                  break;
-                }
-              }
-              if (idleMotion && model.animator.getLayer("base")) {
-                model.animator.getLayer("base").play(idleMotion);
-              }
-            }
-
-            originalUpdate(delta);
-          };
-
-          app.ticker.add((delta: number) => {
-            if (!model) return;
-            model.update(delta);
-            model.masks.update(app.renderer);
-          });
-
-          let idleMotion = null;
-          const idleKeys = ["idle", "Idle", "微笑-正常", "微笑-看着你", "微笑-平淡", "微笑-说话", "平淡"];
-          for (const key of idleKeys) {
-            if (motions.has(key)) {
-              idleMotion = motions.get(key);
-              break;
-            }
-          }
-          if (!idleMotion && motions.size > 0) {
-            idleMotion = Array.from(motions.values())[0];
-          }
-          
-          if (idleMotion && model.animator) {
-            const layer = model.animator.getLayer("base");
-            if (layer) {
-              layer.play(idleMotion);
-            }
-          }
-
-          setIsLoading(false);
-          onModelLoaded?.();
-        } catch (err: any) {
-          console.error("Model build error:", err);
-          setLoadError(err.message || "Failed to build model");
-          setIsLoading(false);
-          onError?.(err.message || "Failed to build model");
-        }
-      });
-    } catch (err: any) {
-      console.error("Setup error:", err);
-      setLoadError(err.message || "Failed to setup Live2D");
-      setIsLoading(false);
-      onError?.(err.message || "Failed to setup Live2D");
-    }
-  }, [modelPath, modelName, scale, positionY, onModelLoaded, onError]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const init = async () => {
-      try {
-        await loadAllScripts();
-        if (mounted) {
+          await loadAllScripts();
+          if (cancelled) return;
           setupModel();
-        }
-      } catch (err: any) {
-        if (mounted) {
-          setLoadError(err.message || "Failed to load scripts");
-          setIsLoading(false);
-          onError?.(err.message || "Failed to load scripts");
+        } catch (e: any) {
+          if (!cancelled) {
+            setLoadError(e.message || "Failed to load Live2D libraries");
+            setIsLoading(false);
+            onError?.(e.message || "Failed to load Live2D libraries");
+          }
         }
       }
-    };
 
-    init();
+      init();
 
-    return () => {
-      mounted = false;
+      return () => {
+        cancelled = true;
+        if (appRef.current) {
+          appRef.current.destroy(true);
+          appRef.current = null;
+        }
+        modelRef.current = null;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [modelPath, modelName]);
+
+    const setupModel = () => {
+      if (!containerRef.current) return;
+
+      const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
+      if (!PIXI || !LIVE2DCUBISMFRAMEWORK || !LIVE2DCUBISMPIXI || !Live2DCubismCore) {
+        setLoadError("Live2D libraries not loaded");
+        setIsLoading(false);
+        return;
+      }
+
+      const container = containerRef.current;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
       if (appRef.current) {
         appRef.current.destroy(true);
         appRef.current = null;
       }
-      modelRef.current = null;
+
+      const app = new PIXI.Application({
+        width,
+        height,
+        transparent: true,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
+
+      container.appendChild(app.view);
+      appRef.current = app;
+
+      const basePath = modelPath.endsWith("/") ? modelPath : `${modelPath}/`;
+      const modelJsonPath = `${basePath}${modelName}.model3.json`;
+
+      const loader = new PIXI.loaders.Loader(basePath);
+      const textures: any[] = [];
+      const motionNames: string[] = [];
+      let textureCount = 0;
+
+      loader.add("model_json", modelJsonPath, {
+        xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
+      });
+
+      loader.load((_loader: any, resources: any) => {
+        try {
+          const model3Obj = resources.model_json.data;
+
+          if (model3Obj.FileReferences?.Moc) {
+            loader.add("moc", model3Obj.FileReferences.Moc, {
+              xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER,
+            });
+          }
+
+          if (model3Obj.FileReferences?.Textures) {
+            model3Obj.FileReferences.Textures.forEach((tex: string, i: number) => {
+              loader.add(`texture${i}`, tex);
+              textureCount++;
+            });
+          }
+
+          if (model3Obj.FileReferences?.Physics) {
+            loader.add("physics", model3Obj.FileReferences.Physics, {
+              xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
+            });
+          }
+
+          if (model3Obj.FileReferences?.Motions) {
+            for (const group in model3Obj.FileReferences.Motions) {
+              model3Obj.FileReferences.Motions[group].forEach((mot: any) => {
+                const motionFile = mot.File;
+                const motionName = motionFile.split("/").pop().split(".").shift();
+                const resourceKey = `motion_${motionName}`;
+                if (!motionNames.includes(resourceKey)) {
+                  loader.add(resourceKey, motionFile, {
+                    xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
+                  });
+                  motionNames.push(resourceKey);
+                }
+              });
+            }
+          }
+
+          let groups = null;
+          if (model3Obj.Groups) {
+            groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3Obj);
+          }
+
+          loader.load((_l: any, r: any) => {
+            try {
+              let moc = null;
+              if (r.moc && r.moc.data) {
+                moc = Live2DCubismCore.Moc.fromArrayBuffer(r.moc.data);
+              }
+
+              if (!moc) {
+                throw new Error("Failed to load moc file");
+              }
+
+              for (let i = 0; i < textureCount; i++) {
+                if (r[`texture${i}`] && r[`texture${i}`].texture) {
+                  textures[i] = r[`texture${i}`].texture;
+                }
+              }
+
+              const coreModel = Live2DCubismCore.Model.fromMoc(moc);
+              if (coreModel == null) {
+                throw new Error("Failed to create core model from moc");
+              }
+
+              const animatorBuilder = new LIVE2DCUBISMFRAMEWORK.AnimatorBuilder();
+              const animator = animatorBuilder
+                .setTarget(coreModel)
+                .setTimeScale(1)
+                .build();
+
+              let physicsRig = null;
+              if (r.physics && r.physics.data) {
+                const physicsBuilder = new LIVE2DCUBISMFRAMEWORK.PhysicsRigBuilder();
+                physicsBuilder.setPhysics3Json(r.physics.data);
+                physicsRig = physicsBuilder
+                  .setTarget(coreModel)
+                  .setTimeScale(1)
+                  .build();
+              }
+
+              const motions = new Map<string, any>();
+              motionNames.forEach((key) => {
+                const res = r[key];
+                if (res && res.data) {
+                  const motionName = key.replace("motion_", "");
+                  const anim = LIVE2DCUBISMFRAMEWORK.Animation.fromMotion3Json(res.data);
+                  motions.set(motionName, anim);
+                }
+              });
+              motionsRef.current = motions;
+
+              let userData = null;
+
+              const model = LIVE2DCUBISMPIXI.Model._create(
+                coreModel,
+                textures,
+                animator,
+                physicsRig,
+                userData,
+                groups
+              );
+
+              model.motions = motions;
+              modelRef.current = model;
+
+              model.animator.addLayer("base", LIVE2DCUBISMFRAMEWORK.BuiltinAnimationBlenders.OVERRIDE, 1);
+
+              app.stage.addChild(model);
+              app.stage.addChild(model.masks);
+
+              const modelScale = (width * 0.03) * scale;
+              model.scale.set(modelScale);
+              model.x = width / 2;
+              model.y = height * positionY;
+
+              model.masks.resize(app.view.width, app.view.height);
+
+              const originalUpdate = model.update.bind(model);
+              model.update = (delta: number) => {
+                const deltaTime = 0.016 * delta;
+
+                if (!model.animator.isPlaying) {
+                  const idleKeys = ["idle", "Idle", "main_1", "main_2", "main_3", "home"];
+                  let idleMotion = null;
+                  for (const key of idleKeys) {
+                    if (model.motions && model.motions.has(key)) {
+                      idleMotion = model.motions.get(key);
+                      break;
+                    }
+                  }
+                  if (idleMotion && model.animator.getLayer("base")) {
+                    model.animator.getLayer("base").play(idleMotion);
+                  }
+                }
+
+                originalUpdate(delta);
+              };
+
+              app.ticker.add((delta: number) => {
+                if (!model) return;
+                model.update(delta);
+                model.masks.update(app.renderer);
+              });
+
+              setIsLoading(false);
+              onModelLoaded?.();
+            } catch (err: any) {
+              setLoadError(err.message || "Failed to setup model");
+              setIsLoading(false);
+              onError?.(err.message || "Failed to setup model");
+            }
+          });
+        } catch (err: any) {
+          setLoadError(err.message || "Failed to load model");
+          setIsLoading(false);
+          onError?.(err.message || "Failed to load model");
+        }
+      });
     };
-  }, [setupModel, onError]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (!appRef.current || !modelRef.current || !containerRef.current) return;
-      const app = appRef.current;
-      const model = modelRef.current;
-      const container = containerRef.current;
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-      app.renderer.resize(width, height);
-
-      const modelScale = (width * 0.005) * (scale || 1);
-      model.scale.set(modelScale);
-      model.x = width / 2;
-      model.y = height * (positionY || 0.5);
-      
-      if (model.masks) {
-        model.masks.resize(app.view.width, app.view.height);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [scale, positionY]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="w-full h-full relative"
-      style={{ minHeight: 200 }}
-    >
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-            <span>Loading...</span>
+    return (
+      <div ref={containerRef} className="w-full h-full relative">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        </div>
-      )}
-      {loadError && (
-        <div className="absolute inset-0 flex items-center justify-center text-red-400/80 text-sm p-4 text-center">
-          <div>
-            <p className="font-medium mb-1">Live2D 加载失败</p>
-            <p className="text-xs text-white/40">{loadError}</p>
+        )}
+        {loadError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-red-400 text-sm text-center px-4">
+              <div className="mb-2">⚠️ Model Load Error</div>
+              <div className="text-xs opacity-70">{loadError}</div>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-});
+        )}
+      </div>
+    );
+  }
+);
+
+Live2DPlayer.displayName = "Live2DPlayer";
 
 export default Live2DPlayer;
