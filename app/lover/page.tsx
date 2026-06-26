@@ -106,6 +106,30 @@ export default function LoverPage() {
     }
   }, [messages, isTyping, voiceEnabled]);
 
+  useEffect(() => {
+    if (messages.length > 0 && modelReady) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.sender === "assistant" && !isTyping) {
+        const mood = lastMsg.emotion.mood;
+        const expMap: Record<string, string> = {
+          happy: "happy-01",
+          sad: "sad",
+          angry: "angry",
+          shy: "shy",
+          surprised: "surprise",
+        };
+        const expName = expMap[mood] || "smile";
+        live2dRef.current?.setExpression(expName);
+
+        if (Math.random() > 0.5) {
+          setTimeout(() => {
+            live2dRef.current?.triggerRandomMotion();
+          }, 300);
+        }
+      }
+    }
+  }, [messages, isTyping, modelReady]);
+
   const convertedMessages: ChatMessage[] = messages.map((msg) => ({
     id: msg.id,
     sender: msg.sender === "assistant" ? "lover" : "user",
