@@ -50,6 +50,8 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
     setRelationship(newAgent.lifeState.relationship);
     setLifeState(newAgent.getLifeState());
 
+    newAgent.initialize().catch(console.warn);
+
     const initialMessages: ChatMessage[] = [
       {
         id: "1",

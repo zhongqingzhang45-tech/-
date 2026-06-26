@@ -83,10 +83,9 @@ export class DigitalLifeAgent {
     
     this.initializeTemplates();
     this.seedMemories();
-    this.initializeDeviceBinding();
   }
 
-  private async initializeDeviceBinding(): Promise<void> {
+  async initialize(): Promise<void> {
     try {
       await this.deviceFingerprint.collectDeviceInfo();
       const email = typeof window !== "undefined" ? localStorage.getItem("lover_email") : "";
@@ -94,8 +93,8 @@ export class DigitalLifeAgent {
       if (email) {
         await this.deviceFingerprint.createOrUpdateBinding(`user_${Date.now()}`, email, nickname);
       }
-    } catch (e) {
-      console.warn("Device binding initialization failed:", e);
+    } catch (e: any) {
+      console.warn("Device binding initialization failed:", e?.message || e);
     }
   }
 

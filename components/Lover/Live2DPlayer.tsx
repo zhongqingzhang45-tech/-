@@ -9,6 +9,7 @@ interface Live2DPlayerProps {
   positionY?: number;
   onModelLoaded?: () => void;
   onError?: (error: string) => void;
+  forwardedRef?: React.Ref<Live2DPlayerRef>;
 }
 
 export interface Live2DPlayerRef {
@@ -147,7 +148,8 @@ function onUpdate(this: any, delta: number) {
 }
 
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
-  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError }, ref) => {
+  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, forwardedRef }, ref) => {
+    const actualRef = (forwardedRef || ref) as React.RefObject<Live2DPlayerRef>;
     const containerRef = useRef<HTMLDivElement>(null);
     const appRef = useRef<any>(null);
     const modelRef = useRef<any>(null);
@@ -155,7 +157,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
 
-    useImperativeHandle(ref, () => ({
+    useImperativeHandle(actualRef, () => ({
       playMotion: (motionId: string) => {
         const model = modelRef.current;
         if (!model || !model.animator) return;

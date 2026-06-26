@@ -106,14 +106,15 @@ export class SpeechPipeline {
   }
 
   speak(text: string, options?: Partial<TTSOptions>): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!this.synthesis) {
-        reject(new Error("Speech synthesis not available"));
+        console.warn("Speech synthesis not available");
+        resolve();
         return;
       }
 
       this.utteranceQueue.push(text);
-      this.processQueue().then(resolve).catch(reject);
+      this.processQueue().then(resolve).catch(() => resolve());
     });
   }
 
@@ -143,13 +144,20 @@ export class SpeechPipeline {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.config.asrLang ?? "zh-CN";
-      utterance.rate = this.config.ttsRate ?? 1;
-      utterance.pitch = 1;
+      utterance.rate = this.config.ttsRate ?? 0.95;
+      utterance.pitch = 1.05;
+      utterance.volume = 1;
 
+      const voices = this.synthesis.getVoices();
+      
       if (this.config.ttsVoice) {
-        const voices = this.synthesis.getVoices();
         const voice = voices.find((v) => v.name === this.config.ttsVoice);
         if (voice) utterance.voice = voice;
+      } else {
+        const chineseFemaleVoice = this.findBestChineseFemaleVoice(voices);
+        if (chineseFemaleVoice) {
+          utterance.voice = chineseFemaleVoice;
+        }
       }
 
       utterance.onstart = () => {
@@ -165,11 +173,36 @@ export class SpeechPipeline {
 
       utterance.onerror = (event) => {
         this.isSpeaking = false;
-        reject(event);
+        console.warn("TTS utterance error:", event);
+        resolve();
       };
 
-      this.synthesis.speak(utterance);
+      try {
+        this.synthesis.speak(utterance);
+      } catch (err) {
+        console.warn("TTS speak error:", err);
+        resolve();
+      }
     });
+  }
+
+  private findBestChineseFemaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+    const chineseVoices = voices.filter(v => v.lang.includes('zh') || v.lang.includes('cmn') || v.lang.includes('CN'));
+    if (chineseVoices.length === 0) return null;
+
+    const femaleKeywords = ['female', 'woman', 'girl', 'lady', '女', '小雅', '晓晓', '小美', '小燕', 'Tingting', 'Mei-Jia', 'Sin-ji', 'Yaoyao'];
+    
+    for (const keyword of femaleKeywords) {
+      const voice = chineseVoices.find(v => 
+        v.name.toLowerCase().includes(keyword.toLowerCase())
+      );
+      if (voice) return voice;
+    }
+
+    const defaultVoice = chineseVoices.find(v => v.default);
+    if (defaultVoice) return defaultVoice;
+
+    return chineseVoices[0] || null;
   }
 
   stopSpeaking(): void {

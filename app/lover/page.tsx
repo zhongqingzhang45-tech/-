@@ -215,15 +215,6 @@ export default function LoverPage() {
           >
             {profile?.name?.[0] || "星"}
           </div>
-          <div>
-            <div className="text-white font-semibold text-sm">{profile?.name || "星野"}</div>
-            <span 
-              className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white/70"
-              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-            >
-              等级 {lifeState?.growth?.level || 1}
-            </span>
-          </div>
         </div>
 
         <nav className="hidden md:flex items-center justify-center flex-1 gap-1">
@@ -268,21 +259,10 @@ export default function LoverPage() {
       <div className="flex-1 flex min-h-0 relative">
         {!isMobile && (
           <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
-            <div
-              className="absolute top-4 left-4 z-20 px-3 py-2 rounded-full text-xs font-medium text-white/80 flex items-center gap-2"
-              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-            >
-              <span>{currentCharacter.avatar}</span>
-              <span>{currentCharacter.name}</span>
-              <span className="text-white/40 text-[10px]">
-                Lv.{lifeState?.growth?.level || 1}
-              </span>
-            </div>
-
             <div className="relative z-10 w-full h-full">
               <Live2DPlayer
                 key={currentCharacter.id}
-                ref={live2dRef}
+                forwardedRef={live2dRef}
                 modelPath={currentCharacter.path}
                 modelName={currentCharacter.model}
                 scale={currentCharacter.scale}

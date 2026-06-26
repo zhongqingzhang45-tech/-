@@ -92,11 +92,24 @@ export class DeviceFingerprint {
   }
 
   private async hashString(str: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    try {
+      if (typeof crypto !== "undefined" && crypto.subtle && crypto.subtle.digest) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+    } catch (e) {
+      console.warn("crypto.subtle not available, using fallback hash");
+    }
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).padStart(16, "0") + Math.abs(hash * 31).toString(16).padStart(16, "0");
   }
 
   async collectDeviceInfo(): Promise<DeviceInfo> {
