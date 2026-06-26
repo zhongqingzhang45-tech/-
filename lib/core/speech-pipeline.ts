@@ -7,6 +7,8 @@ export interface TTSOptions {
   rate?: number;
   pitch?: number;
   speed?: number;
+  emotion?: "happy" | "sad" | "angry" | "affectionate" | "neutral" | "shy" | "sleepy" | "thoughtful";
+  isSinging?: boolean;
 }
 
 export interface ASROptions {
@@ -20,7 +22,9 @@ export interface SpeechPipelineConfig {
   asrProvider: ASRProvider;
   ttsVoice?: string;
   ttsRate?: number;
+  ttsPitch?: number;
   asrLang?: string;
+  characterGender?: "male" | "female";
 }
 
 export type SpeechEvent =
@@ -114,11 +118,11 @@ export class SpeechPipeline {
       }
 
       this.utteranceQueue.push(text);
-      this.processQueue().then(resolve).catch(() => resolve());
+      this.processQueue(options).then(resolve).catch(() => resolve());
     });
   }
 
-  private async processQueue(): Promise<void> {
+  private async processQueue(options?: Partial<TTSOptions>): Promise<void> {
     if (this.isProcessing) return;
 
     while (this.utteranceQueue.length > 0) {
@@ -126,7 +130,7 @@ export class SpeechPipeline {
       const text = this.utteranceQueue.shift()!;
 
       try {
-        await this.speakSingle(text);
+        await this.speakSingle(text, options);
       } catch (err) {
         console.error("TTS error:", err);
       }
@@ -135,7 +139,7 @@ export class SpeechPipeline {
     this.isProcessing = false;
   }
 
-  private speakSingle(text: string): Promise<void> {
+  private speakSingle(text: string, options?: Partial<TTSOptions>): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.synthesis) {
         reject(new Error("Speech synthesis not available"));
@@ -144,19 +148,29 @@ export class SpeechPipeline {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.config.asrLang ?? "zh-CN";
-      utterance.rate = this.config.ttsRate ?? 0.95;
-      utterance.pitch = 1.05;
       utterance.volume = 1;
+
+      const emotion = options?.emotion ?? "neutral";
+      const isSinging = options?.isSinging ?? false;
+      const { rate, pitch } = this.getVoiceParams(emotion, isSinging);
+      
+      utterance.rate = options?.rate ?? rate;
+      utterance.pitch = options?.pitch ?? pitch;
 
       const voices = this.synthesis.getVoices();
       
-      if (this.config.ttsVoice) {
+      if (options?.voice) {
+        const voice = voices.find((v) => v.name === options.voice);
+        if (voice) utterance.voice = voice;
+      } else if (this.config.ttsVoice) {
         const voice = voices.find((v) => v.name === this.config.ttsVoice);
         if (voice) utterance.voice = voice;
       } else {
-        const chineseFemaleVoice = this.findBestChineseFemaleVoice(voices);
-        if (chineseFemaleVoice) {
-          utterance.voice = chineseFemaleVoice;
+        const bestVoice = this.config.characterGender === "male"
+          ? this.findBestChineseMaleVoice(voices)
+          : this.findBestChineseFemaleVoice(voices);
+        if (bestVoice) {
+          utterance.voice = bestVoice;
         }
       }
 
@@ -186,13 +200,57 @@ export class SpeechPipeline {
     });
   }
 
+  private getVoiceParams(emotion: string, isSinging: boolean): { rate: number; pitch: number } {
+    if (isSinging) {
+      return { rate: 0.85, pitch: 1.25 };
+    }
+
+    switch (emotion) {
+      case "happy":
+        return { rate: 1.0, pitch: 1.15 };
+      case "sad":
+        return { rate: 0.85, pitch: 0.9 };
+      case "angry":
+        return { rate: 1.1, pitch: 0.95 };
+      case "affectionate":
+        return { rate: 0.9, pitch: 1.1 };
+      case "shy":
+        return { rate: 0.85, pitch: 1.05 };
+      case "sleepy":
+        return { rate: 0.75, pitch: 0.9 };
+      case "thoughtful":
+        return { rate: 0.9, pitch: 1.0 };
+      default:
+        return { rate: this.config.ttsRate ?? 0.95, pitch: this.config.ttsPitch ?? 1.05 };
+    }
+  }
+
   private findBestChineseFemaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
     const chineseVoices = voices.filter(v => v.lang.includes('zh') || v.lang.includes('cmn') || v.lang.includes('CN'));
     if (chineseVoices.length === 0) return null;
 
-    const femaleKeywords = ['female', 'woman', 'girl', 'lady', '女', '小雅', '晓晓', '小美', '小燕', 'Tingting', 'Mei-Jia', 'Sin-ji', 'Yaoyao'];
+    const femaleKeywords = ['female', 'woman', 'girl', 'lady', '女', '小雅', '晓晓', '小美', '小燕', 'Tingting', 'Mei-Jia', 'Sin-ji', 'Yaoyao', 'xiaoxiao', 'xiaoyan', 'xiaomei'];
     
     for (const keyword of femaleKeywords) {
+      const voice = chineseVoices.find(v => 
+        v.name.toLowerCase().includes(keyword.toLowerCase())
+      );
+      if (voice) return voice;
+    }
+
+    const defaultVoice = chineseVoices.find(v => v.default);
+    if (defaultVoice) return defaultVoice;
+
+    return chineseVoices[0] || null;
+  }
+
+  private findBestChineseMaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+    const chineseVoices = voices.filter(v => v.lang.includes('zh') || v.lang.includes('cmn') || v.lang.includes('CN'));
+    if (chineseVoices.length === 0) return null;
+
+    const maleKeywords = ['male', 'man', 'boy', '男', '云希', '云扬', '小云', '小强', 'Kangkang', 'Yunxi', 'Yunyang'];
+    
+    for (const keyword of maleKeywords) {
       const voice = chineseVoices.find(v => 
         v.name.toLowerCase().includes(keyword.toLowerCase())
       );

@@ -3,21 +3,20 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LifeOS · 你的 AI 公司",
+  title: "星野 · 你的AI伴侣",
   description:
-    "产品经理、设计师、研发、营销、销售、运营、客服 —— 一支 AI 团队全天候在线。一个人，也能拥有一家公司的执行能力。",
+    "星野是你的专属AI伴侣，懂你所想，永远陪伴。暖心聊天、语音互动、生动形象，一个真正有温度的灵魂伴侣。",
   keywords: [
-    "AI Agent",
-    "AI 员工",
-    "创业工具",
-    "自动化",
-    "LifeOS",
-    "AI 公司",
+    "AI伴侣",
+    "虚拟恋人",
+    "聊天机器人",
+    "语音陪伴",
+    "星野",
+    "AI情感",
   ],
   openGraph: {
-    title: "LifeOS · 你的 AI 公司",
-    description:
-      "一支 AI 团队全天候在线。一个人，也能拥有一家公司的执行能力。",
+    title: "星野 · 你的AI伴侣",
+    description: "永远陪伴，懂你所想。一个真正有温度的灵魂伴侣。",
     type: "website",
   },
 };

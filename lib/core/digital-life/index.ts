@@ -21,3 +21,4 @@ export { ContextService } from "./context-service";
 export type { TimeContext, WeatherContext, SocialContext } from "./context-service";
 export { DeviceFingerprint } from "./device-binding";
 export type { DeviceInfo, UserBinding } from "./device-binding";
+export { generateName, generateNickname } from "./name-generator";

@@ -8,6 +8,8 @@ import {
   CharacterProfile,
   FEMALE_CHARACTERS,
   MALE_CHARACTERS,
+  generateName,
+  generateNickname,
 } from "@/lib/core/digital-life";
 
 export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
@@ -22,26 +24,60 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
   useEffect(() => {
     let userGender: Gender = "male";
     let characterName = "";
+    let characterSurname = "";
+    let characterNickname = "";
+    let userNickname = "";
+    let deviceFingerprint = "";
     
     if (typeof window !== "undefined") {
       const storedGender = localStorage.getItem("lover_user_gender") as Gender | null;
       const storedName = localStorage.getItem("lover_character_name");
+      const storedSurname = localStorage.getItem("lover_character_surname");
+      const storedNickname = localStorage.getItem("lover_character_nickname");
+      const storedUserNickname = localStorage.getItem("lover_user_nickname");
+      const storedFingerprint = localStorage.getItem("device_fingerprint");
+      
       if (storedGender) userGender = storedGender;
       if (storedName) characterName = storedName;
+      if (storedSurname) characterSurname = storedSurname;
+      if (storedNickname) characterNickname = storedNickname;
+      if (storedUserNickname) userNickname = storedUserNickname;
+      if (storedFingerprint) deviceFingerprint = storedFingerprint;
     }
 
+    const characterGender: Gender = userGender === "male" ? "female" : "male";
     const baseCharacter = userGender === "male" 
       ? FEMALE_CHARACTERS[0] 
       : MALE_CHARACTERS[0];
 
+    if (!characterName) {
+      const seed = deviceFingerprint || Date.now().toString();
+      const nameInfo = generateName(characterGender, seed);
+      characterName = nameInfo.givenName;
+      characterSurname = nameInfo.surname;
+      characterNickname = nameInfo.nickname;
+      
+      if (typeof window !== "undefined") {
+        localStorage.setItem("lover_character_name", characterName);
+        localStorage.setItem("lover_character_surname", characterSurname);
+        localStorage.setItem("lover_character_nickname", characterNickname);
+      }
+    }
+
+    if (!userNickname) {
+      userNickname = generateNickname(userGender);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("lover_user_nickname", userNickname);
+      }
+    }
+
     const fullProfile: CharacterProfile = {
       ...baseCharacter,
       ...profile,
+      name: characterSurname + characterName,
+      nickname: characterNickname,
+      userNickname: userNickname,
     };
-
-    if (characterName) {
-      fullProfile.name = characterName;
-    }
 
     const newAgent = new DigitalLifeAgent(fullProfile);
     agentRef.current = newAgent;

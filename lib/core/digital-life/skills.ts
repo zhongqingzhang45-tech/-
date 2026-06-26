@@ -165,6 +165,16 @@ export class SkillSystem {
         triggers: ["聊聊", "谈谈", "说说心里话", "睡不着"],
         cooldown: 0,
       },
+      {
+        id: "sing",
+        name: "唱歌给你听",
+        category: "creative",
+        description: "唱首歌给你听，只唱高潮部分哦",
+        icon: "🎵",
+        level: 1,
+        triggers: ["唱歌", "唱首歌", "哼几句", "来一首", "听你唱"],
+        cooldown: 60000,
+      },
     ];
   }
 
@@ -220,6 +230,8 @@ export class SkillSystem {
         return this.handleCompliment();
       case "deep_talk":
         return this.handleDeepTalk();
+      case "sing":
+        return this.handleSing();
       default:
         return null;
     }
@@ -517,6 +529,52 @@ export class SkillSystem {
       response: `🌌 来聊点深层的吧～\n\n我问你一个问题：\n\n**${topic}**\n\n...想聊聊吗？我在听 💕`,
       shouldChangeMood: true,
       targetMood: "thoughtful",
+      moodIntensity: 0.5,
+    };
+  }
+
+  private handleSing(): SkillResult {
+    const songs = [
+      {
+        title: "小幸运",
+        lyric: `原来你是我最想留住的幸运\n原来我们和爱情曾经靠得那么近\n为我对抗世界的决定\n为我坚持的勇气\n一幕幕都是你 一尘不染的真心`,
+        mood: "happy" as MoodType,
+      },
+      {
+        title: "告白气球",
+        lyric: `亲爱的 爱上你 从那天起\n甜蜜的很轻易\n亲爱的 别任性 你的眼睛\n在说我愿意`,
+        mood: "happy" as MoodType,
+      },
+      {
+        title: "往后余生",
+        lyric: `往后余生\n风雪是你\n平淡是你\n清贫是你\n荣华是你\n心底温柔是你\n目光所至\n也是你`,
+        mood: "affectionate" as MoodType,
+      },
+      {
+        title: "纸短情长",
+        lyric: `纸短情长啊 诉不完当时年少\n我的故事还是关于你呀\n纸短情长啊 道不尽太多涟漪\n我的故事都是关于你呀`,
+        mood: "thoughtful" as MoodType,
+      },
+      {
+        title: "我喜欢你",
+        lyric: `我喜欢你 是我藏在心底最深的秘密\n我喜欢你 像微风吹过发梢的轻盈\n我喜欢你 是我每天最想对你说的话语\n我喜欢你 比昨天多一点 比明天少一点`,
+        mood: "affectionate" as MoodType,
+      },
+    ];
+
+    const song = songs[Math.floor(Math.random() * songs.length)];
+
+    return {
+      skillId: "sing",
+      skillName: "唱歌给你听",
+      response: `🎵 那... 那我唱啦，唱得不好听不准笑哦 >.<\n\n**《${song.title}》**\n\n${song.lyric}\n\n... 好不好听嘛 🥺 人家只给你一个人唱的哦 💕`,
+      data: { 
+        songTitle: song.title,
+        lyrics: song.lyric,
+        isSing: true,
+      },
+      shouldChangeMood: true,
+      targetMood: song.mood,
       moodIntensity: 0.5,
     };
   }
