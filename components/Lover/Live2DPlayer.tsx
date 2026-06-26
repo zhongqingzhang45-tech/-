@@ -73,6 +73,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
   ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, forwardedRef }, ref) => {
     const actualRef = (forwardedRef || ref) as React.RefObject<Live2DPlayerRef>;
     const containerRef = useRef<HTMLDivElement>(null);
+    const canvasContainerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<any>(null);
     const motionsRef = useRef<Map<string, any>>(new Map());
     const [isLoading, setIsLoading] = useState(true);
@@ -92,13 +93,20 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
         }
       },
       triggerRandomMotion: () => {
+        const model = modelRef.current;
+        if (!model?.animator) return;
         const motionKeys = Array.from(motionsRef.current.keys());
         if (motionKeys.length === 0) return;
         const nonIdleKeys = motionKeys.filter(k => !k.toLowerCase().includes('idle'));
         const key = nonIdleKeys.length > 0 
           ? nonIdleKeys[Math.floor(Math.random() * nonIdleKeys.length)]
           : motionKeys[Math.floor(Math.random() * motionKeys.length)];
-        actualRef.current?.playMotion(key);
+        const motion = motionsRef.current.get(key);
+        if (!motion) return;
+        const layer = model.animator.getLayer("base");
+        if (layer) {
+          layer.play(motion);
+        }
       },
       setExpression: (name: string) => {
         const model = modelRef.current;
@@ -118,15 +126,12 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
         try {
           await loadAllScripts();
 
-          if (destroyed || !containerRef.current) return;
+          if (destroyed || !canvasContainerRef.current) return;
           if (!checkLibs()) {
             throw new Error("Live2D libraries not available");
           }
 
-          const container = containerRef.current;
-          while (container.firstChild) {
-            container.removeChild(container.firstChild);
-          }
+          const container = canvasContainerRef.current;
 
           const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
           const width = container.clientWidth;
@@ -382,13 +387,14 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
     return (
       <div ref={containerRef} className="w-full h-full relative">
+        <div ref={canvasContainerRef} className="w-full h-full absolute inset-0" />
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
         {loadError && (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-red-400 text-sm text-center px-4">
               <div className="mb-2">模型加载失败</div>
               <div className="text-xs opacity-70">{loadError}</div>
