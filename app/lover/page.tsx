@@ -257,44 +257,30 @@ export default function LoverPage() {
       </header>
 
       <div className="flex-1 flex min-h-0 relative">
-        {!isMobile && (
-          <div className="hidden md:flex md:w-[38%] lg:w-[35%] relative items-end justify-start">
-            <div className="relative z-10 w-full h-full">
-              <Live2DPlayer
-                key={currentCharacter.id}
-                forwardedRef={live2dRef}
-                modelPath={currentCharacter.path}
-                modelName={currentCharacter.model}
-                scale={currentCharacter.scale}
-                positionY={currentCharacter.positionY}
-                onModelLoaded={() => setModelReady(true)}
-                onError={(err) => console.error("Live2D error:", err)}
-              />
-            </div>
-            <div 
-              className="absolute bottom-0 left-0 w-full pointer-events-none"
-              style={{ 
-                height: "140px",
-                background: "radial-gradient(ellipse at 30% 100%, rgba(147,112,219,0.12) 0%, transparent 65%)",
-              }}
+        <div className="absolute inset-0 pointer-events-none z-0 md:relative md:pointer-events-auto md:flex md:w-[38%] lg:w-[35%] md:items-end md:justify-start">
+          <div className="absolute top-0 left-0 w-full h-64 md:relative md:w-full md:h-full">
+            <Live2DPlayer
+              key={currentCharacter.id}
+              forwardedRef={live2dRef}
+              modelPath={currentCharacter.path}
+              modelName={currentCharacter.model}
+              scale={isMobile ? 1.5 : currentCharacter.scale}
+              positionY={isMobile ? 0.5 : currentCharacter.positionY}
+              onModelLoaded={() => setModelReady(true)}
+              onError={(err) => console.error("Live2D error:", err)}
             />
           </div>
-        )}
+          <div 
+            className="hidden md:block absolute bottom-0 left-0 w-full pointer-events-none"
+            style={{ 
+              height: "140px",
+              background: "radial-gradient(ellipse at 30% 100%, rgba(147,112,219,0.12) 0%, transparent 65%)",
+            }}
+          />
+        </div>
 
-        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2">
-          {isMobile && (
-            <div className="md:hidden flex justify-center pt-4 pb-2 h-64">
-              <div className="relative w-full h-full">
-                <Live2DPlayer
-                  key={`mobile-${currentCharacter.id}`}
-                  modelPath={currentCharacter.path}
-                  modelName={currentCharacter.model}
-                  scale={1.5}
-                  positionY={0.5}
-                />
-              </div>
-            </div>
-          )}
+        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2 relative z-10">
+          <div className="h-64 md:hidden flex-shrink-0" />
 
           <div className="flex-1 overflow-y-auto py-4 pr-1">
             <div className="mb-4 px-1">
