@@ -14,6 +14,7 @@ interface Live2DPlayerProps {
 
 export interface Live2DPlayerRef {
   playMotion: (motionId: string) => void;
+  triggerRandomMotion: () => void;
   setExpression: (name: string) => void;
   getModelInfo: () => { motions: string[]; expressions: string[] };
 }
@@ -81,12 +82,28 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
       playMotion: (motionId: string) => {
         const model = modelRef.current;
         if (!model?.animator) return;
-        const motion = motionsRef.current.get(motionId);
+        const motion = motionsRef.current.get(motionId) || 
+                      motionsRef.current.get(motionId.toLowerCase()) ||
+                      motionsRef.current.get(motionId.toUpperCase());
         if (!motion) return;
         const layer = model.animator.getLayer("base");
-        if (layer) layer.play(motion);
+        if (layer) {
+          layer.play(motion);
+        }
       },
-      setExpression: () => {},
+      triggerRandomMotion: () => {
+        const motionKeys = Array.from(motionsRef.current.keys());
+        if (motionKeys.length === 0) return;
+        const nonIdleKeys = motionKeys.filter(k => !k.toLowerCase().includes('idle'));
+        const key = nonIdleKeys.length > 0 
+          ? nonIdleKeys[Math.floor(Math.random() * nonIdleKeys.length)]
+          : motionKeys[Math.floor(Math.random() * motionKeys.length)];
+        actualRef.current?.playMotion(key);
+      },
+      setExpression: (name: string) => {
+        const model = modelRef.current;
+        if (!model) return;
+      },
       getModelInfo: () => ({
         motions: Array.from(motionsRef.current.keys()),
         expressions: [],
@@ -106,8 +123,12 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
             throw new Error("Live2D libraries not available");
           }
 
-          const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
           const container = containerRef.current;
+          while (container.firstChild) {
+            container.removeChild(container.firstChild);
+          }
+
+          const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
           const width = container.clientWidth;
           const height = container.clientHeight;
 

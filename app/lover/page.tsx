@@ -18,15 +18,6 @@ const NAV_ITEMS = [
   { id: "diary", label: "日记", icon: "📔" },
 ];
 
-const QUICK_REPLIES = [
-  "你好呀～ 💕",
-  "给我讲个故事吧",
-  "我今天有点难过 😢",
-  "早上好！ ☀️",
-  "唱首歌给我听 🎵",
-  "我喜欢你 ❤️",
-];
-
 function getModeColor(mode?: string): string {
   switch (mode) {
     case "affectionate": return "#ec4899";
@@ -106,7 +97,10 @@ export default function LoverPage() {
       if (lastMsg.sender === "assistant" && !isTyping) {
         const text = lastMsg.content;
         if (text.trim().length > 0 && text.trim().length < 200) {
-          speak(text);
+          speak(text, { 
+            emotion: lastMsg.emotion.mood as any,
+            isSinging: (lastMsg as any).isSinging || text.includes("🎵")
+          });
         }
       }
     }
@@ -435,19 +429,6 @@ export default function LoverPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {QUICK_REPLIES.map((text, i) => (
-              <button
-                key={i}
-                onClick={() => sendMessage(text)}
-                className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs text-white/70 hover:text-white hover:bg-white/[0.12] transition-all"
-                style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
-
           {pendingImage && (
             <div className="relative mb-2">
               <img 
@@ -722,6 +703,7 @@ export default function LoverPage() {
                           if (result?.success) {
                             setCoinBalance(agent?.getCoinBalance() || 0);
                             setTimeout(() => setGiftTab("inventory"), 500);
+                            live2dRef.current?.triggerRandomMotion();
                           }
                         }}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"

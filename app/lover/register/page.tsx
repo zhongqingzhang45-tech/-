@@ -10,20 +10,22 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [userGender, setUserGender] = useState<Gender | null>(null);
+  const [birthDate, setBirthDate] = useState("");
   const [characterName, setCharacterName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   const suggestedNames = userGender === "male"
-    ? ["小春", "小星", "月月", "糖糖", "暖暖", "念念"]
-    : ["陈默", "林深", "顾言", "江辰", "陆屿", "沈舟"];
+    ? ["吕欣怡", "苏梦瑶", "陈诗涵", "张艺萱", "王语嫣", "刘雨桐"]
+    : ["赵子轩", "李浩宇", "王子涵", "刘浩然", "陈明远", "张雨泽"];
 
   const canProceed = () => {
     if (step === 1) return email && password.length >= 8;
     if (step === 2) return userGender !== null;
-    if (step === 3) return characterName.length > 0;
+    if (step === 3) return birthDate;
+    if (step === 4) return characterName.length > 0;
     return false;
   };
 
@@ -51,6 +53,7 @@ export default function RegisterPage() {
       localStorage.setItem("lover_logged_in", "true");
       localStorage.setItem("lover_email", email);
       localStorage.setItem("lover_user_gender", userGender || "male");
+      localStorage.setItem("lover_birth_date", birthDate);
       localStorage.setItem("lover_character_name", characterName);
       router.push("/lover");
     }, 1500);
@@ -59,12 +62,14 @@ export default function RegisterPage() {
   const stepTitles = [
     "创建你的账户",
     "选择你的性别",
+    "你的生日",
     "给你的AI伴侣起个名字",
   ];
 
   const stepDescriptions = [
     "开始你的AI陪伴之旅",
     "我们将为你匹配最合适的伴侣",
+    "我们会记住你的每一个生日",
     "这将是你的专属虚拟伴侣",
   ];
 
@@ -264,6 +269,51 @@ export default function RegisterPage() {
           )}
 
           {step === 3 && (
+            <div className="space-y-6">
+              <p className="text-center text-white/70 text-sm">
+                告诉我们你的生日，我们会在特殊日子给你惊喜
+              </p>
+              
+              <div>
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="w-full px-4 py-4 rounded-xl text-white outline-none transition-all focus:ring-2 focus:ring-purple-500/50 text-center text-lg"
+                  style={{ 
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="px-6 py-3.5 rounded-xl font-medium text-white/70 hover:text-white transition-all"
+                  style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+                >
+                  上一步
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canProceed()}
+                  className="flex-1 py-3.5 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ 
+                    background: "linear-gradient(135deg, #6c63ff 0%, #8b7cf8 100%)",
+                    boxShadow: "0 4px 20px rgba(108,99,255,0.4)",
+                  }}
+                >
+                  下一步
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="text-center mb-2">
                 <div className="text-6xl mb-3">

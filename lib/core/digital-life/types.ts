@@ -221,6 +221,7 @@ export interface ChatMessage {
   intentId?: string;
   imageUrl?: string;
   voiceUrl?: string;
+  isSinging?: boolean;
 }
 
 export interface ConversationContext {
