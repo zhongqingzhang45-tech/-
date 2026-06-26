@@ -104,7 +104,7 @@ export default function LoverPage() {
     if (voiceEnabled && messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg.sender === "assistant" && !isTyping) {
-        const text = lastMsg.content.replace(/[^\u4e00-\u9fa5a-zA-Z0-9，。！？、；：""''（）\s]/g, " ");
+        const text = lastMsg.content;
         if (text.trim().length > 0 && text.trim().length < 200) {
           speak(text);
         }
@@ -279,7 +279,8 @@ export default function LoverPage() {
         <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2 relative z-10">
           <div className="h-64 md:hidden flex-shrink-0" />
 
-          <div className="flex-1 flex flex-col min-h-0">
+          {activeNav === "chat" ? (
+            <>
           <div className="flex-1 overflow-y-auto py-4 pr-1">
             <div className="mb-4 px-1">
               <div className="rounded-2xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
@@ -574,7 +575,11 @@ export default function LoverPage() {
                 </button>
               </div>
             </div>
-            </div>
+          </div>
+          </>
+        ) : (
+            <DiaryPage characterName={currentCharacter.name} />
+          )}
         </div>
       </div>
 
