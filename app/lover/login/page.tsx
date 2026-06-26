@@ -26,30 +26,49 @@ export default function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen w-full flex items-center justify-center px-4"
       style={{ 
-        background: "radial-gradient(ellipse at top, #2a2a3e 0%, #1a1a28 50%, #12121a 100%)",
+        background: "#0a0a0f",
       }}
     >
-      <div className="w-full max-w-md">
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div 
+          className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-10"
+          style={{
+            background: "radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 70%)",
+          }}
+        />
+        <div 
+          className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full opacity-10"
+          style={{
+            background: "radial-gradient(circle, rgba(236, 72, 153, 0.5) 0%, transparent 70%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo */}
         <div className="text-center mb-10">
-          <div 
-            className="w-20 h-20 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4"
-            style={{ 
-              background: "linear-gradient(135deg, #7c7cff 0%, #b084ff 100%)",
-              boxShadow: "0 8px 32px rgba(124,124,255,0.4)",
-            }}
-          >
-            星
-          </div>
+          <Link href="/" className="inline-flex items-center gap-3 mb-6">
+            <div 
+              className="w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+              }}
+            >
+              <span className="text-2xl">✨</span>
+            </div>
+            <span className="text-white text-2xl font-bold">星野</span>
+          </Link>
           <h1 className="text-3xl font-bold text-white mb-2">欢迎回来</h1>
-          <p className="text-white/60 text-sm">登录你的星野账户，继续陪伴之旅</p>
+          <p className="text-white/50 text-sm">登录你的账户，继续陪伴之旅</p>
         </div>
 
         <div 
-          className="rounded-3xl p-8 shadow-2xl"
+          className="rounded-3xl p-8"
           style={{ 
-            backgroundColor: "rgba(26,26,40,0.8)",
+            backgroundColor: "rgba(255,255,255,0.03)",
             backdropFilter: "blur(20px)",
             border: "1px solid rgba(255,255,255,0.06)",
           }}
@@ -64,9 +83,9 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-white/30 outline-none transition-all focus:ring-2 focus:ring-purple-500/50"
+                className="w-full px-4 py-3.5 rounded-xl text-white placeholder-white/30 outline-none transition-all focus:ring-2"
                 style={{ 
-                  backgroundColor: "rgba(255,255,255,0.06)",
+                  backgroundColor: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
                 required
@@ -74,17 +93,22 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                密码
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-white/80">
+                  密码
+                </label>
+                <Link href="#" className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
+                  忘记密码？
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-white/30 outline-none transition-all focus:ring-2 focus:ring-purple-500/50"
+                className="w-full px-4 py-3.5 rounded-xl text-white placeholder-white/30 outline-none transition-all focus:ring-2"
                 style={{ 
-                  backgroundColor: "rgba(255,255,255,0.06)",
+                  backgroundColor: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
                 required
@@ -92,19 +116,21 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="text-red-400 text-sm text-center bg-red-500/10 py-2 rounded-lg">
+              <div 
+                className="p-3 rounded-xl text-sm text-center"
+                style={{ 
+                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                  color: "#fca5a5",
+                  border: "1px solid rgba(239, 68, 68, 0.2)",
+                }}
+              >
                 {error}
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded accent-purple-500" />
-                <span className="text-sm text-white/60">记住我</span>
-              </label>
-              <Link href="#" className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
-                忘记密码？
-              </Link>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "#8b5cf6" }} />
+              <span className="text-sm text-white/50">记住我</span>
             </div>
 
             <button
@@ -112,8 +138,8 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full py-3.5 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ 
-                background: "linear-gradient(135deg, #6c63ff 0%, #8b7cf8 100%)",
-                boxShadow: "0 4px 20px rgba(108,99,255,0.4)",
+                background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+                boxShadow: "0 4px 20px rgba(139, 92, 246, 0.4)",
               }}
             >
               {isLoading ? (
@@ -132,18 +158,18 @@ export default function LoginPage() {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }} />
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 text-white/40" style={{ backgroundColor: "rgba(26,26,40,1)" }}>
-                或者
+            <div className="relative flex justify-center">
+              <span className="px-4 text-white/30 text-sm" style={{ backgroundColor: "rgba(10,10,15,1)" }}>
+                或
               </span>
             </div>
           </div>
 
           <div className="space-y-3">
             <button 
-              className="w-full py-3 rounded-xl font-medium text-white/80 hover:text-white transition-all flex items-center justify-center gap-3"
+              className="w-full py-3.5 rounded-xl font-medium text-white/80 hover:text-white transition-all flex items-center justify-center gap-3"
               style={{ 
-                backgroundColor: "rgba(255,255,255,0.06)",
+                backgroundColor: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
@@ -157,20 +183,20 @@ export default function LoginPage() {
             </button>
 
             <button 
-              className="w-full py-3 rounded-xl font-medium text-white/80 hover:text-white transition-all flex items-center justify-center gap-3"
+              className="w-full py-3.5 rounded-xl font-medium text-white/80 hover:text-white transition-all flex items-center justify-center gap-3"
               style={{ 
-                backgroundColor: "rgba(255,255,255,0.06)",
+                backgroundColor: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
               </svg>
               使用 Apple 登录
             </button>
           </div>
 
-          <p className="text-center text-white/60 text-sm mt-6">
+          <p className="text-center text-white/50 text-sm mt-6">
             还没有账户？{" "}
             <Link href="/lover/register" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
               立即注册
@@ -178,7 +204,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="text-center text-white/30 text-xs mt-6">
+        <p className="text-center text-white/20 text-xs mt-6">
           登录即表示您同意我们的服务条款和隐私政策
         </p>
       </div>
