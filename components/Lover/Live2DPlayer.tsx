@@ -124,9 +124,6 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           }
 
           const container = containerRef.current;
-          while (container.firstChild) {
-            container.removeChild(container.firstChild);
-          }
 
           const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
           const width = container.clientWidth;

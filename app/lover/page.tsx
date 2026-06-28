@@ -6,9 +6,15 @@ import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Gift, GiftRequest } from "@/lib/core/digital-life";
 import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
+import type { Live2DV2PlayerRef } from "@/components/Lover/Live2DV2Player";
 import DiaryPage from "@/components/Lover/DiaryPage";
 
 const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const Live2DV2Player = dynamic(() => import("@/components/Lover/Live2DV2Player"), {
   ssr: false,
   loading: () => null,
 });
@@ -64,7 +70,7 @@ export default function LoverPage() {
     avatar: profile?.gender === "male" ? "👨" : "👩",
     scale: 2,
     positionY: 0.55,
-    type: "cubism3" as const,
+    modelType: (profile?.modelType || "cubism3") as "cubism2" | "cubism3",
     gender: profile?.gender || "female",
   };
 
@@ -250,9 +256,10 @@ export default function LoverPage() {
       <div className="flex-1 flex min-h-0 relative">
         <div className="absolute inset-0 pointer-events-none z-0 md:relative md:pointer-events-auto md:flex md:w-[38%] lg:w-[35%] md:items-end md:justify-start">
           <div className="absolute top-0 left-0 w-full h-64 md:relative md:w-full md:h-full">
+            {currentCharacter.modelType === "cubism3" ? (
             <Live2DPlayer
               key={currentCharacter.id}
-              forwardedRef={live2dRef}
+              forwardedRef={live2dRef as React.Ref<Live2DPlayerRef>}
               modelPath={currentCharacter.path}
               modelName={currentCharacter.model}
               scale={isMobile ? 1.5 : currentCharacter.scale}
@@ -260,6 +267,18 @@ export default function LoverPage() {
               onModelLoaded={() => setModelReady(true)}
               onError={(err) => console.error("Live2D error:", err)}
             />
+            ) : (
+            <Live2DV2Player
+              key={currentCharacter.id}
+              forwardedRef={live2dRef as React.Ref<Live2DV2PlayerRef>}
+              modelPath={currentCharacter.path}
+              modelName={currentCharacter.model}
+              scale={isMobile ? 1.2 : currentCharacter.scale * 0.8}
+              positionY={isMobile ? 0.5 : currentCharacter.positionY}
+              onModelLoaded={() => setModelReady(true)}
+              onError={(err) => console.error("Live2D V2 error:", err)}
+            />
+            )}
           </div>
           <div 
             className="hidden md:block absolute bottom-0 left-0 w-full pointer-events-none"

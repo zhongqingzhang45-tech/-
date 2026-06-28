@@ -200,6 +200,7 @@ export interface CharacterProfile {
   accentColor: string;
   secondaryColor: string;
   live2dModel: string;
+  modelType?: "cubism2" | "cubism3";
   voiceModel: string;
   mbti: string;
   puaTendency: number;
@@ -331,6 +332,7 @@ export const FEMALE_CHARACTERS: CharacterProfile[] = [
     accentColor: "#f472b6",
     secondaryColor: "#a78bfa",
     live2dModel: "HaruGreeter",
+    modelType: "cubism3",
     voiceModel: "xiaoxiao",
     mbti: "INFJ",
     puaTendency: 0.35,
@@ -369,7 +371,8 @@ export const MALE_CHARACTERS: CharacterProfile[] = [
     hobbies: ["阅读", "健身", "摄影", "旅行", "投资"],
     accentColor: "#60a5fa",
     secondaryColor: "#818cf8",
-    live2dModel: "HaruGreeter",
+    live2dModel: "haruto",
+    modelType: "cubism2",
     voiceModel: "yunxi",
     mbti: "INTJ",
     puaTendency: 0.45,
