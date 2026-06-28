@@ -298,6 +298,87 @@ export interface GrowthTrace {
   triggerEvent?: string;
 }
 
+export type MilestoneType =
+  | "first_meeting"
+  | "first_chat"
+  | "first_love_confession"
+  | "first_hug"
+  | "first_kiss"
+  | "first_date"
+  | "first_argue"
+  | "first_reconciliation"
+  | "first_gift"
+  | "first_night_talk"
+  | "streak_3_days"
+  | "streak_7_days"
+  | "streak_30_days"
+  | "streak_100_days"
+  | "streak_365_days"
+  | "anniversary_monthly"
+  | "anniversary_100days"
+  | "anniversary_yearly"
+  | "birthday_user"
+  | "birthday_character"
+  | "level_up"
+  | "intimacy_threshold"
+  | "trust_threshold"
+  | "shared_hobby"
+  | "deep_talk"
+  | "supportive_moment"
+  | "inside_joke"
+  | "custom";
+
+export interface Milestone {
+  id: string;
+  type: MilestoneType;
+  title: string;
+  description: string;
+  timestamp: number;
+  importance: number;
+  emotionalImpact: number;
+  relatedMemoryIds: string[];
+  unlocked: boolean;
+  anniversary?: {
+    nextDate: number;
+    type: "yearly" | "monthly";
+  };
+}
+
+export interface SharedMemory {
+  id: string;
+  title: string;
+  summary: string;
+  timestamp: number;
+  relatedMemories: string[];
+  importance: number;
+  emotionalValence: number;
+  tags: string[];
+  mentionedCount: number;
+  lastMentionedAt?: number;
+}
+
+export interface RelationshipHistoryEntry {
+  id: string;
+  timestamp: number;
+  phase: "acquaintance" | "exploration" | "growth" | "deepening" | "mature";
+  event: string;
+  eventType: MilestoneType | "interaction";
+  detail?: string;
+}
+
+export interface RelationshipTimeline {
+  startDate: number;
+  currentPhase: "acquaintance" | "exploration" | "growth" | "deepening" | "mature";
+  milestones: Milestone[];
+  sharedMemories: SharedMemory[];
+  history: RelationshipHistoryEntry[];
+  totalInteractions: number;
+  totalDaysTogether: number;
+  currentStreak: number;
+  longestStreak: number;
+  totalMessages: number;
+}
+
 export interface PerceptionState {
   lastUserMessage?: string;
   lastUserMessageTime?: number;
@@ -337,6 +418,7 @@ export interface LifeState {
   pendingActions: PlannedAction[];
   decisionBiases: DecisionBiases;
   growthTraces: GrowthTrace[];
+  relationshipTimeline: RelationshipTimeline;
   currentMode: PersonaMode;
   lastUpdateTime: number;
 }
@@ -587,6 +669,18 @@ export const DEFAULT_LIFE_STATE: LifeState = {
     memoryInfluences: [],
   },
   growthTraces: [],
+  relationshipTimeline: {
+    startDate: Date.now(),
+    currentPhase: "acquaintance",
+    milestones: [],
+    sharedMemories: [],
+    history: [],
+    totalInteractions: 0,
+    totalDaysTogether: 1,
+    currentStreak: 1,
+    longestStreak: 1,
+    totalMessages: 0,
+  },
   currentMode: "normal",
   lastUpdateTime: Date.now(),
 };

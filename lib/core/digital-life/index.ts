@@ -18,6 +18,8 @@ export { PersistenceService } from "./persistence-service";
 export type { PersistedLifeSnapshot } from "./persistence-service";
 export { AutonomousBehaviorEngine } from "./autonomous-behavior-engine";
 export type { AutonomousAction, InitiativeContext } from "./autonomous-behavior-engine";
+export { MilestoneSystem } from "./milestone-system";
+export { MemoryConsolidationSystem } from "./memory-consolidation-system";
 export { SkillSystem } from "./skills";
 export type { Skill, SkillCategory, SkillResult } from "./skills";
 export { ImageRecognition } from "./image-recognition";

@@ -31,6 +31,8 @@ import { ContextService } from "./context-service";
 import { DeviceFingerprint } from "./device-binding";
 import { PersistenceService } from "./persistence-service";
 import { AutonomousBehaviorEngine, AutonomousAction } from "./autonomous-behavior-engine";
+import { MilestoneSystem } from "./milestone-system";
+import { MemoryConsolidationSystem } from "./memory-consolidation-system";
 
 export interface ResponseResult {
   text: string;
@@ -63,6 +65,8 @@ export class DigitalLifeAgent {
   private persistenceService: PersistenceService;
   private autonomousEngine: AutonomousBehaviorEngine;
   private onInitiativeCallback: ((action: AutonomousAction) => void) | null = null;
+  private milestoneSystem: MilestoneSystem;
+  private memoryConsolidationSystem: MemoryConsolidationSystem;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -96,6 +100,8 @@ export class DigitalLifeAgent {
     this.growthEngine = new GrowthEngine();
     this.persistenceService = new PersistenceService(profile.id);
     this.autonomousEngine = new AutonomousBehaviorEngine(this.goalSystem);
+    this.milestoneSystem = new MilestoneSystem();
+    this.memoryConsolidationSystem = new MemoryConsolidationSystem();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -133,6 +139,11 @@ export class DigitalLifeAgent {
         this.lifeState.growthTraces = growthTraces;
       }
 
+      const timeline = this.persistenceService.loadTimeline();
+      if (timeline) {
+        this.lifeState.relationshipTimeline = timeline;
+      }
+
       this.goalSystem.updateGoals(this.lifeState);
     } catch (e) {
       console.warn("Failed to load persisted state:", e);
@@ -158,6 +169,7 @@ export class DigitalLifeAgent {
       this.persistenceService.saveGoals(this.lifeState.activeGoals);
       this.persistenceService.saveActions(this.lifeState.pendingActions);
       this.persistenceService.saveGrowthTraces(this.lifeState.growthTraces);
+      this.persistenceService.saveTimeline(this.lifeState.relationshipTimeline);
       this.persistenceService.saveLifeSnapshot({
         lifeState: this.lifeState,
         activeGoals: this.lifeState.activeGoals,
@@ -708,6 +720,42 @@ export class DigitalLifeAgent {
     );
 
     this.lifeState.relationship.lastActiveTime = Date.now();
+
+    const isPositive = analysis.sentiment.valence > 0;
+    this.lifeState = this.milestoneSystem.recordInteraction(this.lifeState, isPositive);
+
+    const milestoneResult = this.milestoneSystem.checkAndUnlockMilestones(this.lifeState);
+    this.lifeState = milestoneResult.lifeState;
+
+    if (milestoneResult.newMilestones.length > 0) {
+      for (const milestone of milestoneResult.newMilestones) {
+        const consolidationResult = this.memoryConsolidationSystem.createSharedMemoryFromMilestone(
+          this.lifeState,
+          milestone
+        );
+        this.lifeState = consolidationResult.lifeState;
+
+        this.memorySystem.addMemory(
+          "milestone",
+          `解锁里程碑：${milestone.title} - ${milestone.description}`,
+          milestone.importance,
+          milestone.emotionalImpact
+        );
+      }
+    }
+
+    if (this.lifeState.relationshipTimeline.totalInteractions % 50 === 0) {
+      const allMemories = [
+        ...this.memorySystem.getRecentMemories(168),
+        ...this.memorySystem.getImportantMemories(30),
+      ];
+      const consolidationResult = this.memoryConsolidationSystem.consolidateMemories(
+        this.lifeState,
+        allMemories
+      );
+      this.lifeState = consolidationResult.lifeState;
+    }
+
     this.lifeState.lastUpdateTime = Date.now();
 
     return {

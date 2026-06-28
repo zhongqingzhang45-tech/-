@@ -1,4 +1,4 @@
-import { LifeState, Goal, PlannedAction, GrowthTrace, MemoryEntry } from "./types";
+import { LifeState, Goal, PlannedAction, GrowthTrace, MemoryEntry, RelationshipTimeline } from "./types";
 
 const STORAGE_KEYS = {
   LIFE_STATE: "digital_life_state",
@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   GROWTH_TRACES: "digital_life_growth_traces",
   MEMORIES: "digital_life_memories",
   LAST_ACTIVE: "digital_life_last_active",
+  TIMELINE: "digital_life_timeline",
 };
 
 export interface PersistedLifeSnapshot {
@@ -137,6 +138,29 @@ export class PersistenceService {
     } catch (e) {
       console.warn("Failed to load growth traces:", e);
       return [];
+    }
+  }
+
+  saveTimeline(timeline: RelationshipTimeline): void {
+    if (typeof window === "undefined") return;
+    
+    try {
+      localStorage.setItem(this.getKey(STORAGE_KEYS.TIMELINE), JSON.stringify(timeline));
+    } catch (e) {
+      console.warn("Failed to save timeline:", e);
+    }
+  }
+
+  loadTimeline(): RelationshipTimeline | null {
+    if (typeof window === "undefined") return null;
+    
+    try {
+      const data = localStorage.getItem(this.getKey(STORAGE_KEYS.TIMELINE));
+      if (!data) return null;
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to load timeline:", e);
+      return null;
     }
   }
 
