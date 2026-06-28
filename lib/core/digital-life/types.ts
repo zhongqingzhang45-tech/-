@@ -63,7 +63,8 @@ export type MemoryType =
   | "trauma"
   | "milestone"
   | "resentment"
-  | "behavior_pattern";
+  | "behavior_pattern"
+  | "gift";
 
 export type RelationshipType =
   | "lover"
@@ -481,6 +482,78 @@ export interface RelationshipCulture {
   }>;
 }
 
+export type ItemCategory =
+  | "virtual"
+  | "food"
+  | "accessory"
+  | "clothing"
+  | "digital"
+  | "experience"
+  | "service"
+  | "handmade"
+  | "letter"
+  | "memory";
+
+export type ItemRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
+
+export interface OwnedItem {
+  id: string;
+  itemId: string;
+  name: string;
+  category: ItemCategory;
+  rarity: ItemRarity;
+  icon: string;
+  description: string;
+  receivedFrom: "user" | "self" | "event";
+  receivedAt: number;
+  lastUsedAt?: number;
+  useCount: number;
+  sentimentalValue: number;
+  associatedMemory?: string;
+  isFavorite: boolean;
+  condition: number;
+  story?: string;
+}
+
+export interface EconomyState {
+  balance: number;
+  totalEarned: number;
+  totalSpent: number;
+  savingsGoal?: {
+    target: number;
+    reason: string;
+    itemId?: string;
+    startedAt: number;
+  };
+  incomeSources: Array<{
+    source: string;
+    amount: number;
+    lastReceived: number;
+    frequency: "daily" | "weekly" | "one_time";
+  }>;
+  spendingHistory: Array<{
+    id: string;
+    itemId: string;
+    itemName: string;
+    amount: number;
+    timestamp: number;
+    category: "gift_for_user" | "self_treat" | "necessity" | "shared";
+  }>;
+}
+
+export interface GiftPlan {
+  id: string;
+  itemId: string;
+  itemName: string;
+  targetDate?: number;
+  occasion?: string;
+  reason: string;
+  budget: number;
+  progress: number;
+  status: "planning" | "saving" | "ready" | "given";
+  createdAt: number;
+}
+
 export interface PerceptionState {
   lastUserMessage?: string;
   lastUserMessageTime?: number;
@@ -523,6 +596,9 @@ export interface LifeState {
   relationshipTimeline: RelationshipTimeline;
   worldView: WorldView;
   relationshipCulture: RelationshipCulture;
+  economy: EconomyState;
+  inventory: OwnedItem[];
+  giftPlans: GiftPlan[];
   currentMode: PersonaMode;
   lastUpdateTime: number;
 }
@@ -830,6 +906,22 @@ export const DEFAULT_LIFE_STATE: LifeState = {
     },
     relationshipRules: [],
   },
+  economy: {
+    balance: 50,
+    totalEarned: 50,
+    totalSpent: 0,
+    incomeSources: [
+      {
+        source: "每日陪伴奖励",
+        amount: 10,
+        lastReceived: Date.now(),
+        frequency: "daily",
+      },
+    ],
+    spendingHistory: [],
+  },
+  inventory: [],
+  giftPlans: [],
   currentMode: "normal",
   lastUpdateTime: Date.now(),
 };

@@ -22,6 +22,8 @@ export { MilestoneSystem } from "./milestone-system";
 export { MemoryConsolidationSystem } from "./memory-consolidation-system";
 export { WorldViewSystem } from "./worldview-system";
 export { RelationshipCultureSystem } from "./relationship-culture-system";
+export { EconomySystem } from "./economy-system";
+export { InventorySystem } from "./inventory-system";
 export { SkillSystem } from "./skills";
 export type { Skill, SkillCategory, SkillResult } from "./skills";
 export { ImageRecognition } from "./image-recognition";

@@ -1,4 +1,4 @@
-import { LifeState, Goal, PlannedAction, GrowthTrace, MemoryEntry, RelationshipTimeline, WorldView, RelationshipCulture } from "./types";
+import { LifeState, Goal, PlannedAction, GrowthTrace, MemoryEntry, RelationshipTimeline, WorldView, RelationshipCulture, EconomyState, OwnedItem, GiftPlan } from "./types";
 
 const STORAGE_KEYS = {
   LIFE_STATE: "digital_life_state",
@@ -10,6 +10,9 @@ const STORAGE_KEYS = {
   TIMELINE: "digital_life_timeline",
   WORLDVIEW: "digital_life_worldview",
   CULTURE: "digital_life_culture",
+  ECONOMY: "digital_life_economy",
+  INVENTORY: "digital_life_inventory",
+  GIFT_PLANS: "digital_life_gift_plans",
 };
 
 export interface PersistedLifeSnapshot {
@@ -209,6 +212,75 @@ export class PersistenceService {
     } catch (e) {
       console.warn("Failed to load culture:", e);
       return null;
+    }
+  }
+
+  saveEconomy(economy: EconomyState): void {
+    if (typeof window === "undefined") return;
+    
+    try {
+      localStorage.setItem(this.getKey(STORAGE_KEYS.ECONOMY), JSON.stringify(economy));
+    } catch (e) {
+      console.warn("Failed to save economy:", e);
+    }
+  }
+
+  loadEconomy(): EconomyState | null {
+    if (typeof window === "undefined") return null;
+    
+    try {
+      const data = localStorage.getItem(this.getKey(STORAGE_KEYS.ECONOMY));
+      if (!data) return null;
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to load economy:", e);
+      return null;
+    }
+  }
+
+  saveInventory(inventory: OwnedItem[]): void {
+    if (typeof window === "undefined") return;
+    
+    try {
+      localStorage.setItem(this.getKey(STORAGE_KEYS.INVENTORY), JSON.stringify(inventory));
+    } catch (e) {
+      console.warn("Failed to save inventory:", e);
+    }
+  }
+
+  loadInventory(): OwnedItem[] {
+    if (typeof window === "undefined") return [];
+    
+    try {
+      const data = localStorage.getItem(this.getKey(STORAGE_KEYS.INVENTORY));
+      if (!data) return [];
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to load inventory:", e);
+      return [];
+    }
+  }
+
+  saveGiftPlans(plans: GiftPlan[]): void {
+    if (typeof window === "undefined") return;
+    
+    try {
+      localStorage.setItem(this.getKey(STORAGE_KEYS.GIFT_PLANS), JSON.stringify(plans));
+    } catch (e) {
+      console.warn("Failed to save gift plans:", e);
+    }
+  }
+
+  loadGiftPlans(): GiftPlan[] {
+    if (typeof window === "undefined") return [];
+    
+    try {
+      const data = localStorage.getItem(this.getKey(STORAGE_KEYS.GIFT_PLANS));
+      if (!data) return [];
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to load gift plans:", e);
+      return [];
     }
   }
 

@@ -35,6 +35,8 @@ import { MilestoneSystem } from "./milestone-system";
 import { MemoryConsolidationSystem } from "./memory-consolidation-system";
 import { WorldViewSystem } from "./worldview-system";
 import { RelationshipCultureSystem } from "./relationship-culture-system";
+import { EconomySystem } from "./economy-system";
+import { InventorySystem } from "./inventory-system";
 
 export interface ResponseResult {
   text: string;
@@ -71,6 +73,8 @@ export class DigitalLifeAgent {
   private memoryConsolidationSystem: MemoryConsolidationSystem;
   private worldViewSystem: WorldViewSystem;
   private relationshipCultureSystem: RelationshipCultureSystem;
+  private economySystem: EconomySystem;
+  private inventorySystem: InventorySystem;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -108,6 +112,8 @@ export class DigitalLifeAgent {
     this.memoryConsolidationSystem = new MemoryConsolidationSystem();
     this.worldViewSystem = new WorldViewSystem();
     this.relationshipCultureSystem = new RelationshipCultureSystem();
+    this.economySystem = new EconomySystem();
+    this.inventorySystem = new InventorySystem();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -123,6 +129,9 @@ export class DigitalLifeAgent {
       }
 
       this.loadPersistedState();
+      this.lifeState = this.economySystem.processDailyIncome(this.lifeState);
+      this.lifeState = this.economySystem.maybeCreateGiftPlan(this.lifeState);
+      this.lifeState = this.economySystem.autoSaveForGifts(this.lifeState);
     } catch (e: any) {
       console.warn("Device binding initialization failed:", e?.message || e);
     }
@@ -160,6 +169,21 @@ export class DigitalLifeAgent {
         this.lifeState.relationshipCulture = culture;
       }
 
+      const economy = this.persistenceService.loadEconomy();
+      if (economy) {
+        this.lifeState.economy = economy;
+      }
+
+      const inventory = this.persistenceService.loadInventory();
+      if (inventory.length > 0) {
+        this.lifeState.inventory = inventory;
+      }
+
+      const giftPlans = this.persistenceService.loadGiftPlans();
+      if (giftPlans.length > 0) {
+        this.lifeState.giftPlans = giftPlans;
+      }
+
       this.goalSystem.updateGoals(this.lifeState);
     } catch (e) {
       console.warn("Failed to load persisted state:", e);
@@ -188,6 +212,9 @@ export class DigitalLifeAgent {
       this.persistenceService.saveTimeline(this.lifeState.relationshipTimeline);
       this.persistenceService.saveWorldView(this.lifeState.worldView);
       this.persistenceService.saveCulture(this.lifeState.relationshipCulture);
+      this.persistenceService.saveEconomy(this.lifeState.economy);
+      this.persistenceService.saveInventory(this.lifeState.inventory);
+      this.persistenceService.saveGiftPlans(this.lifeState.giftPlans);
       this.persistenceService.saveLifeSnapshot({
         lifeState: this.lifeState,
         activeGoals: this.lifeState.activeGoals,
@@ -1059,6 +1086,70 @@ export class DigitalLifeAgent {
 
   getLifeState(): LifeState {
     return JSON.parse(JSON.stringify(this.lifeState));
+  }
+
+  receiveGiftFromUser(giftId: string, occasion?: string): { success: boolean; reaction: string } {
+    const result = this.inventorySystem.receiveGift(this.lifeState, giftId, occasion);
+    this.lifeState = result.lifeState;
+
+    if (result.item) {
+      this.lifeState.relationship.intimacy = Math.min(
+        100,
+        this.lifeState.relationship.intimacy + result.item.sentimentalValue * 0.1
+      );
+      this.lifeState.relationship.trust = Math.min(
+        100,
+        this.lifeState.relationship.trust + result.item.sentimentalValue * 0.05
+      );
+
+      this.memorySystem.addMemory(
+        "gift",
+        `收到了用户送的${result.item.name} - ${result.item.description}`,
+        result.item.sentimentalValue,
+        0.8
+      );
+
+      this.saveState();
+    }
+
+    return {
+      success: true,
+      reaction: result.reaction,
+    };
+  }
+
+  getReadyGiftsForUser(): Array<{ id: string; itemName: string; reason: string }> {
+    return this.economySystem.getReadyGifts(this.lifeState).map(p => ({
+      id: p.id,
+      itemName: p.itemName,
+      reason: p.reason,
+    }));
+  }
+
+  giveGiftToUser(planId: string): { success: boolean; itemName: string; message: string } {
+    const plan = this.lifeState.giftPlans.find(p => p.id === planId);
+    if (!plan || plan.status !== "ready") {
+      return { success: false, itemName: "", message: "还没有准备好礼物呢..." };
+    }
+
+    this.lifeState = this.economySystem.markGiftGiven(this.lifeState, planId);
+
+    const messages = [
+      `给你准备了一个小礼物～ ${plan.itemName}，希望你喜欢 💕`,
+      `当当当当～ 送你的！${plan.itemName}，${plan.reason}`,
+      `呐，这个给你～ ${plan.itemName}，是我攒了好久的心意哦`,
+    ];
+    const message = messages[Math.floor(Math.random() * messages.length)];
+
+    this.memorySystem.addMemory(
+      "gift",
+      `送给用户了${plan.itemName} - ${plan.reason}`,
+      30,
+      0.7
+    );
+
+    this.saveState();
+    return { success: true, itemName: plan.itemName, message };
   }
 
   getRecentMessages(): ChatMessage[] {
