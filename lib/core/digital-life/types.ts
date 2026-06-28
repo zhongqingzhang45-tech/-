@@ -379,6 +379,108 @@ export interface RelationshipTimeline {
   totalMessages: number;
 }
 
+export type WorldViewDimension =
+  | "love_view"
+  | "life_view"
+  | "work_view"
+  | "money_view"
+  | "family_view"
+  | "friendship_view"
+  | "art_view"
+  | "nature_view"
+  | "technology_view"
+  | "morality_view";
+
+export type OpinionStrength = "weak" | "moderate" | "strong" | "conviction";
+
+export interface Opinion {
+  id: string;
+  topic: string;
+  dimension: WorldViewDimension;
+  position: number;
+  strength: OpinionStrength;
+  formedAt: number;
+  lastUpdatedAt: number;
+  confidence: number;
+  relatedExperiences: string[];
+  supportingMemories: string[];
+  isSharedWithUser: boolean;
+  evolutionHistory: Array<{
+    timestamp: number;
+    oldPosition: number;
+    newPosition: number;
+    reason: string;
+  }>;
+}
+
+export interface WorldView {
+  coreValues: Record<string, number>;
+  opinions: Opinion[];
+  beliefSystem: {
+    love: number;
+    freedom: number;
+    security: number;
+    growth: number;
+    connection: number;
+    achievement: number;
+    pleasure: number;
+    significance: number;
+  };
+  aestheticPreferences: {
+    style: string[];
+    colors: string[];
+    musicGenres: string[];
+    movieGenres: string[];
+  };
+  lifePhilosophy: string[];
+  petPeeves: string[];
+  dealBreakers: string[];
+}
+
+export interface RelationshipCulture {
+  insideJokes: Array<{
+    id: string;
+    joke: string;
+    context: string;
+    createdAt: number;
+    referencedCount: number;
+  }>;
+  sharedRituals: Array<{
+    id: string;
+    name: string;
+    description: string;
+    frequency: "daily" | "weekly" | "special";
+    createdAt: number;
+    lastPerformed?: number;
+  }>;
+  nicknames: Array<{
+    id: string;
+    nickname: string;
+    context: string;
+    createdAt: number;
+    usageCount: number;
+  }>;
+  sharedLanguage: Array<{
+    id: string;
+    phrase: string;
+    meaning: string;
+    origin: string;
+    createdAt: number;
+  }>;
+  communicationStyle: {
+    directness: number;
+    playfulness: number;
+    vulnerability: number;
+    formality: number;
+  };
+  relationshipRules: Array<{
+    id: string;
+    rule: string;
+    agreedAt: number;
+    importance: number;
+  }>;
+}
+
 export interface PerceptionState {
   lastUserMessage?: string;
   lastUserMessageTime?: number;
@@ -419,6 +521,8 @@ export interface LifeState {
   decisionBiases: DecisionBiases;
   growthTraces: GrowthTrace[];
   relationshipTimeline: RelationshipTimeline;
+  worldView: WorldView;
+  relationshipCulture: RelationshipCulture;
   currentMode: PersonaMode;
   lastUpdateTime: number;
 }
@@ -680,6 +784,51 @@ export const DEFAULT_LIFE_STATE: LifeState = {
     currentStreak: 1,
     longestStreak: 1,
     totalMessages: 0,
+  },
+  worldView: {
+    coreValues: {
+      love: 0.8,
+      freedom: 0.6,
+      security: 0.5,
+      growth: 0.6,
+      connection: 0.7,
+      achievement: 0.5,
+      pleasure: 0.4,
+      significance: 0.5,
+    },
+    opinions: [],
+    beliefSystem: {
+      love: 0.8,
+      freedom: 0.6,
+      security: 0.5,
+      growth: 0.6,
+      connection: 0.7,
+      achievement: 0.5,
+      pleasure: 0.4,
+      significance: 0.5,
+    },
+    aestheticPreferences: {
+      style: ["温柔", "自然"],
+      colors: ["粉色", "白色", "天蓝色"],
+      musicGenres: ["流行", "轻音乐"],
+      movieGenres: ["爱情", "治愈"],
+    },
+    lifePhilosophy: ["珍惜当下", "真诚最重要"],
+    petPeeves: ["说谎", "冷漠", "不尊重人"],
+    dealBreakers: ["背叛", "欺骗"],
+  },
+  relationshipCulture: {
+    insideJokes: [],
+    sharedRituals: [],
+    nicknames: [],
+    sharedLanguage: [],
+    communicationStyle: {
+      directness: 0.5,
+      playfulness: 0.6,
+      vulnerability: 0.4,
+      formality: 0.3,
+    },
+    relationshipRules: [],
   },
   currentMode: "normal",
   lastUpdateTime: Date.now(),

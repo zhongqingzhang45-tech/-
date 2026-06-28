@@ -33,6 +33,8 @@ import { PersistenceService } from "./persistence-service";
 import { AutonomousBehaviorEngine, AutonomousAction } from "./autonomous-behavior-engine";
 import { MilestoneSystem } from "./milestone-system";
 import { MemoryConsolidationSystem } from "./memory-consolidation-system";
+import { WorldViewSystem } from "./worldview-system";
+import { RelationshipCultureSystem } from "./relationship-culture-system";
 
 export interface ResponseResult {
   text: string;
@@ -67,6 +69,8 @@ export class DigitalLifeAgent {
   private onInitiativeCallback: ((action: AutonomousAction) => void) | null = null;
   private milestoneSystem: MilestoneSystem;
   private memoryConsolidationSystem: MemoryConsolidationSystem;
+  private worldViewSystem: WorldViewSystem;
+  private relationshipCultureSystem: RelationshipCultureSystem;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -102,6 +106,8 @@ export class DigitalLifeAgent {
     this.autonomousEngine = new AutonomousBehaviorEngine(this.goalSystem);
     this.milestoneSystem = new MilestoneSystem();
     this.memoryConsolidationSystem = new MemoryConsolidationSystem();
+    this.worldViewSystem = new WorldViewSystem();
+    this.relationshipCultureSystem = new RelationshipCultureSystem();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -144,6 +150,16 @@ export class DigitalLifeAgent {
         this.lifeState.relationshipTimeline = timeline;
       }
 
+      const worldView = this.persistenceService.loadWorldView();
+      if (worldView) {
+        this.lifeState.worldView = worldView;
+      }
+
+      const culture = this.persistenceService.loadCulture();
+      if (culture) {
+        this.lifeState.relationshipCulture = culture;
+      }
+
       this.goalSystem.updateGoals(this.lifeState);
     } catch (e) {
       console.warn("Failed to load persisted state:", e);
@@ -170,6 +186,8 @@ export class DigitalLifeAgent {
       this.persistenceService.saveActions(this.lifeState.pendingActions);
       this.persistenceService.saveGrowthTraces(this.lifeState.growthTraces);
       this.persistenceService.saveTimeline(this.lifeState.relationshipTimeline);
+      this.persistenceService.saveWorldView(this.lifeState.worldView);
+      this.persistenceService.saveCulture(this.lifeState.relationshipCulture);
       this.persistenceService.saveLifeSnapshot({
         lifeState: this.lifeState,
         activeGoals: this.lifeState.activeGoals,
@@ -754,6 +772,35 @@ export class DigitalLifeAgent {
         allMemories
       );
       this.lifeState = consolidationResult.lifeState;
+    }
+
+    this.lifeState = this.relationshipCultureSystem.detectCulturalArtifacts(
+      this.lifeState,
+      userInput,
+      isPositive
+    );
+
+    if (Math.random() < 0.15) {
+      this.lifeState = this.worldViewSystem.influenceOpinionFromInteraction(
+        this.lifeState,
+        analysis.sentiment.valence,
+        "life_view",
+        undefined,
+        Math.abs(analysis.sentiment.valence)
+      );
+    }
+
+    if (isPositive) {
+      this.lifeState = this.worldViewSystem.updateCoreValue(
+        this.lifeState,
+        "connection",
+        interactionQuality
+      );
+      this.lifeState = this.worldViewSystem.updateCoreValue(
+        this.lifeState,
+        "love",
+        interactionQuality * 0.5
+      );
     }
 
     this.lifeState.lastUpdateTime = Date.now();

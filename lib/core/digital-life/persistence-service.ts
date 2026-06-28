@@ -1,4 +1,4 @@
-import { LifeState, Goal, PlannedAction, GrowthTrace, MemoryEntry, RelationshipTimeline } from "./types";
+import { LifeState, Goal, PlannedAction, GrowthTrace, MemoryEntry, RelationshipTimeline, WorldView, RelationshipCulture } from "./types";
 
 const STORAGE_KEYS = {
   LIFE_STATE: "digital_life_state",
@@ -8,6 +8,8 @@ const STORAGE_KEYS = {
   MEMORIES: "digital_life_memories",
   LAST_ACTIVE: "digital_life_last_active",
   TIMELINE: "digital_life_timeline",
+  WORLDVIEW: "digital_life_worldview",
+  CULTURE: "digital_life_culture",
 };
 
 export interface PersistedLifeSnapshot {
@@ -160,6 +162,52 @@ export class PersistenceService {
       return JSON.parse(data);
     } catch (e) {
       console.warn("Failed to load timeline:", e);
+      return null;
+    }
+  }
+
+  saveWorldView(worldView: WorldView): void {
+    if (typeof window === "undefined") return;
+    
+    try {
+      localStorage.setItem(this.getKey(STORAGE_KEYS.WORLDVIEW), JSON.stringify(worldView));
+    } catch (e) {
+      console.warn("Failed to save worldview:", e);
+    }
+  }
+
+  loadWorldView(): WorldView | null {
+    if (typeof window === "undefined") return null;
+    
+    try {
+      const data = localStorage.getItem(this.getKey(STORAGE_KEYS.WORLDVIEW));
+      if (!data) return null;
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to load worldview:", e);
+      return null;
+    }
+  }
+
+  saveCulture(culture: RelationshipCulture): void {
+    if (typeof window === "undefined") return;
+    
+    try {
+      localStorage.setItem(this.getKey(STORAGE_KEYS.CULTURE), JSON.stringify(culture));
+    } catch (e) {
+      console.warn("Failed to save culture:", e);
+    }
+  }
+
+  loadCulture(): RelationshipCulture | null {
+    if (typeof window === "undefined") return null;
+    
+    try {
+      const data = localStorage.getItem(this.getKey(STORAGE_KEYS.CULTURE));
+      if (!data) return null;
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to load culture:", e);
       return null;
     }
   }
