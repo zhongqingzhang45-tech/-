@@ -10,7 +10,14 @@ export {
   PersonaMatrixSystem,
   MemorySystem,
   TriggerEngine,
+  GoalSystem,
+  MemoryInfluenceSystem,
+  GrowthEngine,
 } from "./systems";
+export { PersistenceService } from "./persistence-service";
+export type { PersistedLifeSnapshot } from "./persistence-service";
+export { AutonomousBehaviorEngine } from "./autonomous-behavior-engine";
+export type { AutonomousAction, InitiativeContext } from "./autonomous-behavior-engine";
 export { SkillSystem } from "./skills";
 export type { Skill, SkillCategory, SkillResult } from "./skills";
 export { ImageRecognition } from "./image-recognition";

@@ -10,6 +10,7 @@ import {
   MALE_CHARACTERS,
   generateName,
   generateNickname,
+  AutonomousAction,
 } from "@/lib/core/digital-life";
 
 export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
@@ -20,6 +21,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
   const [relationship, setRelationship] = useState<any>(null);
   const [lifeState, setLifeState] = useState<any>(null);
   const agentRef = useRef<DigitalLifeAgent | null>(null);
+  const initiativeCallbackRef = useRef<((action: AutonomousAction) => void) | null>(null);
 
   useEffect(() => {
     let userGender: Gender = "male";
@@ -86,7 +88,43 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
     setRelationship(newAgent.lifeState.relationship);
     setLifeState(newAgent.getLifeState());
 
-    newAgent.initialize().catch(console.warn);
+    const handleInitiativeMessage = (action: AutonomousAction) => {
+      setTimeout(() => {
+        setIsTyping(true);
+        
+        setTimeout(() => {
+          const initiativeMsg: ChatMessage = {
+            id: `initiative_${Date.now()}`,
+            sender: "assistant",
+            content: action.content,
+            timestamp: Date.now(),
+            emotion: {
+              mood: (action.emotion as MoodType) || "happy",
+              intensity: 0.6,
+              valence: 0.5,
+              arousal: 0.4,
+              dominance: 0.5,
+            },
+            personaMode: "normal",
+          };
+          
+          setMessages((prev) => [...prev, initiativeMsg]);
+          setMood(initiativeMsg.emotion);
+          setLifeState(agentRef.current?.getLifeState() || null);
+          setIsTyping(false);
+          
+          agentRef.current?.saveState();
+        }, 1000 + Math.random() * 1500);
+      }, 500);
+    };
+
+    initiativeCallbackRef.current = handleInitiativeMessage;
+
+    newAgent.initialize().then(() => {
+      if (initiativeCallbackRef.current) {
+        newAgent.startAutonomousEngine(initiativeCallbackRef.current);
+      }
+    }).catch(console.warn);
 
     const initialMessages: ChatMessage[] = [
       {
@@ -107,6 +145,14 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>) {
       },
     ];
     setMessages(initialMessages);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (agentRef.current) {
+        agentRef.current.stopAutonomousEngine();
+      }
+    };
   }, []);
 
   const sendMessage = useCallback(async (text: string, imageUrl?: string) => {

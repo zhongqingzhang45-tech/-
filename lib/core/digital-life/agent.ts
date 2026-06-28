@@ -29,6 +29,8 @@ import { ImageRecognition } from "./image-recognition";
 import { GiftSystem } from "./gift-system";
 import { ContextService } from "./context-service";
 import { DeviceFingerprint } from "./device-binding";
+import { PersistenceService } from "./persistence-service";
+import { AutonomousBehaviorEngine, AutonomousAction } from "./autonomous-behavior-engine";
 
 export interface ResponseResult {
   text: string;
@@ -58,6 +60,9 @@ export class DigitalLifeAgent {
   private goalSystem: GoalSystem;
   private memoryInfluenceSystem: MemoryInfluenceSystem;
   private growthEngine: GrowthEngine;
+  private persistenceService: PersistenceService;
+  private autonomousEngine: AutonomousBehaviorEngine;
+  private onInitiativeCallback: ((action: AutonomousAction) => void) | null = null;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -89,6 +94,8 @@ export class DigitalLifeAgent {
     this.goalSystem = new GoalSystem();
     this.memoryInfluenceSystem = new MemoryInfluenceSystem();
     this.growthEngine = new GrowthEngine();
+    this.persistenceService = new PersistenceService(profile.id);
+    this.autonomousEngine = new AutonomousBehaviorEngine(this.goalSystem);
     
     this.initializeTemplates();
     this.seedMemories();
@@ -102,8 +109,64 @@ export class DigitalLifeAgent {
       if (email) {
         await this.deviceFingerprint.createOrUpdateBinding(`user_${Date.now()}`, email, nickname);
       }
+
+      this.loadPersistedState();
     } catch (e: any) {
       console.warn("Device binding initialization failed:", e?.message || e);
+    }
+  }
+
+  private loadPersistedState(): void {
+    try {
+      const goals = this.persistenceService.loadGoals();
+      if (goals.length > 0) {
+        this.lifeState.activeGoals = goals;
+      }
+
+      const actions = this.persistenceService.loadActions();
+      if (actions.length > 0) {
+        this.lifeState.pendingActions = actions;
+      }
+
+      const growthTraces = this.persistenceService.loadGrowthTraces();
+      if (growthTraces.length > 0) {
+        this.lifeState.growthTraces = growthTraces;
+      }
+
+      this.goalSystem.updateGoals(this.lifeState);
+    } catch (e) {
+      console.warn("Failed to load persisted state:", e);
+    }
+  }
+
+  startAutonomousEngine(onInitiative: (action: AutonomousAction) => void): void {
+    this.onInitiativeCallback = onInitiative;
+    this.autonomousEngine.attachAgent(this);
+    this.autonomousEngine.setInitiativeCallback((action) => {
+      this.onInitiativeCallback?.(action);
+    });
+    this.autonomousEngine.start(60000);
+  }
+
+  stopAutonomousEngine(): void {
+    this.autonomousEngine.stop();
+    this.saveState();
+  }
+
+  saveState(): void {
+    try {
+      this.persistenceService.saveGoals(this.lifeState.activeGoals);
+      this.persistenceService.saveActions(this.lifeState.pendingActions);
+      this.persistenceService.saveGrowthTraces(this.lifeState.growthTraces);
+      this.persistenceService.saveLifeSnapshot({
+        lifeState: this.lifeState,
+        activeGoals: this.lifeState.activeGoals,
+        pendingActions: this.lifeState.pendingActions,
+        growthTraces: this.lifeState.growthTraces,
+        lastActiveTime: Date.now(),
+      });
+    } catch (e) {
+      console.warn("Failed to save state:", e);
     }
   }
 
