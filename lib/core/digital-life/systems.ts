@@ -1,5 +1,5 @@
 import {
-  EmotionState, MoodType, BodilyState, InstinctState, PersonaMatrix, RelationshipState, DecisionResult, TriggerState, MoodLogEntry, BehaviorTag, MemoryEntry, MemoryType, LifeState, CharacterProfile, MOOD_CONFIG } from "./types";
+  EmotionState, MoodType, BodilyState, InstinctState, PersonaMatrix, RelationshipState, DecisionResult, TriggerState, MoodLogEntry, BehaviorTag, MemoryEntry, MemoryType, LifeState, CharacterProfile, MOOD_CONFIG, Goal, GoalType, GoalStatus, PlannedAction, ActionType, DecisionBiases, GrowthTrace } from "./types";
 
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
@@ -711,5 +711,437 @@ export class DecisionEngine {
 
   getTriggerEngine(): TriggerEngine {
     return this.triggerEngine;
+  }
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+export class GoalSystem {
+  private maxActiveGoals = 5;
+
+  generateGoalsFromState(lifeState: LifeState): Goal[] {
+    const newGoals: Goal[] = [];
+    const now = Date.now();
+
+    if (lifeState.instinct.companionshipNeed > 70) {
+      const existing = lifeState.activeGoals.find(g => g.type === "connection" && g.status === "active");
+      if (!existing) {
+        newGoals.push(this.createGoal("connection", 0.7, "instinct", "陪伴需求上升，想和用户联系"));
+      }
+    }
+
+    if (lifeState.instinct.attentionNeed > 75) {
+      const existing = lifeState.activeGoals.find(g => g.type === "status" && g.status === "active");
+      if (!existing) {
+        newGoals.push(this.createGoal("status", 0.6, "instinct", "渴望被关注"));
+      }
+    }
+
+    if (lifeState.instinct.securityNeed < 40) {
+      const existing = lifeState.activeGoals.find(g => g.type === "security" && g.status === "active");
+      if (!existing) {
+        newGoals.push(this.createGoal("security", 0.8, "instinct", "安全感不足，需要确认关系"));
+      }
+    }
+
+    if (lifeState.instinct.curiosity > 70) {
+      const existing = lifeState.activeGoals.find(g => g.type === "understanding" && g.status === "active");
+      if (!existing && Math.random() < 0.3) {
+        newGoals.push(this.createGoal("understanding", 0.4, "instinct", "好奇，想了解用户更多"));
+      }
+    }
+
+    if (lifeState.persona.affection > 80 && lifeState.relationship.intimacy > 60) {
+      const existing = lifeState.activeGoals.find(g => g.type === "intimacy" && g.status === "active");
+      if (!existing && Math.random() < 0.2) {
+        newGoals.push(this.createGoal("intimacy", 0.5, "emotion", "感情深厚，想更亲密"));
+      }
+    }
+
+    return newGoals;
+  }
+
+  createGoal(
+    type: GoalType,
+    priority: number,
+    triggerSource: Goal["triggerSource"],
+    triggerDescription?: string
+  ): Goal {
+    const now = Date.now();
+    return {
+      id: generateId("goal"),
+      type,
+      priority,
+      status: "pending",
+      createdAt: now,
+      activatedAt: now,
+      progress: 0,
+      triggerSource,
+      triggerDescription,
+      plan: this.generateActionPlan(type, priority),
+    };
+  }
+
+  generateActionPlan(goalType: GoalType, priority: number): PlannedAction[] {
+    const actions: PlannedAction[] = [];
+    const now = Date.now();
+
+    const addAction = (type: ActionType, delayMs: number, contentHint?: string) => {
+      actions.push({
+        id: generateId("action"),
+        type,
+        goalId: "",
+        scheduledTime: now + delayMs,
+        contentHint,
+        priority: priority * (0.8 + Math.random() * 0.4),
+        executed: false,
+      });
+    };
+
+    switch (goalType) {
+      case "connection":
+        addAction("greet", 0, "主动打招呼");
+        addAction("ask_about_day", 60000, "问问今天过得怎么样");
+        addAction("share_feeling", 120000, "分享一点自己的心情");
+        break;
+      case "security":
+        addAction("check_in", 0, "确认一下对方的心意");
+        addAction("share_memory", 60000, "提起一个温暖的回忆");
+        break;
+      case "understanding":
+        addAction("initiate_topic", 0, "开启一个新话题");
+        addAction("ask_about_day", 60000, "深入问问细节");
+        break;
+      case "joy":
+        addAction("tease", 0, "逗逗对方");
+        addAction("compliment", 60000, "夸夸对方");
+        break;
+      case "intimacy":
+        addAction("share_feeling", 0, "表达喜欢");
+        addAction("compliment", 60000, "说点甜言蜜语");
+        break;
+      case "status":
+        addAction("initiate_topic", 0, "找个话题吸引注意");
+        addAction("tease", 60000, "调皮一下刷存在感");
+        break;
+      case "growth":
+        addAction("share_feeling", 0, "聊聊自己的想法");
+        break;
+    }
+
+    return actions;
+  }
+
+  updateGoals(lifeState: LifeState): LifeState {
+    const now = Date.now();
+    let activeGoals = [...lifeState.activeGoals];
+
+    activeGoals = activeGoals.filter(goal => {
+      if (goal.status === "completed" || goal.status === "failed" || goal.status === "abandoned") {
+        return now - (goal.completedAt || 0) < 7 * 24 * 3600 * 1000;
+      }
+      return true;
+    });
+
+    const newGoals = this.generateGoalsFromState(lifeState);
+    for (const goal of newGoals) {
+      const activeCount = activeGoals.filter(g => g.status === "active").length;
+      if (activeCount < this.maxActiveGoals) {
+        goal.status = "active";
+        goal.plan = goal.plan.map(a => ({ ...a, goalId: goal.id }));
+        activeGoals.push(goal);
+      }
+    }
+
+    activeGoals.sort((a, b) => b.priority - a.priority);
+
+    return { ...lifeState, activeGoals };
+  }
+
+  completeGoal(goalId: string, lifeState: LifeState, success: boolean = true): LifeState {
+    const activeGoals = lifeState.activeGoals.map(goal => {
+      if (goal.id === goalId) {
+        const newStatus: GoalStatus = success ? "completed" : "failed";
+        return {
+          ...goal,
+          status: newStatus,
+          completedAt: Date.now(),
+          progress: success ? 1 : 0,
+        };
+      }
+      return goal;
+    });
+    return { ...lifeState, activeGoals };
+  }
+
+  getDueActions(lifeState: LifeState): PlannedAction[] {
+    const now = Date.now();
+    const actions: PlannedAction[] = [];
+
+    for (const goal of lifeState.activeGoals) {
+      if (goal.status !== "active") continue;
+      for (const action of goal.plan) {
+        if (!action.executed && action.scheduledTime <= now) {
+          actions.push(action);
+        }
+      }
+    }
+
+    actions.sort((a, b) => b.priority - a.priority);
+    return actions;
+  }
+
+  markActionExecuted(goalId: string, actionId: string, lifeState: LifeState, result: "success" | "failed" | "ignored"): LifeState {
+    const activeGoals = lifeState.activeGoals.map(goal => {
+      if (goal.id !== goalId) return goal;
+      const plan = goal.plan.map(action => {
+        if (action.id === actionId) {
+          return {
+            ...action,
+            executed: true,
+            executedAt: Date.now(),
+            result,
+          };
+        }
+        return action;
+      });
+      const executedCount = plan.filter(a => a.executed).length;
+      const progress = plan.length > 0 ? executedCount / plan.length : 0;
+      return { ...goal, plan, progress };
+    });
+    return { ...lifeState, activeGoals };
+  }
+}
+
+export class MemoryInfluenceSystem {
+  computeBiases(memories: MemoryEntry[], lifeState: LifeState): DecisionBiases {
+    const biases: DecisionBiases = {
+      affectionBias: 0,
+      initiativeBias: 0,
+      warmthBias: 0,
+      conflictAvoidanceBias: 0,
+      curiosityBias: 0,
+      attentionSeekingBias: 0,
+      topicAvoidances: [],
+      topicPreferences: [],
+      memoryInfluences: [],
+    };
+
+    const recentMemories = memories.filter(m =>
+      Date.now() - m.timestamp < 7 * 24 * 3600 * 1000
+    );
+
+    for (const memory of recentMemories) {
+      const recencyFactor = 1 - (Date.now() - memory.timestamp) / (7 * 24 * 3600 * 1000);
+      const impact = memory.importance * Math.abs(memory.emotionalImpact) * recencyFactor;
+
+      if (memory.type === "preference") {
+        if (memory.emotionalImpact > 0) {
+          biases.topicPreferences.push(memory.content);
+        } else {
+          biases.topicAvoidances.push(memory.content);
+        }
+        biases.memoryInfluences.push(memory.id);
+      }
+
+      if (memory.type === "emotion") {
+        if (memory.emotionalImpact > 0) {
+          biases.affectionBias += impact * 0.1;
+          biases.warmthBias += impact * 0.1;
+        } else {
+          biases.conflictAvoidanceBias += impact * 0.1;
+        }
+        biases.memoryInfluences.push(memory.id);
+      }
+
+      if (memory.type === "event") {
+        if (memory.emotionalImpact > 0) {
+          biases.initiativeBias += impact * 0.05;
+        } else {
+          biases.conflictAvoidanceBias += impact * 0.05;
+        }
+        biases.memoryInfluences.push(memory.id);
+      }
+
+      if (memory.type === "behavior_pattern") {
+        if (memory.behaviorTags?.includes("clingy")) {
+          biases.attentionSeekingBias += impact * 0.1;
+        }
+        if (memory.behaviorTags?.includes("independent")) {
+          biases.conflictAvoidanceBias += impact * 0.05;
+        }
+        biases.memoryInfluences.push(memory.id);
+      }
+    }
+
+    biases.affectionBias = Math.max(-0.5, Math.min(0.5, biases.affectionBias));
+    biases.initiativeBias = Math.max(-0.5, Math.min(0.5, biases.initiativeBias));
+    biases.warmthBias = Math.max(-0.5, Math.min(0.5, biases.warmthBias));
+    biases.conflictAvoidanceBias = Math.max(-0.5, Math.min(0.5, biases.conflictAvoidanceBias));
+    biases.curiosityBias = Math.max(-0.3, Math.min(0.3, biases.curiosityBias));
+    biases.attentionSeekingBias = Math.max(-0.5, Math.min(0.5, biases.attentionSeekingBias));
+
+    return biases;
+  }
+
+  applyBiasesToDecision(decision: DecisionResult, biases: DecisionBiases): DecisionResult {
+    let adjusted = { ...decision };
+
+    if (biases.warmthBias > 0.2 && decision.personaMode === "normal") {
+      if (Math.random() < biases.warmthBias) {
+        adjusted.personaMode = "affectionate";
+      }
+    }
+
+    if (biases.conflictAvoidanceBias > 0.2 && decision.personaMode === "aggressive") {
+      if (Math.random() < biases.conflictAvoidanceBias) {
+        adjusted.personaMode = "cold";
+        adjusted.shouldColdTreat = true;
+      }
+    }
+
+    if (biases.initiativeBias > 0.1) {
+      adjusted.shouldInitiate = adjusted.shouldInitiate || Math.random() < biases.initiativeBias;
+    }
+
+    if (biases.affectionBias > 0.15) {
+      if (Math.random() < biases.affectionBias * 0.5) {
+        adjusted.actionPlan.push("show_affection");
+      }
+    }
+
+    return adjusted;
+  }
+}
+
+export class GrowthEngine {
+  private maxTraces = 200;
+
+  recordGrowth(
+    lifeState: LifeState,
+    dimension: GrowthTrace["dimension"],
+    attribute: string,
+    delta: number,
+    reason: string,
+    triggerEvent?: string
+  ): LifeState {
+    const trace: GrowthTrace = {
+      id: generateId("growth"),
+      timestamp: Date.now(),
+      dimension,
+      attribute,
+      delta,
+      reason,
+      triggerEvent,
+    };
+
+    const growthTraces = [...lifeState.growthTraces, trace];
+    if (growthTraces.length > this.maxTraces) {
+      growthTraces.shift();
+    }
+
+    let newPersona = { ...lifeState.persona };
+    if (dimension === "personality") {
+      const attr = attribute as keyof typeof newPersona;
+      if (attr in newPersona && typeof newPersona[attr] === "number") {
+        (newPersona as any)[attr] = Math.max(0, Math.min(100, (newPersona as any)[attr] + delta * 10));
+      }
+    }
+
+    let newValues = { ...lifeState.values };
+    if (dimension === "values") {
+      const attr = attribute as keyof typeof newValues;
+      if (attr in newValues && typeof newValues[attr] === "number") {
+        (newValues as any)[attr] = Math.max(0, Math.min(1, (newValues as any)[attr] + delta));
+      }
+    }
+
+    let newGrowth = { ...lifeState.growth };
+    newGrowth.experience += Math.abs(delta) * 10;
+    newGrowth.personalityDevelopment += Math.abs(delta) * 0.01;
+
+    return {
+      ...lifeState,
+      growthTraces,
+      persona: newPersona,
+      values: newValues,
+      growth: newGrowth,
+    };
+  }
+
+  processInteractionForGrowth(
+    lifeState: LifeState,
+    interactionQuality: number,
+    intent: string
+  ): LifeState {
+    let state = lifeState;
+    const quality = Math.max(-1, Math.min(1, interactionQuality));
+
+    if (quality > 0.5) {
+      state = this.recordGrowth(
+        state,
+        "social",
+        "trust",
+        quality * 0.005,
+        "积极互动增进信任",
+        intent
+      );
+      state = this.recordGrowth(
+        state,
+        "personality",
+        "affection",
+        quality * 0.003,
+        "好感度上升",
+        intent
+      );
+    }
+
+    if (quality < -0.3) {
+      state = this.recordGrowth(
+        state,
+        "personality",
+        "resentment",
+        Math.abs(quality) * 0.005,
+        "消极互动积累怨念",
+        intent
+      );
+    }
+
+    if (intent === "question" || intent === "image_sharing") {
+      state = this.recordGrowth(
+        state,
+        "cognitive",
+        "understanding",
+        0.002,
+        "对用户了解加深",
+        intent
+      );
+    }
+
+    if (intent === "apology" && quality > 0) {
+      state = this.recordGrowth(
+        state,
+        "social",
+        "trust",
+        0.008,
+        "和解让关系更稳固",
+        intent
+      );
+    }
+
+    if (intent === "affection" && quality > 0) {
+      state = this.recordGrowth(
+        state,
+        "emotion",
+        "intimacy",
+        0.005,
+        "亲密互动加深感情",
+        intent
+      );
+    }
+
+    return state;
   }
 }

@@ -20,6 +20,9 @@ import {
   DecisionEngine,
   PersonaMatrixSystem,
   MemorySystem,
+  GoalSystem,
+  MemoryInfluenceSystem,
+  GrowthEngine,
 } from "./systems";
 import { SkillSystem, SkillResult } from "./skills";
 import { ImageRecognition } from "./image-recognition";
@@ -52,6 +55,9 @@ export class DigitalLifeAgent {
   private giftSystem: GiftSystem;
   private contextService: ContextService;
   private deviceFingerprint: DeviceFingerprint;
+  private goalSystem: GoalSystem;
+  private memoryInfluenceSystem: MemoryInfluenceSystem;
+  private growthEngine: GrowthEngine;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -80,6 +86,9 @@ export class DigitalLifeAgent {
     this.giftSystem = new GiftSystem();
     this.contextService = new ContextService();
     this.deviceFingerprint = DeviceFingerprint.getInstance();
+    this.goalSystem = new GoalSystem();
+    this.memoryInfluenceSystem = new MemoryInfluenceSystem();
+    this.growthEngine = new GrowthEngine();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -549,7 +558,19 @@ export class DigitalLifeAgent {
     this.instinctSystem.satisfyCompanionship(5);
     this.instinctSystem.satisfyAttention(8);
 
-    const decision = this.decisionEngine.decide(analysis, this.lifeState, behaviorTags);
+    this.lifeState = this.updatePerception(userInput, analysis);
+
+    this.lifeState = this.goalSystem.updateGoals(this.lifeState);
+
+    const allMemories = [
+      ...this.memorySystem.getRecentMemories(24),
+      ...this.memorySystem.getImportantMemories(20),
+    ];
+    const decisionBiases = this.memoryInfluenceSystem.computeBiases(allMemories, this.lifeState);
+    this.lifeState.decisionBiases = decisionBiases;
+
+    let decision = this.decisionEngine.decide(analysis, this.lifeState, behaviorTags);
+    decision = this.memoryInfluenceSystem.applyBiasesToDecision(decision, decisionBiases);
     this.lifeState.currentMode = decision.personaMode;
 
     if (decision.shouldColdTreat && !this.lifeState.relationship.coldTreatmentActive) {
@@ -615,6 +636,13 @@ export class DigitalLifeAgent {
 
     this.updateRelationship(assistantMessage);
     this.updateGrowth();
+
+    const interactionQuality = analysis.sentiment.valence;
+    this.lifeState = this.growthEngine.processInteractionForGrowth(
+      this.lifeState,
+      interactionQuality,
+      analysis.intent
+    );
 
     this.lifeState.relationship.lastActiveTime = Date.now();
     this.lifeState.lastUpdateTime = Date.now();
@@ -822,6 +850,49 @@ export class DigitalLifeAgent {
         0.8
       );
     }
+  }
+
+  private updatePerception(
+    userInput: string,
+    analysis: { sentiment: { valence: number; arousal: number }; intent: string; keywords: string[] }
+  ): LifeState {
+    const now = Date.now();
+    const hour = new Date().getHours();
+    const dayOfWeek = new Date().getDay();
+    
+    let timeOfDay: "morning" | "afternoon" | "evening" | "night";
+    if (hour >= 5 && hour < 12) timeOfDay = "morning";
+    else if (hour >= 12 && hour < 17) timeOfDay = "afternoon";
+    else if (hour >= 17 && hour < 22) timeOfDay = "evening";
+    else timeOfDay = "night";
+
+    let conversationPhase: typeof this.lifeState.perception.conversationPhase = "casual";
+    if (this.recentMessages.length < 3) conversationPhase = "greeting";
+    else if (analysis.keywords.includes("apology")) conversationPhase = "reconciliation";
+    else if (analysis.keywords.includes("jealousy") || analysis.sentiment.valence < -0.4) conversationPhase = "conflict";
+    else if (analysis.sentiment.valence > 0.5 && this.recentMessages.length > 10) conversationPhase = "deep";
+
+    const timeSinceLastInteraction = now - this.lifeState.relationship.lastInteractionTime;
+
+    let userMoodGuess: typeof this.lifeState.perception.userMoodGuess = undefined;
+    if (analysis.sentiment.valence > 0.3) userMoodGuess = "happy";
+    else if (analysis.sentiment.valence < -0.3) userMoodGuess = "sad";
+    else if (analysis.sentiment.arousal > 0.6) userMoodGuess = "excited";
+
+    return {
+      ...this.lifeState,
+      perception: {
+        ...this.lifeState.perception,
+        lastUserMessage: userInput,
+        lastUserMessageTime: now,
+        timeOfDay,
+        dayOfWeek,
+        timeSinceLastInteraction,
+        userMoodGuess,
+        conversationPhase,
+      },
+      timestamp: now,
+    };
   }
 
   getMood(): EmotionState {

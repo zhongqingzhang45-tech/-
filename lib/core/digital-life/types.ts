@@ -235,7 +235,96 @@ export interface ConversationContext {
   conflictLevel: number;
 }
 
+export type GoalType =
+  | "connection"
+  | "security"
+  | "understanding"
+  | "joy"
+  | "growth"
+  | "intimacy"
+  | "status";
+
+export type GoalStatus = "pending" | "active" | "completed" | "failed" | "abandoned";
+
+export type ActionType =
+  | "greet"
+  | "ask_about_day"
+  | "share_feeling"
+  | "comfort"
+  | "initiate_topic"
+  | "check_in"
+  | "apologize"
+  | "compliment"
+  | "tease"
+  | "share_memory"
+  | "gift_suggestion"
+  | "plan_activity";
+
+export interface Goal {
+  id: string;
+  type: GoalType;
+  priority: number;
+  status: GoalStatus;
+  createdAt: number;
+  activatedAt?: number;
+  completedAt?: number;
+  deadline?: number;
+  progress: number;
+  triggerSource: "instinct" | "emotion" | "memory" | "relationship" | "external";
+  triggerDescription?: string;
+  relatedMemoryId?: string;
+  plan: PlannedAction[];
+}
+
+export interface PlannedAction {
+  id: string;
+  type: ActionType;
+  goalId: string;
+  scheduledTime: number;
+  contentHint?: string;
+  priority: number;
+  executed: boolean;
+  executedAt?: number;
+  result?: "success" | "failed" | "ignored";
+}
+
+export interface GrowthTrace {
+  id: string;
+  timestamp: number;
+  dimension: "personality" | "emotion" | "social" | "values" | "cognitive";
+  attribute: string;
+  delta: number;
+  reason: string;
+  triggerEvent?: string;
+}
+
+export interface PerceptionState {
+  lastUserMessage?: string;
+  lastUserMessageTime?: number;
+  lastUserEmotion?: string;
+  timeOfDay: "morning" | "afternoon" | "evening" | "night";
+  dayOfWeek: number;
+  interactionStreak: number;
+  timeSinceLastInteraction: number;
+  userMoodGuess?: MoodType;
+  conversationPhase: "greeting" | "casual" | "deep" | "conflict" | "reconciliation" | "ending";
+}
+
+export interface DecisionBiases {
+  affectionBias: number;
+  initiativeBias: number;
+  warmthBias: number;
+  conflictAvoidanceBias: number;
+  curiosityBias: number;
+  attentionSeekingBias: number;
+  topicAvoidances: string[];
+  topicPreferences: string[];
+  memoryInfluences: string[];
+}
+
 export interface LifeState {
+  timestamp: number;
+  perception: PerceptionState;
   body: BodilyState;
   instinct: InstinctState;
   emotion: EmotionState;
@@ -244,6 +333,10 @@ export interface LifeState {
   growth: GrowthState;
   values: ValueSystem;
   memoryBuffer: MemoryBuffer;
+  activeGoals: Goal[];
+  pendingActions: PlannedAction[];
+  decisionBiases: DecisionBiases;
+  growthTraces: GrowthTrace[];
   currentMode: PersonaMode;
   lastUpdateTime: number;
 }
@@ -401,7 +494,23 @@ export const DEFAULT_MEMORY_BUFFER: MemoryBuffer = {
   triggers: [],
 };
 
+function getTimeOfDay(): "morning" | "afternoon" | "evening" | "night" {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 22) return "evening";
+  return "night";
+}
+
 export const DEFAULT_LIFE_STATE: LifeState = {
+  timestamp: Date.now(),
+  perception: {
+    timeOfDay: getTimeOfDay(),
+    dayOfWeek: new Date().getDay(),
+    interactionStreak: 1,
+    timeSinceLastInteraction: 0,
+    conversationPhase: "greeting",
+  },
   body: {
     energy: 80,
     hunger: 30,
@@ -464,6 +573,20 @@ export const DEFAULT_LIFE_STATE: LifeState = {
   memoryBuffer: {
     ...DEFAULT_MEMORY_BUFFER,
   },
+  activeGoals: [],
+  pendingActions: [],
+  decisionBiases: {
+    affectionBias: 0,
+    initiativeBias: 0,
+    warmthBias: 0,
+    conflictAvoidanceBias: 0,
+    curiosityBias: 0,
+    attentionSeekingBias: 0,
+    topicAvoidances: [],
+    topicPreferences: [],
+    memoryInfluences: [],
+  },
+  growthTraces: [],
   currentMode: "normal",
   lastUpdateTime: Date.now(),
 };
