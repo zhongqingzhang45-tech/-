@@ -102,7 +102,7 @@ function loadScript(src: string, retries = 3, timeout = 30000): Promise<void> {
 
 function loadAllScripts(): Promise<void> {
   if (loadPromise) return loadPromise;
-  loadPromise = Promise.all(SCRIPTS.map(src => loadScript(src)));
+  loadPromise = Promise.all(SCRIPTS.map(src => loadScript(src))).then(() => {});
   return loadPromise;
 }
 
