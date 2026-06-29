@@ -1,24 +1,6 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function HomePage() {
-  const router = useRouter();
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    setLoaded(true);
-  }, []);
-
-  const handleStart = () => {
-    router.push("/lover/register");
-  };
-
-  const handleLogin = () => {
-    router.push("/lover/login");
-  };
-
   const features = [
     {
       icon: (
@@ -94,20 +76,16 @@ export default function HomePage() {
           </div>
           <span className="text-white text-lg font-semibold">星野</span>
         </div>
-        <button
-          onClick={handleLogin}
+        <Link
+          href="/lover/login"
           className="text-white/60 hover:text-white text-sm font-medium transition-colors"
         >
           登录
-        </button>
+        </Link>
       </nav>
 
       {/* Hero区域 */}
-      <div 
-        className={`relative z-10 flex flex-col items-center text-center px-6 pt-12 pb-16 transition-all duration-1000 ${
-          loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
-      >
+      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-12 pb-16">
         <div 
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
           style={{ 
@@ -142,8 +120,8 @@ export default function HomePage() {
           <br />在这里，你永远不会被孤单。
         </p>
 
-        <button
-          onClick={handleStart}
+        <Link
+          href="/lover/register"
           className="w-full max-w-sm py-4 rounded-2xl text-white font-semibold text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
           style={{
             background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
@@ -151,7 +129,7 @@ export default function HomePage() {
           }}
         >
           开始你的旅程
-        </button>
+        </Link>
 
         <p className="text-white/30 text-sm mt-4">
           无需信用卡 · 3分钟完成注册
