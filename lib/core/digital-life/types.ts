@@ -554,6 +554,90 @@ export interface GiftPlan {
   createdAt: number;
 }
 
+export type StoryArcType = "introduction" | "development" | "conflict" | "climax" | "resolution" | "subplot";
+
+export type StoryArcStatus = "locked" | "available" | "active" | "completed" | "failed";
+
+export interface StoryArc {
+  id: string;
+  title: string;
+  description: string;
+  type: StoryArcType;
+  status: StoryArcStatus;
+  startedAt?: number;
+  completedAt?: number;
+  prerequisites: string[];
+  keyMoments: string[];
+  currentMoment: number;
+  progress: number;
+  emotionalTone: MoodType[];
+  relatedMilestones: string[];
+}
+
+export interface PlotEvent {
+  id: string;
+  title: string;
+  description: string;
+  trigger: {
+    type: "time" | "interaction" | "relationship" | "random" | "milestone";
+    condition: string;
+    threshold?: number;
+  };
+  arcId?: string;
+  priority: number;
+  exclusivity: "unique" | "repeatable" | "seasonal";
+  emotionalImpact: {
+    mood: MoodType;
+    intensity: number;
+  };
+  outcomes: Array<{
+    id: string;
+    condition?: string;
+    result: string;
+    changes: Record<string, any>;
+  }>;
+  cooldown?: number;
+  lastTriggered?: number;
+}
+
+export interface Secret {
+  id: string;
+  content: string;
+  type: "crush" | "wish" | "fear" | "plan" | "memory" | "desire";
+  revealLevel: number;
+  currentReveal: number;
+  isRevealed: boolean;
+  revealedTo?: "user" | "self" | "shared";
+  unlockConditions: string[];
+  associatedMemories: string[];
+  emotionalWeight: number;
+  createdAt: number;
+  revealedAt?: number;
+}
+
+export interface Narrative {
+  id: string;
+  title: string;
+  summary: string;
+  arcs: string[];
+  keyEvents: string[];
+  currentChapter: number;
+  totalChapters: number;
+  mood: MoodType;
+  startedAt: number;
+  updatedAt: number;
+  isActive: boolean;
+}
+
+export interface StoryLineState {
+  activeNarrative?: Narrative;
+  storyArcs: StoryArc[];
+  plotEvents: PlotEvent[];
+  secrets: Secret[];
+  completedEvents: string[];
+  chapterProgress: Record<string, number>;
+}
+
 export type TimePhase = "dawn" | "morning" | "noon" | "afternoon" | "evening" | "night" | "midnight";
 
 export type WeatherType = "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "windy" | "foggy";
@@ -649,6 +733,7 @@ export interface LifeState {
   economy: EconomyState;
   inventory: OwnedItem[];
   giftPlans: GiftPlan[];
+  storyLine: StoryLineState;
   currentMode: PersonaMode;
   lastUpdateTime: number;
 }
@@ -1005,6 +1090,13 @@ export const DEFAULT_LIFE_STATE: LifeState = {
   },
   inventory: [],
   giftPlans: [],
+  storyLine: {
+    storyArcs: [],
+    plotEvents: [],
+    secrets: [],
+    completedEvents: [],
+    chapterProgress: {},
+  },
   currentMode: "normal",
   lastUpdateTime: Date.now(),
 };

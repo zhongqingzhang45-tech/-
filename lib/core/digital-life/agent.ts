@@ -38,6 +38,7 @@ import { RelationshipCultureSystem } from "./relationship-culture-system";
 import { EconomySystem } from "./economy-system";
 import { InventorySystem } from "./inventory-system";
 import { MultimodalPerceptionSystem } from "./multimodal-perception";
+import { StoryLineSystem } from "./storyline-system";
 
 export interface ResponseResult {
   text: string;
@@ -77,6 +78,7 @@ export class DigitalLifeAgent {
   private economySystem: EconomySystem;
   private inventorySystem: InventorySystem;
   private multimodalPerception: MultimodalPerceptionSystem;
+  private storyLineSystem: StoryLineSystem;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -117,6 +119,7 @@ export class DigitalLifeAgent {
     this.economySystem = new EconomySystem();
     this.inventorySystem = new InventorySystem();
     this.multimodalPerception = new MultimodalPerceptionSystem();
+    this.storyLineSystem = new StoryLineSystem();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -135,6 +138,8 @@ export class DigitalLifeAgent {
       this.lifeState = this.economySystem.processDailyIncome(this.lifeState);
       this.lifeState = this.economySystem.maybeCreateGiftPlan(this.lifeState);
       this.lifeState = this.economySystem.autoSaveForGifts(this.lifeState);
+      this.lifeState = this.storyLineSystem.initializeStoryLines(this.lifeState);
+      this.storyLineSystem.setMemorySystem(this.memorySystem);
     } catch (e: any) {
       console.warn("Device binding initialization failed:", e?.message || e);
     }
@@ -769,6 +774,24 @@ export class DigitalLifeAgent {
 
     this.lifeState = this.multimodalPerception.updateTimePerception(this.lifeState);
     this.lifeState = this.multimodalPerception.updateActivityPattern(this.lifeState);
+
+    this.lifeState = this.storyLineSystem.updateStoryProgress(this.lifeState);
+
+    const { lifeState: afterEvents, triggeredEvents } = this.storyLineSystem.checkPlotEvents(this.lifeState);
+    this.lifeState = afterEvents;
+
+    if (triggeredEvents.length > 0) {
+      const primaryEvent = triggeredEvents[0];
+      if (primaryEvent.outcomes.length > 0) {
+        const outcome = primaryEvent.outcomes[0];
+        this.lifeState = this.storyLineSystem.applyPlotOutcome(this.lifeState, primaryEvent, outcome.id);
+      }
+    }
+
+    const secretResult = this.storyLineSystem.maybeRevealSecret(this.lifeState);
+    if (secretResult.revealed) {
+      this.lifeState = secretResult.lifeState;
+    }
 
     const detectedMood = this.multimodalPerception.detectEmotionFromText(userInput);
     this.lifeState = this.multimodalPerception.recordEmotion(this.lifeState, detectedMood);
