@@ -26,6 +26,7 @@ export { EconomySystem } from "./economy-system";
 export { InventorySystem } from "./inventory-system";
 export { MultimodalPerceptionSystem } from "./multimodal-perception";
 export { StoryLineSystem } from "./storyline-system";
+export { SocialNetworkSystem } from "./social-network-system";
 export { SkillSystem } from "./skills";
 export type { Skill, SkillCategory, SkillResult } from "./skills";
 export { ImageRecognition } from "./image-recognition";

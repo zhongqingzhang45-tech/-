@@ -39,6 +39,7 @@ import { EconomySystem } from "./economy-system";
 import { InventorySystem } from "./inventory-system";
 import { MultimodalPerceptionSystem } from "./multimodal-perception";
 import { StoryLineSystem } from "./storyline-system";
+import { SocialNetworkSystem } from "./social-network-system";
 
 export interface ResponseResult {
   text: string;
@@ -79,6 +80,7 @@ export class DigitalLifeAgent {
   private inventorySystem: InventorySystem;
   private multimodalPerception: MultimodalPerceptionSystem;
   private storyLineSystem: StoryLineSystem;
+  private socialNetworkSystem: SocialNetworkSystem;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -120,6 +122,7 @@ export class DigitalLifeAgent {
     this.inventorySystem = new InventorySystem();
     this.multimodalPerception = new MultimodalPerceptionSystem();
     this.storyLineSystem = new StoryLineSystem();
+    this.socialNetworkSystem = new SocialNetworkSystem();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -140,6 +143,7 @@ export class DigitalLifeAgent {
       this.lifeState = this.economySystem.autoSaveForGifts(this.lifeState);
       this.lifeState = this.storyLineSystem.initializeStoryLines(this.lifeState);
       this.storyLineSystem.setMemorySystem(this.memorySystem);
+      this.lifeState = this.socialNetworkSystem.initializeNetwork(this.lifeState);
     } catch (e: any) {
       console.warn("Device binding initialization failed:", e?.message || e);
     }
@@ -776,6 +780,8 @@ export class DigitalLifeAgent {
     this.lifeState = this.multimodalPerception.updateActivityPattern(this.lifeState);
 
     this.lifeState = this.storyLineSystem.updateStoryProgress(this.lifeState);
+    this.lifeState = this.socialNetworkSystem.simulateSocialInteraction(this.lifeState);
+    this.lifeState = this.socialNetworkSystem.checkJealousyTriggers(this.lifeState);
 
     const { lifeState: afterEvents, triggeredEvents } = this.storyLineSystem.checkPlotEvents(this.lifeState);
     this.lifeState = afterEvents;

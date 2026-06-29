@@ -638,6 +638,75 @@ export interface StoryLineState {
   chapterProgress: Record<string, number>;
 }
 
+export type NPCType = "friend" | "family" | "colleague" | "acquaintance" | "rival";
+
+export interface NPC {
+  id: string;
+  name: string;
+  nickname?: string;
+  type: NPCType;
+  avatar?: string;
+  description: string;
+  personality: {
+    warmth: number;
+    trust: number;
+    humor: number;
+  };
+  relationshipLevel: number;
+  lastInteraction: number;
+  interactionCount: number;
+  sharedMemories: string[];
+  topicsOfInterest: string[];
+  talkingAbout: string[];
+  currentActivity: string;
+}
+
+export interface SocialBond {
+  npcId: string;
+  bondStrength: number;
+  conversations: Array<{
+    timestamp: number;
+    summary: string;
+    sentiment: number;
+  }>;
+  lastGossip?: {
+    content: string;
+    timestamp: number;
+  };
+}
+
+export interface SocialEvent {
+  id: string;
+  type: "chat" | "gathering" | "call" | "gossip";
+  participants: string[];
+  timestamp: number;
+  summary: string;
+  sentiment: number;
+  relatedToUser: boolean;
+  mentionedUser: boolean;
+  userReaction?: string;
+}
+
+export interface JealousyState {
+  level: number;
+  triggers: string[];
+  lastTriggered: number;
+  manifestations: Array<{
+    type: "verbal" | "behavior" | "emotional";
+    expression: string;
+    timestamp: number;
+  }>;
+}
+
+export interface SocialNetworkState {
+  npcs: NPC[];
+  socialBonds: SocialBond[];
+  recentEvents: SocialEvent[];
+  jealousy: JealousyState;
+  socialNeed: number;
+  lastSocialActivity: number;
+}
+
 export type TimePhase = "dawn" | "morning" | "noon" | "afternoon" | "evening" | "night" | "midnight";
 
 export type WeatherType = "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "windy" | "foggy";
@@ -734,6 +803,7 @@ export interface LifeState {
   inventory: OwnedItem[];
   giftPlans: GiftPlan[];
   storyLine: StoryLineState;
+  socialNetwork: SocialNetworkState;
   currentMode: PersonaMode;
   lastUpdateTime: number;
 }
@@ -1096,6 +1166,19 @@ export const DEFAULT_LIFE_STATE: LifeState = {
     secrets: [],
     completedEvents: [],
     chapterProgress: {},
+  },
+  socialNetwork: {
+    npcs: [],
+    socialBonds: [],
+    recentEvents: [],
+    jealousy: {
+      level: 0,
+      triggers: [],
+      lastTriggered: 0,
+      manifestations: [],
+    },
+    socialNeed: 50,
+    lastSocialActivity: Date.now(),
   },
   currentMode: "normal",
   lastUpdateTime: Date.now(),
