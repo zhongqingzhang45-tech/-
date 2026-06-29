@@ -129,12 +129,15 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           const width = container.clientWidth;
           const height = container.clientHeight;
 
-          app = new PIXI.Application(width, height, {
+          app = new PIXI.Application({
+            width: width,
+            height: height,
             transparent: true,
             antialias: true,
             resolution: window.devicePixelRatio || 1,
             autoDensity: true,
-            backgroundAlpha: 0,
+            backgroundColor: 0x000000,
+            forceCanvas: false,
           });
           app.view.style.display = "block";
           app.view.style.background = "transparent";
