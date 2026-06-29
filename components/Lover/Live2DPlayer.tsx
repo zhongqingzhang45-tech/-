@@ -37,26 +37,72 @@ const SCRIPTS = [
 
 let loadPromise: Promise<void> | null = null;
 
-function loadScript(src: string): Promise<void> {
+function loadScript(src: string, retries = 3, timeout = 30000): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
+    // Check if already loaded
+    const existingScript = document.querySelector(`script[src="${src}"]`);
+    if (existingScript) {
       resolve();
       return;
     }
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
+
+    // Check if global object already exists for this script
+    const checkGlobal = () => {
+      if (src.includes('pixi.min.js') && window.PIXI) return true;
+      if (src.includes('live2dcubismcore.min.js') && window.Live2DCubismCore) return true;
+      if (src.includes('live2dcubismframework.js') && window.LIVE2DCUBISMFRAMEWORK) return true;
+      if (src.includes('live2dcubismpixi.js') && window.LIVE2DCUBISMPIXI) return true;
+      return false;
+    };
+
+    if (checkGlobal()) {
+      resolve();
+      return;
+    }
+
+    let attempts = 0;
+    const attemptLoad = () => {
+      attempts++;
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      
+      const timer = setTimeout(() => {
+        script.remove();
+        if (attempts < retries) {
+          console.warn(`Retrying load: ${src} (attempt ${attempts + 1})`);
+          attemptLoad();
+        } else {
+          reject(new Error(`Timeout loading ${src} after ${retries} attempts`));
+        }
+      }, timeout);
+
+      script.onload = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+
+      script.onerror = () => {
+        clearTimeout(timer);
+        script.remove();
+        if (attempts < retries) {
+          console.warn(`Retrying load after error: ${src} (attempt ${attempts + 1})`);
+          attemptLoad();
+        } else {
+          reject(new Error(`Failed to load ${src} after ${retries} attempts`));
+        }
+      };
+
+      document.head.appendChild(script);
+    };
+
+    attemptLoad();
   });
 }
 
 function loadAllScripts(): Promise<void> {
   if (loadPromise) return loadPromise;
-  loadPromise = SCRIPTS.reduce(
-    (p, src) => p.then(() => loadScript(src)),
-    Promise.resolve()
-  );
+  loadPromise = Promise.all(SCRIPTS.map(src => loadScript(src)));
   return loadPromise;
 }
 
@@ -382,16 +428,27 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
     return (
       <div ref={containerRef} className="w-full h-full relative">
-        {isLoading && (
+        {isLoading && !loadError && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <div className="text-white/50 text-xs">加载模型中...</div>
+            </div>
           </div>
         )}
         {loadError && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-red-400 text-sm text-center px-4">
-              <div className="mb-2">模型加载失败</div>
-              <div className="text-xs opacity-70">{loadError}</div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="relative">
+              {/* Fallback avatar when Live2D fails */}
+              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/30 animate-pulse">
+                <span className="text-6xl">👩</span>
+              </div>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-xs text-white/40 bg-black/30 px-2 py-0.5 rounded">
+                2D模式
+              </div>
+            </div>
+            <div className="mt-4 text-white/30 text-xs text-center max-w-xs">
+              Live2D模型暂不可用
             </div>
           </div>
         )}
