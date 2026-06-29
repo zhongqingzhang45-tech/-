@@ -37,6 +37,7 @@ import { WorldViewSystem } from "./worldview-system";
 import { RelationshipCultureSystem } from "./relationship-culture-system";
 import { EconomySystem } from "./economy-system";
 import { InventorySystem } from "./inventory-system";
+import { MultimodalPerceptionSystem } from "./multimodal-perception";
 
 export interface ResponseResult {
   text: string;
@@ -75,6 +76,7 @@ export class DigitalLifeAgent {
   private relationshipCultureSystem: RelationshipCultureSystem;
   private economySystem: EconomySystem;
   private inventorySystem: InventorySystem;
+  private multimodalPerception: MultimodalPerceptionSystem;
   
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
@@ -114,6 +116,7 @@ export class DigitalLifeAgent {
     this.relationshipCultureSystem = new RelationshipCultureSystem();
     this.economySystem = new EconomySystem();
     this.inventorySystem = new InventorySystem();
+    this.multimodalPerception = new MultimodalPerceptionSystem();
     
     this.initializeTemplates();
     this.seedMemories();
@@ -763,6 +766,19 @@ export class DigitalLifeAgent {
       interactionQuality,
       analysis.intent
     );
+
+    this.lifeState = this.multimodalPerception.updateTimePerception(this.lifeState);
+    this.lifeState = this.multimodalPerception.updateActivityPattern(this.lifeState);
+
+    const detectedMood = this.multimodalPerception.detectEmotionFromText(userInput);
+    this.lifeState = this.multimodalPerception.recordEmotion(this.lifeState, detectedMood);
+
+    const conversationPhase = this.multimodalPerception.analyzeConversationPhase(
+      this.lifeState,
+      this.recentMessages.length,
+      analysis.keywords
+    ) as "greeting" | "casual" | "deep" | "conflict" | "reconciliation" | "ending";
+    this.lifeState.perception.conversationPhase = conversationPhase;
 
     this.lifeState.relationship.lastActiveTime = Date.now();
 

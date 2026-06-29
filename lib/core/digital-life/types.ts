@@ -554,6 +554,48 @@ export interface GiftPlan {
   createdAt: number;
 }
 
+export type TimePhase = "dawn" | "morning" | "noon" | "afternoon" | "evening" | "night" | "midnight";
+
+export type WeatherType = "sunny" | "cloudy" | "rainy" | "stormy" | "snowy" | "windy" | "foggy";
+
+export type SeasonType = "spring" | "summer" | "autumn" | "winter";
+
+export interface UserActivityPattern {
+  lastActiveHour: number;
+  averageResponseTime: number;
+  typicalSleepHour: number;
+  typicalWakeHour: number;
+  activeDays: number[];
+  preferredGreetingTime?: number;
+}
+
+export interface MoodState {
+  detected: MoodType;
+  confidence: number;
+  intensity: number;
+  triggers: string[];
+  timestamp: number;
+  needsSupport: boolean;
+}
+
+export interface EnvironmentContext {
+  timePhase: TimePhase;
+  weather: WeatherType;
+  season: SeasonType;
+  isHoliday: boolean;
+  holidayName?: string;
+  specialOccasion?: string;
+}
+
+export interface UserEmotionSnapshot {
+  timestamp: number;
+  emotion: MoodType;
+  valence: number;
+  arousal: number;
+  dominantSentiment: string;
+  keywords: string[];
+}
+
 export interface PerceptionState {
   lastUserMessage?: string;
   lastUserMessageTime?: number;
@@ -564,6 +606,14 @@ export interface PerceptionState {
   timeSinceLastInteraction: number;
   userMoodGuess?: MoodType;
   conversationPhase: "greeting" | "casual" | "deep" | "conflict" | "reconciliation" | "ending";
+  userActivityPattern: UserActivityPattern;
+  recentEmotions: UserEmotionSnapshot[];
+  environmentContext: EnvironmentContext;
+  lastImageAnalyzed?: {
+    url: string;
+    description: string;
+    timestamp: number;
+  };
 }
 
 export interface DecisionBiases {
@@ -764,6 +814,25 @@ function getTimeOfDay(): "morning" | "afternoon" | "evening" | "night" {
   return "night";
 }
 
+function getTimePhase(): TimePhase {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 6) return "dawn";
+  if (hour >= 6 && hour < 9) return "morning";
+  if (hour >= 9 && hour < 12) return "noon";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 21) return "evening";
+  if (hour >= 21 || hour < 1) return "night";
+  return "midnight";
+}
+
+function getCurrentSeason(): SeasonType {
+  const month = new Date().getMonth();
+  if (month >= 2 && month <= 4) return "spring";
+  if (month >= 5 && month <= 7) return "summer";
+  if (month >= 8 && month <= 10) return "autumn";
+  return "winter";
+}
+
 export const DEFAULT_LIFE_STATE: LifeState = {
   timestamp: Date.now(),
   perception: {
@@ -772,6 +841,20 @@ export const DEFAULT_LIFE_STATE: LifeState = {
     interactionStreak: 1,
     timeSinceLastInteraction: 0,
     conversationPhase: "greeting",
+    userActivityPattern: {
+      lastActiveHour: new Date().getHours(),
+      averageResponseTime: 30,
+      typicalSleepHour: 23,
+      typicalWakeHour: 7,
+      activeDays: [1, 2, 3, 4, 5, 6, 7],
+    },
+    recentEmotions: [],
+    environmentContext: {
+      timePhase: getTimePhase(),
+      weather: "sunny",
+      season: getCurrentSeason(),
+      isHoliday: false,
+    },
   },
   body: {
     energy: 80,
