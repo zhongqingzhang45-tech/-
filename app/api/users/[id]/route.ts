@@ -1,53 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, writeFile } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
-
-interface User {
-  id: string;
-  email: string;
-  nickname: string;
-  passwordHash: string;
-  salt: string;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt?: string;
-  avatar?: string;
-  gender?: "male" | "female";
-  birthDate?: string;
-  bio?: string;
-  settings?: {
-    theme?: string;
-    language?: string;
-    notifications?: boolean;
-  };
-}
-
-interface UsersDB {
-  users: User[];
-  version: number;
-}
-
-async function loadUsers(): Promise<UsersDB> {
-  try {
-    const data = await readFile(USERS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return { users: [], version: 1 };
-  }
-}
-
-async function saveUsers(db: UsersDB) {
-  await writeFile(USERS_FILE, JSON.stringify(db, null, 2));
-}
 
 function hashPassword(password: string, salt: string): string {
   return crypto.pbkdf2Sync(password, salt, 10000, 64, "sha512").toString("hex");
 }
+
+const USER_SELECT = {
+  id: true,
+  email: true,
+  nickname: true,
+  avatar: true,
+  gender: true,
+  birthDate: true,
+  bio: true,
+  theme: true,
+  language: true,
+  notifications: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+};
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -55,15 +28,16 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const db = await loadUsers();
-    const user = db.users.find((u) => u.id === id);
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: USER_SELECT,
+    });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { passwordHash, salt, ...userWithoutSensitive } = user;
-    return NextResponse.json({ user: userWithoutSensitive });
+    return NextResponse.json({ user });
   } catch (error) {
     console.error("Failed to get user:", error);
     return NextResponse.json({ error: "Failed to get user" }, { status: 500 });
@@ -75,31 +49,35 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const db = await loadUsers();
-    const userIndex = db.users.findIndex((u) => u.id === id);
 
-    if (userIndex === -1) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const user = db.users[userIndex];
-    const allowedUpdates = [
+    const updateData: any = {};
+
+    const allowedFields = [
       "nickname",
       "avatar",
       "gender",
       "birthDate",
       "bio",
-      "settings",
+      "theme",
+      "language",
+      "notifications",
     ];
 
-    const updates: Partial<User> = {};
-    for (const key of allowedUpdates) {
-      if (body[key] !== undefined) {
-        (updates as any)[key] = body[key];
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field];
       }
     }
 
-    // Handle password change
+    if (body.birthDate) {
+      updateData.birthDate = new Date(body.birthDate);
+    }
+
     if (body.newPassword) {
       if (!body.currentPassword) {
         return NextResponse.json(
@@ -114,21 +92,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           { status: 401 }
         );
       }
-      updates.passwordHash = hashPassword(body.newPassword, user.salt);
+      updateData.passwordHash = hashPassword(body.newPassword, user.salt);
     }
 
-    const updatedUser = {
-      ...user,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: USER_SELECT,
+    });
 
-    db.users[userIndex] = updatedUser;
-    await saveUsers(db);
-
-    const { passwordHash, salt, ...userWithoutSensitive } = updatedUser;
     return NextResponse.json({
-      user: userWithoutSensitive,
+      user: updatedUser,
       message: "User updated successfully",
     });
   } catch (error) {
@@ -144,15 +118,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const db = await loadUsers();
-    const userIndex = db.users.findIndex((u) => u.id === id);
 
-    if (userIndex === -1) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    db.users.splice(userIndex, 1);
-    await saveUsers(db);
+    await prisma.user.delete({ where: { id } });
 
     return NextResponse.json({ message: "User deleted successfully" });
   } catch (error) {

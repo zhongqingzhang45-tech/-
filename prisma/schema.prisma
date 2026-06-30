@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========== 用户系统 ==========
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  salt          String
+  nickname      String
+  avatar        String?
+  gender        String?   // "male" | "female" | "other"
+  birthDate     DateTime?
+  bio           String?
+  theme         String    @default("dark")
+  language      String    @default("zh-CN")
+  notifications Boolean   @default(true)
+
+  // 时间戳
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // 关系
+  sessions      Session[]
+  characters    Character[]
+  diaries       Diary[]
+  memories      Memory[]
+  gifts         GiftRecord[]
+  growthHistory GrowthHistory[]
+  skillProgress SkillProgress[]
+  causalRecords CausalRecord[]
+  chatMessages  ChatMessage[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ========== 角色系统 ==========
+
+model Character {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey    String   // 角色唯一标识，如 "xingye", "xiaoyuan"
+  name            String
+  nickname        String
+  userNickname    String
+  gender          String   // "male" | "female"
+  relationshipType String  // "lover" | "friend" | "sister"
+  live2dModel     String?
+
+  // 人格属性
+  affection       Int      @default(50)
+  resentment      Int      @default(0)
+  trust           Int      @default(50)
+  intimacy        Int      @default(30)
+
+  // 身体状态
+  energy          Int      @default(100)
+  mood            String   @default("neutral")
+  arousal         Float    @default(0.5)
+  valence         Float    @default(0.5)
+  dominance       Float    @default(0.5)
+
+  // 成长
+  level           Int      @default(1)
+  experience      Int      @default(0)
+
+  // 关系
+  streakDays      Int      @default(0)
+  lastActiveAt    DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, characterKey])
+  @@index([userId])
+}
+
+// ========== 日记系统 ==========
+
+model Diary {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey  String
+  title         String
+  content       String
+  mood          String
+  moodEmoji     String
+  isAIGenerated Boolean  @default(true)
+  date          DateTime @default(now())
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tags          DiaryTag[]
+
+  @@index([userId, characterKey])
+  @@index([date])
+}
+
+model DiaryTag {
+  id      String @id @default(cuid())
+  diaryId String
+  diary   Diary  @relation(fields: [diaryId], references: [id], onDelete: Cascade)
+  tag     String
+
+  @@index([diaryId])
+  @@index([tag])
+}
+
+// ========== 记忆系统 ==========
+
+model Memory {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey  String
+  type          String   // "conversation" | "event" | "milestone" | "emotional"
+  content       String
+  importance    Float    @default(0.5)
+  emotionalTone Float    @default(0.0)
+  tags          String[] // 行为标签
+  recalledCount Int      @default(0)
+  lastRecalledAt DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, characterKey])
+  @@index([type])
+  @@index([importance])
+}
+
+// ========== 礼物系统 ==========
+
+model GiftRecord {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey String
+  giftType     String
+  giftName     String
+  affectionGain Int     @default(0)
+  response     String?  // 角色回应
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId, characterKey])
+  @@index([createdAt])
+}
+
+// ========== 成长系统 ==========
+
+model GrowthHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey String
+  level        Int
+  experience   Int
+  event        String
+  personaSnapshot Json   // 人格快照
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId, characterKey])
+  @@index([createdAt])
+}
+
+model SkillProgress {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey String
+  skillId      String
+  skillName    String
+  level        Int      @default(0)
+  experience   Int      @default(0)
+  unlocked     Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, characterKey, skillId])
+  @@index([userId, characterKey])
+}
+
+// ========== 因果系统 ==========
+
+model CausalRecord {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey String
+  action       String   // 用户行为
+  effect       String   // 产生的效果
+  strength     Float    // 影响强度
+  category     String   // 类别
+  details      Json?
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId, characterKey])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// ========== 聊天记录 ==========
+
+model ChatMessage {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey String
+  sender       String   // "user" | "assistant"
+  content      String
+  imageUrl     String?
+  personaMode  String?
+  emotionMood  String?
+  emotionArousal Float?
+  emotionValence Float?
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId, characterKey])
+  @@index([createdAt])
+}
+
+// ========== LLM 配置 ==========
+
+model LLMConfig {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  provider  String  // "openai" | "anthropic" | "deepseek" | "qwen" | "glm" | "mock"
+  apiKey    String?
+  model     String?
+  baseUrl   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ========== 系统设置 ==========
+
+model UserSettings {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  ttsEnabled  Boolean @default(false)
+  asrEnabled  Boolean @default(false)
+  voiceVolume Float   @default(0.8)
+  voiceSpeed  Float   @default(1.0)
+  autoSave    Boolean @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

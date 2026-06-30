@@ -1,64 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
-const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
-
-interface User {
-  id: string;
-  email: string;
-  nickname: string;
-  passwordHash: string;
-  salt: string;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt?: string;
-  avatar?: string;
-  gender?: "male" | "female";
-  birthDate?: string;
-  bio?: string;
-  settings?: {
-    theme?: string;
-    language?: string;
-    notifications?: boolean;
-  };
-}
-
-interface UsersDB {
-  users: User[];
-  version: number;
-}
-
-interface Session {
-  id: string;
-  userId: string;
-  createdAt: string;
-  expiresAt: string;
-}
-
-interface SessionsDB {
-  sessions: Session[];
-}
-
-async function loadUsers(): Promise<UsersDB> {
-  try {
-    const data = await readFile(USERS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return { users: [], version: 1 };
-  }
-}
-
-async function loadSessions(): Promise<SessionsDB> {
-  try {
-    const data = await readFile(SESSIONS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return { sessions: [] };
-  }
-}
+const USER_SELECT = {
+  id: true,
+  email: true,
+  nickname: true,
+  avatar: true,
+  gender: true,
+  birthDate: true,
+  bio: true,
+  theme: true,
+  language: true,
+  notifications: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+};
 
 // GET /api/auth/session - Validate session and get current user
 export async function GET(request: NextRequest) {
@@ -69,34 +26,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    const sessionsDb = await loadSessions();
-    const session = sessionsDb.sessions.find((s) => s.id === sessionId);
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { user: true },
+    });
 
     if (!session) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    // Check if session is expired
-    if (new Date(session.expiresAt) < new Date()) {
-      // Remove expired session
-      sessionsDb.sessions = sessionsDb.sessions.filter(
-        (s) => s.id !== sessionId
+    if (session.expiresAt < new Date()) {
+      await prisma.session.delete({ where: { id: sessionId } });
+      return NextResponse.json(
+        { authenticated: false, expired: true },
+        { status: 401 }
       );
-      await require("fs/promises").writeFile(
-        SESSIONS_FILE,
-        JSON.stringify(sessionsDb, null, 2)
-      );
-      return NextResponse.json({ authenticated: false, expired: true }, { status: 401 });
     }
 
-    const db = await loadUsers();
-    const user = db.users.find((u) => u.id === session.userId);
-
-    if (!user) {
-      return NextResponse.json({ authenticated: false }, { status: 401 });
-    }
-
-    const { passwordHash, salt, ...userWithoutSensitive } = user;
+    const { passwordHash, salt, ...userWithoutSensitive } = session.user as any;
 
     return NextResponse.json({
       authenticated: true,
@@ -122,21 +69,18 @@ export async function DELETE(request: NextRequest) {
     const sessionId = request.headers.get("x-session-id");
 
     if (!sessionId) {
-      return NextResponse.json({ error: "No session provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No session provided" },
+        { status: 400 }
+      );
     }
 
-    const sessionsDb = await loadSessions();
-    const initialLength = sessionsDb.sessions.length;
-    sessionsDb.sessions = sessionsDb.sessions.filter((s) => s.id !== sessionId);
-
-    if (sessionsDb.sessions.length === initialLength) {
+    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    await require("fs/promises").writeFile(
-      SESSIONS_FILE,
-      JSON.stringify(sessionsDb, null, 2)
-    );
+    await prisma.session.delete({ where: { id: sessionId } });
 
     return NextResponse.json({ message: "Logout successful" });
   } catch (error) {
