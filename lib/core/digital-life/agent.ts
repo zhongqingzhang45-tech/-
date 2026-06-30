@@ -11,6 +11,8 @@ import {
   Gender,
   PersonaMode,
   BehaviorTag,
+  MOOD_CONFIG,
+  PERSONA_MODE_LABELS,
 } from "./types";
 import {
   EventUnderstandingLayer,
@@ -26,6 +28,8 @@ import { ImageRecognition } from "./image-recognition";
 import { GiftSystem } from "./gift-system";
 import { ContextService } from "./context-service";
 import { DeviceFingerprint } from "./device-binding";
+import type { LLMConfig, LLMProviderInterface } from "../llm/types";
+import { createLLMProvider, buildCharacterSystemPrompt } from "../llm";
 
 export interface ResponseResult {
   text: string;
@@ -58,6 +62,10 @@ export class DigitalLifeAgent {
   
   private responseTemplates: Record<string, string[]> = {};
 
+  private llmProvider: LLMProviderInterface | null = null;
+  private llmConfig: LLMConfig | null = null;
+  private useLLM: boolean = false;
+
   constructor(profile: CharacterProfile) {
     this.profile = profile;
     this.lifeState = JSON.parse(JSON.stringify(DEFAULT_LIFE_STATE));
@@ -83,6 +91,30 @@ export class DigitalLifeAgent {
     
     this.initializeTemplates();
     this.seedMemories();
+  }
+
+  setLLMConfig(config: LLMConfig | null): void {
+    if (!config) {
+      this.llmConfig = null;
+      this.llmProvider = null;
+      this.useLLM = false;
+      return;
+    }
+
+    try {
+      this.llmConfig = config;
+      this.llmProvider = createLLMProvider(config);
+      this.useLLM = true;
+    } catch (e) {
+      console.warn("Failed to initialize LLM provider:", e);
+      this.llmConfig = null;
+      this.llmProvider = null;
+      this.useLLM = false;
+    }
+  }
+
+  isLLMEnabled(): boolean {
+    return this.useLLM && this.llmProvider !== null;
   }
 
   async initialize(): Promise<void> {
@@ -586,10 +618,14 @@ export class DigitalLifeAgent {
           this.lifeState.emotion = { ...this.emotionSystem.state };
         }
       } else {
-        responseText = this.generateResponse(decision, analysis, enrichedInput);
+        responseText = this.useLLM
+          ? await this.generateLLMResponse(enrichedInput, decision)
+          : this.generateResponse(decision, analysis, enrichedInput);
       }
     } else {
-      responseText = this.generateResponse(decision, analysis, enrichedInput);
+      responseText = this.useLLM
+        ? await this.generateLLMResponse(enrichedInput, decision)
+        : this.generateResponse(decision, analysis, enrichedInput);
     }
 
     if (giftResult && giftResult.success && giftResult.message) {
@@ -690,6 +726,68 @@ export class DigitalLifeAgent {
     }
 
     return text;
+  }
+
+  private async generateLLMResponse(
+    userInput: string,
+    decision: DecisionResult
+  ): Promise<string> {
+    if (!this.llmProvider || !this.useLLM) {
+      return this.generateResponse(decision, { intent: "unknown", keywords: [] }, userInput);
+    }
+
+    try {
+      const recentMemories = this.memorySystem.getRecentMemories(24).slice(0, 5).map(m => m.content);
+      const moodLabel = MOOD_CONFIG[this.lifeState.emotion.mood as keyof typeof MOOD_CONFIG]?.label || "平静";
+      const personaLabel = PERSONA_MODE_LABELS[decision.personaMode] || "正常模式";
+
+      const systemPrompt = buildCharacterSystemPrompt({
+        name: this.profile.name,
+        nickname: this.profile.nickname,
+        userNickname: this.profile.userNickname,
+        persona: this.profile.persona,
+        speakingStyle: this.profile.speakingStyle,
+        personality: this.profile.personality.map(p => `${p.name}(${Math.round(p.value * 100)}%)`).join("、"),
+        currentMood: `${moodLabel}（当前人格模式：${personaLabel}）`,
+        relationshipType: this.profile.relationshipType,
+        affectionLevel: Math.round(this.lifeState.persona.affection),
+        recentMemories,
+      });
+
+      const llmMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+        { role: "system", content: systemPrompt },
+      ];
+
+      const recentChats = this.recentMessages.slice(-10);
+      for (const msg of recentChats) {
+        llmMessages.push({
+          role: msg.sender === "user" ? "user" : "assistant",
+          content: msg.content,
+        });
+      }
+
+      if (llmMessages[llmMessages.length - 1].role !== "user") {
+        llmMessages.push({ role: "user", content: userInput });
+      }
+
+      const response = await this.llmProvider.generate(llmMessages, {
+        temperature: 0.8 + this.lifeState.emotion.arousal * 0.2,
+        maxTokens: 500,
+      });
+
+      let result = response.content.trim();
+      result = result.replace(/^["']|["']$/g, "");
+      result = result.replace(/\n{3,}/g, "\n\n");
+
+      if (!result) {
+        return this.generateResponse(decision, { intent: "unknown", keywords: [] }, userInput);
+      }
+
+      return result;
+    } catch (error) {
+      console.warn("LLM generation failed, falling back to templates:", error);
+      return this.generateResponse(decision, { intent: "unknown", keywords: [] }, userInput);
+    }
   }
 
   private addEmotionalFlair(text: string, mood: string): string {

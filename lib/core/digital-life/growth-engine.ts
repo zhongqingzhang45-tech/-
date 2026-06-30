@@ -34,7 +34,7 @@ export interface GrowthSnapshot {
   timestamp: number;
   personality: PersonalityVector;
   values: ValueSystem;
-  skills: Map<string, number>;
+  skills: Map<string, GrowthMetric>;
 }
 
 export class GrowthEvolutionEngine {

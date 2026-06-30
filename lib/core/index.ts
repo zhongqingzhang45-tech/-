@@ -1,40 +1,83 @@
-export * from "./types";
-export { EmotionEngine } from "./emotion-engine";
-export { MemorySystem } from "./memory-system";
-export { RelationshipManager } from "./relationship-manager";
-export { CharacterAgent } from "./character-agent";
-export { DigitalLifeAgent } from "./digital-life/agent";
-export type { ResponseResult as DigitalLifeResponseResult } from "./digital-life/agent";
+export { DigitalLifeAgent } from "./digital-life";
+export type { ResponseResult } from "./digital-life";
+
 export {
   EventUnderstandingLayer,
   BodilySystem,
   InstinctSystem,
-  EmotionSystem as DigitalLifeEmotionSystem,
+  EmotionSystem,
   DecisionEngine,
-} from "./digital-life/systems";
+  PersonaMatrixSystem,
+  MemorySystem,
+  StateEngine,
+  CausalSystem,
+  AutonomousDecisionEngine,
+  GrowthEvolutionEngine,
+  SkillSystem,
+  GiftSystem,
+  ImageRecognition,
+  ContextService,
+  DeviceFingerprint,
+} from "./digital-life";
+
+export type {
+  CausalEvent,
+  CausalChain,
+  DecisionContext,
+  AutonomousDecision,
+  PersonalityVector,
+  GrowthMetric,
+  GrowthSnapshot,
+  Skill,
+  SkillResult,
+  Gift,
+  UserGift,
+  WishListItem,
+  GiftRequest,
+  GiftHistoryEntry,
+  GiftCategory,
+  GiftRarity,
+} from "./digital-life";
+
 export {
   FEMALE_CHARACTERS,
   MALE_CHARACTERS,
   DEFAULT_LIFE_STATE,
-  MOOD_CONFIG as DIGITAL_LIFE_MOOD_CONFIG,
-} from "./digital-life/types";
+  MOOD_CONFIG,
+  PERSONA_MODE_LABELS,
+  BIG_FIVE_PERSONALITY,
+  DEFAULT_PERSONA_MATRIX,
+  DEFAULT_MEMORY_BUFFER,
+  generateName,
+  generateNickname,
+} from "./digital-life";
+
 export type {
   Gender,
-  MoodType as DigitalLifeMoodType,
-  EmotionState as DigitalLifeEmotionState,
+  MoodType,
+  PersonaMode,
+  BehaviorTag,
+  MemoryType,
+  RelationshipType,
+  EmotionState,
   BodilyState,
   InstinctState,
-  PersonalityTrait as DigitalLifePersonalityTrait,
+  PersonaMatrix,
+  PersonalityTrait,
   ValueSystem,
-  RelationshipState as DigitalLifeRelationshipState,
+  RelationshipState,
   GrowthState,
-  MemoryEntry as DigitalLifeMemoryEntry,
-  CharacterProfile as DigitalLifeCharacterProfile,
-  ChatMessage as DigitalLifeChatMessage,
+  MemoryBuffer,
+  MemoryEntry,
+  MoodLogEntry,
+  CharacterProfile,
+  ChatMessage,
   ConversationContext,
   LifeState,
   DecisionResult,
-} from "./digital-life/types";
+  TriggerState,
+} from "./digital-life";
+
 export { SpeechPipeline, createSpeechPipeline } from "./speech-pipeline";
 export type {
   TTSOptions,
@@ -44,6 +87,7 @@ export type {
   TTSProvider,
   ASRProvider,
 } from "./speech-pipeline";
+
 export {
   Live2DManager,
   createLive2DManager,

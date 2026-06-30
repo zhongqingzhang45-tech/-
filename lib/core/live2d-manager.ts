@@ -1,4 +1,4 @@
-import { MoodType } from "./types";
+import { MoodType } from "./digital-life";
 
 export interface Live2DExpression {
   id: string;
@@ -38,6 +38,14 @@ export const DEFAULT_EMOTION_MAP: Record<MoodType, string> = {
   thoughtful: "thinking",
   playful: "happy",
   surprised: "surprised",
+  cold: "neutral",
+  disdain: "angry",
+  tsundere: "angry",
+  coquettish: "shy",
+  pua: "angry",
+  hurt: "sad",
+  disappointed: "sad",
+  smug: "happy",
 };
 
 export class Live2DManager {
