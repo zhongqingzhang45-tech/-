@@ -255,7 +255,77 @@ export const BUILTIN_MODELS: Live2DModelConfig[] = [
     emotionToExpression: DEFAULT_EMOTION_MAP,
     emotionToMotions: HARU_EMOTION_TO_MOTIONS,
   },
+  ...generateAzurLaneModels(),
 ];
+
+function generateAzurLaneModels(): Live2DModelConfig[] {
+  const azurLaneModels = [
+    { name: "lafei", displayName: "拉菲", scale: 2.2 },
+    { name: "lingbo", displayName: "凌波", scale: 2.2 },
+    { name: "mingshi", displayName: "明石", scale: 2.2 },
+    { name: "xuefeng", displayName: "雪风", scale: 2.2 },
+    { name: "huonululu_5", displayName: "火奴鲁鲁", scale: 2.2 },
+    { name: "aierdeliqi_4", displayName: "埃尔德里奇", scale: 2.2 },
+    { name: "ninghai_4", displayName: "宁海", scale: 2.2 },
+    { name: "pinghai_4", displayName: "平海", scale: 2.2 },
+    { name: "xianghe_2", displayName: "翔鹤", scale: 2.2 },
+    { name: "dafeng_2", displayName: "大凤", scale: 2.2 },
+    { name: "biaoqiang", displayName: "标枪", scale: 2.2 },
+    { name: "z23", displayName: "Z23", scale: 2.2 },
+    { name: "shengluyisi_2", displayName: "圣路易斯", scale: 2.2 },
+    { name: "kelifulan_3", displayName: "克利夫兰", scale: 2.2 },
+    { name: "deyizhi_3", displayName: "德意志", scale: 2.2 },
+  ];
+
+  const defaultExpressions: Live2DExpression[] = [
+    { id: "smile", name: "微笑" },
+  ];
+
+  const defaultMotions: Live2DMotion[] = [
+    { id: "idle", name: "待机", group: "Idle", file: "motions/idle.motion3.json" },
+    { id: "main_1", name: "主动作1", group: "TapBody", file: "motions/main_1.motion3.json" },
+    { id: "main_2", name: "主动作2", group: "TapBody", file: "motions/main_2.motion3.json" },
+    { id: "main_3", name: "主动作3", group: "TapBody", file: "motions/main_3.motion3.json" },
+    { id: "touch_head", name: "摸头", group: "TapHead", file: "motions/touch_head.motion3.json" },
+    { id: "touch_body", name: "触摸身体", group: "TapBody", file: "motions/touch_body.motion3.json" },
+    { id: "touch_special", name: "特殊触摸", group: "TapSpecial", file: "motions/touch_special.motion3.json" },
+  ];
+
+  const defaultEmotionToMotions: Record<MoodType, string[]> = {
+    neutral: ["idle"],
+    happy: ["main_1", "touch_head"],
+    excited: ["main_2", "touch_special"],
+    shy: ["touch_head", "main_3"],
+    love: ["touch_head", "touch_body"],
+    sad: ["main_3"],
+    angry: ["main_3"],
+    jealous: ["main_3"],
+    sleepy: ["idle"],
+    thoughtful: ["main_1"],
+    playful: ["main_2", "touch_body"],
+    surprised: ["main_2"],
+    cold: ["main_3"],
+    disdain: ["main_3"],
+    tsundere: ["main_3", "touch_head"],
+    coquettish: ["touch_body", "main_2"],
+    pua: ["main_3"],
+    hurt: ["main_3"],
+    disappointed: ["main_3"],
+    smug: ["main_1", "main_2"],
+  };
+
+  return azurLaneModels.map((model) => ({
+    name: model.displayName,
+    path: `/live2d-models/azurlane/${model.name}/`,
+    modelFile: `${model.name}.model3.json`,
+    scale: model.scale,
+    positionY: 0.5,
+    expressions: defaultExpressions,
+    motions: defaultMotions,
+    emotionToExpression: DEFAULT_EMOTION_MAP,
+    emotionToMotions: defaultEmotionToMotions,
+  }));
+}
 
 export function getModelConfig(modelName: string): Live2DModelConfig | undefined {
   return BUILTIN_MODELS.find((m) => m.name.toLowerCase() === modelName.toLowerCase()) || BUILTIN_MODELS[0];

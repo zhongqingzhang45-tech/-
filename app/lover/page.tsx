@@ -89,13 +89,13 @@ export default function LoverPage() {
   const EMOJI_LIST = ["😊", "😂", "🥰", "😢", "😡", "🤔", "😴", "😏", "👍", "❤️", "🌹", "✨", "😭", "🥺", "😜", "🤩"];
 
   const currentCharacter = {
-    id: profile?.live2dModel || "HaruGreeter",
+    id: selectedModel || profile?.live2dModel || "HaruGreeter",
     name: profile?.name || "小春",
-    path: "/live2d-models",
-    model: profile?.live2dModel || "HaruGreeter",
+    path: getModelConfig(selectedModel || profile?.live2dModel || "HaruGreeter")?.path || "/live2d-models",
+    model: selectedModel || profile?.live2dModel || "HaruGreeter",
     avatar: profile?.gender === "male" ? "👨" : "👩",
-    scale: 2,
-    positionY: 0.55,
+    scale: getModelConfig(selectedModel || profile?.live2dModel || "HaruGreeter")?.scale || 2,
+    positionY: getModelConfig(selectedModel || profile?.live2dModel || "HaruGreeter")?.positionY || 0.55,
     type: "cubism3" as const,
     gender: profile?.gender || "female",
   };
