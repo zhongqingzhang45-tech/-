@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 
-interface Live2DPlayerProps {
+export interface Live2DPlayerProps {
   modelPath: string;
   modelName: string;
   scale?: number;
   positionY?: number;
   onModelLoaded?: () => void;
   onError?: (error: string) => void;
+  forwardedRef?: React.Ref<Live2DPlayerRef>;
 }
 
 export interface Live2DPlayerRef {
@@ -89,7 +90,7 @@ function isMobileDevice(): boolean {
 }
 
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
-  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError }, ref) => {
+  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, forwardedRef }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<any>(null);
@@ -108,7 +109,9 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     const [loadError, setLoadError] = useState<string | null>(null);
     const [webglSupported, setWebglSupported] = useState(true);
 
-    useImperativeHandle(ref, () => ({
+    const actualRef = forwardedRef || ref;
+
+    useImperativeHandle(actualRef, () => ({
       playMotion: (motionId: string) => {
         const model = modelRef.current;
         if (!model?.animator) return;

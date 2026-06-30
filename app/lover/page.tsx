@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Gift, GiftRequest } from "@/lib/core/digital-life";
 import { getExpressionForMood, getRandomMotionForMood, getModelConfig, BUILTIN_MODELS } from "@/lib/core/live2d-manager";
-import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
+import type { Live2DPlayerRef, Live2DPlayerProps } from "@/components/Lover/Live2DPlayer";
 import DiaryPage from "@/components/Lover/DiaryPage";
 
-const Live2DPlayer = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
+const Live2DPlayerDynamic = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
   ssr: false,
   loading: () => null,
 });
+
+const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>((props, ref) => {
+  return <Live2DPlayerDynamic {...props} forwardedRef={ref} />;
+});
+Live2DPlayer.displayName = "Live2DPlayer";
 
 const NAV_ITEMS = [
   { id: "chat", label: "聊天", icon: "💬" },

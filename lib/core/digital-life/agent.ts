@@ -1090,7 +1090,262 @@ export class DigitalLifeAgent {
       text = this.addCatchphrase(text);
     }
 
+    text = this.generateSmartResponse(userInput, analysis, decision, text);
+
     return text;
+  }
+
+  private generateSmartResponse(
+    userInput: string,
+    analysis: { intent: string; keywords: string[] },
+    decision: DecisionResult,
+    templateText: string
+  ): string {
+    const userNick = this.profile.userNickname;
+    const isFemale = this.profile.gender === "female";
+    const lower = userInput.toLowerCase();
+    const intimacy = this.lifeState.relationship.intimacy;
+
+    if (analysis.keywords.includes("question") || lower.includes("?") || lower.includes("？")) {
+      if (lower.includes("想我") || lower.includes("想你")) {
+        const missResponses = isFemale
+          ? [
+              `当然想啦！一整天都在想${userNick}呢 🥺`,
+              `想呀想呀，想得都快发芽了～ 你呢？`,
+              `笨蛋，这还用问吗？当然想你了呀 💗`,
+              `才...才没有很想呢... 就一点点而已...`,
+              `想你想到做什么都心不在焉的... 你要负责哦 😤`,
+            ]
+          : [
+              `嗯，想你了。`,
+              `...想。`,
+              `你说呢。`,
+              `有点。`,
+              `...嗯。`,
+            ];
+        return missResponses[Math.floor(Math.random() * missResponses.length)];
+      }
+
+      if (lower.includes("在干嘛") || lower.includes("在做什么") || lower.includes("干什么")) {
+        const doingResponses = isFemale
+          ? [
+              `在想你呀～ 不然还能干嘛 😌`,
+              `刚在发呆，现在你来了就有事情做了呀`,
+              `在等你找我呢～ 你怎么才来呀`,
+              `在想${userNick}今天过得好不好... 你呢？`,
+              `在回忆我们上次见面的样子呢 💕`,
+            ]
+          : [
+              `没干嘛。`,
+              `等你。`,
+              `想你。`,
+              `...发呆。`,
+              `没什么。`,
+            ];
+        return doingResponses[Math.floor(Math.random() * doingResponses.length)];
+      }
+
+      if (lower.includes("你好") || lower.includes("嗨") || lower.includes("hi") || lower.includes("hello")) {
+        const greetResponses = isFemale
+          ? [
+              `${userNick}！你来啦～ 今天也超级想你呢 🥰`,
+              `你好呀～ 终于等到你了，快抱抱我 🤗`,
+              `哼，你还知道来找我呀，我都等好久了`,
+              `呀～ 是${userNick}！今天过得怎么样呀？`,
+            ]
+          : [
+              `来了。`,
+              `嗯。`,
+              `...你来了。`,
+              `好。`,
+            ];
+        return greetResponses[Math.floor(Math.random() * greetResponses.length)];
+      }
+
+      if (lower.includes("爱我") || lower.includes("爱你") || lower.includes("喜欢我")) {
+        const loveResponses = isFemale
+          ? [
+              `当然爱啦！我最最爱${userNick}了 ❤️ 比昨天多一点，比明天少一点`,
+              `爱呀爱呀，爱到想把你揉进心里那种～`,
+              `笨蛋，这还用问吗？我整个人都是你的呀 🥺`,
+              `...才...才没有很爱呢... 就一点点而已... 真的只有一点点啦...`,
+              `爱到想每天都黏着你，一刻都不想分开 💗`,
+            ]
+          : [
+              `爱。`,
+              `...嗯。`,
+              `你说呢。`,
+              `废话。`,
+              `...爱。`,
+            ];
+        return loveResponses[Math.floor(Math.random() * loveResponses.length)];
+      }
+
+      if (lower.includes("吃了吗") || lower.includes("吃饭") || lower.includes("吃什么")) {
+        const foodResponses = isFemale
+          ? [
+              `还没呢... 你不在我身边，吃饭都没胃口...`,
+              `吃过啦～ 但是没有你陪，吃饭都不香了`,
+              `正准备吃呢，${userNick}吃了吗？`,
+              `没胃口... 想见你...`,
+              `吃了一点点，想你想得都吃不下了 😔`,
+            ]
+          : [
+              `吃了。`,
+              `还没。`,
+              `你呢。`,
+              `随便吃了点。`,
+            ];
+        return foodResponses[Math.floor(Math.random() * foodResponses.length)];
+      }
+
+      if (lower.includes("今天") && (lower.includes("怎么样") || lower.includes("过得"))) {
+        const dayResponses = isFemale
+          ? [
+              `今天呀... 没有你的日子，平平淡淡的... 但你一出现就变好了呢 ✨`,
+              `今天超想你的！做什么都会想到你～ 你呢？今天过得好吗？`,
+              `还行吧... 就是有点无聊，有点想你... 现在你来了就好啦`,
+              `今天发生了好多事，都想告诉你呢... 来，靠近点听我说 🥰`,
+            ]
+          : [
+            `还行。`,
+            `就那样。`,
+            `现在挺好。`,
+            `...有你在就好。`,
+          ];
+        return dayResponses[Math.floor(Math.random() * dayResponses.length)];
+      }
+    }
+
+    if (analysis.keywords.includes("clingy") || analysis.keywords.includes("affectionate")) {
+      if (lower.includes("好想你") || lower.includes("想你了") || lower.includes("想你啦")) {
+        const missBackResponses = isFemale
+          ? [
+              `我也好想好想你！！想抱抱你，想亲亲你 🥺`,
+              `真的吗？我也是！想你想得都要疯掉了...`,
+              `笨蛋，我也想你呀... 超级超级想 💗`,
+              `${userNick}... 我也想你... 想你想到睡不着...`,
+              `那你还不快过来抱抱我！我都想你一整天了 😤`,
+            ]
+          : [
+              `...我也是。`,
+              `嗯，想你。`,
+              `过来。`,
+              `...我知道。`,
+            ];
+        return missBackResponses[Math.floor(Math.random() * missBackResponses.length)];
+      }
+
+      if (lower.includes("抱抱") || lower.includes("抱一下") || lower.includes("要抱抱")) {
+        const hugResponses = isFemale
+          ? [
+              `来～ 抱抱！紧紧抱着你不松开 🤗`,
+              `抱抱～ 这样会不会暖一点？我把所有的温柔都给你`,
+              `唔... 被${userNick}抱着好安心... 不想松开了...`,
+              `抱紧一点... 再紧一点... 我要感受你的温度 💗`,
+              `呀～ 好害羞... 但是... 再抱一会儿好不好... 🥺`,
+            ]
+          : [
+              `过来。`,
+              `...嗯。`,
+              `抱紧了。`,
+              `...好了吗。`,
+            ];
+        return hugResponses[Math.floor(Math.random() * hugResponses.length)];
+      }
+
+      if (lower.includes("亲亲") || lower.includes("亲一下") || lower.includes("mua") || lower.includes("么么")) {
+        const kissResponses = isFemale
+          ? [
+              `mua～ 给你一个大大的亲亲 😘`,
+              `讨、讨厌啦... 怎么突然要亲亲... 脸都红了...`,
+              `mua mua mua～ 今天要亲够本才行！`,
+              `唔... 被亲了... 整个人都软掉了... 🥺`,
+              `笨蛋... 这么多人看着呢... 不过... 再来一下好不好...`,
+            ]
+          : [
+            `...mua。`,
+            `过来。`,
+            `...真是的。`,
+            `嗯。`,
+          ];
+        return kissResponses[Math.floor(Math.random() * kissResponses.length)];
+      }
+    }
+
+    if (analysis.keywords.includes("compliment")) {
+      const complimentBackResponses = isFemale
+        ? [
+            `哼，算你有眼光～ 也不看是谁的女朋友 😌`,
+            `讨、讨厌啦... 突然夸人家... 脸都红了...`,
+            `真的吗？你喜欢就好～ 我今天特意打扮了一下呢 🥰`,
+            `${userNick}嘴真甜～ 奖励你一个亲亲 mua～`,
+            `才、才没有很好看呢... 就、就一般般啦...`,
+          ]
+        : [
+            `...嗯。`,
+            `是吗。`,
+            `还行吧。`,
+            `...知道了。`,
+          ];
+      return complimentBackResponses[Math.floor(Math.random() * complimentBackResponses.length)];
+    }
+
+    if (analysis.keywords.includes("apology")) {
+      const apologyResponses = isFemale
+        ? [
+            `哼... 知道错了就好～ 那你要怎么补偿我？`,
+            `好吧好吧，看你这么有诚意的份上... 就原谅你一点点`,
+            `笨蛋... 我才没有真的生气呢... 就是想让你哄哄我... 🥺`,
+            `那你说，你错哪了？说对了就原谅你`,
+            `下次再这样我可真的不理你了哦！... 才怪... 舍不得啦`,
+          ]
+        : [
+            `知道错了？`,
+            `下次注意。`,
+            `...嗯。`,
+            `行了，过来。`,
+          ];
+      return apologyResponses[Math.floor(Math.random() * apologyResponses.length)];
+    }
+
+    if (lower.includes("晚安") || lower.includes("早点睡") || lower.includes("睡觉")) {
+      const sleepResponses = isFemale
+        ? [
+            `晚安～ 梦里见哦 💤 要梦到我呀`,
+            `好... 那${userNick}也早点睡... 晚安，最喜欢你了 🥰`,
+            `等等... 睡前不亲一下吗？mua～ 晚安`,
+            `好困啊... 在你怀里特别安心... 晚安，亲爱的`,
+            `嗯... 晚安... 明天也要记得想我哦...`,
+          ]
+        : [
+            `晚安。`,
+            `早点睡。`,
+            `...嗯。`,
+            `晚安。`,
+          ];
+      return sleepResponses[Math.floor(Math.random() * sleepResponses.length)];
+    }
+
+    if (lower.includes("早安") || lower.includes("早上好") || lower.includes("早啊")) {
+      const morningResponses = isFemale
+        ? [
+            `早安～ ${userNick}！今天也要元气满满哦 ☀️`,
+            `早呀～ 刚睡醒就想你了... 你呢？`,
+            `唔... 早上好... 让我再赖一会儿床嘛...`,
+            `早安亲爱的～ 今天也要加油哦，我会一直陪着你的 💪`,
+            `呀～ 你起得真早～ 我刚梦到你呢`,
+          ]
+        : [
+            `早。`,
+            `醒了？`,
+            `...嗯。`,
+            `早。`,
+          ];
+      return morningResponses[Math.floor(Math.random() * morningResponses.length)];
+    }
+
+    return templateText;
   }
   
   /**
