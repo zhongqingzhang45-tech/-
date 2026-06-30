@@ -79,6 +79,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     const expressionsRef = useRef<Map<string, { id: string; value: number; blend: string }[]>>(new Map());
     const currentExpressionRef = useRef<string>("");
     const appRef = useRef<any>(null);
+    const isLoadingRef = useRef(false);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -137,20 +138,74 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     useEffect(() => {
       let destroyed = false;
       let app: any = null;
+      let handleResize: (() => void) | null = null;
+
+      const cleanup = () => {
+        destroyed = true;
+
+        if (handleResize) {
+          window.removeEventListener("resize", handleResize);
+          handleResize = null;
+        }
+
+        if (app) {
+          try {
+            app.ticker.removeAllListeners();
+            app.destroy(true, {
+              children: true,
+              texture: true,
+              baseTexture: true,
+            });
+          } catch (e) {}
+          app = null;
+        }
+
+        if (canvasContainerRef.current) {
+          while (canvasContainerRef.current.firstChild) {
+            canvasContainerRef.current.removeChild(canvasContainerRef.current.firstChild);
+          }
+        }
+
+        modelRef.current = null;
+        appRef.current = null;
+        motionsRef.current.clear();
+        expressionsRef.current.clear();
+        currentExpressionRef.current = "";
+        isLoadingRef.current = false;
+      };
 
       const setup = async () => {
+        if (isLoadingRef.current) return;
+        isLoadingRef.current = true;
+
         try {
           await loadAllScripts();
 
-          if (destroyed || !canvasContainerRef.current) return;
+          if (destroyed || !canvasContainerRef.current) {
+            isLoadingRef.current = false;
+            return;
+          }
           if (!checkLibs()) {
             throw new Error("Live2D libraries not available");
+          }
+
+          if (destroyed || !canvasContainerRef.current) {
+            isLoadingRef.current = false;
+            return;
+          }
+
+          while (canvasContainerRef.current.firstChild) {
+            canvasContainerRef.current.removeChild(canvasContainerRef.current.firstChild);
           }
 
           const container = canvasContainerRef.current;
           const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
           const width = container.clientWidth;
           const height = container.clientHeight;
+
+          if (width === 0 || height === 0) {
+            throw new Error("Container has no size");
+          }
 
           app = new PIXI.Application(width, height, {
             transparent: true,
@@ -177,6 +232,14 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           });
 
           await new Promise<void>((resolve, reject) => {
+            const onError = (err: any) => {
+              if (destroyed) {
+                reject(new Error("destroyed"));
+              } else {
+                reject(err);
+              }
+            };
+
             loader.load((_l1: any, res1: any) => {
               if (destroyed) {
                 reject(new Error("destroyed"));
@@ -237,7 +300,9 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
               let groups = null;
               if (model3.Groups) {
-                groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3);
+                try {
+                  groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3);
+                } catch (e) {}
               }
 
               loader.load((_l2: any, res2: any) => {
@@ -270,12 +335,14 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
                   let physicsRig = null;
                   if (res2.physics?.data) {
-                    const physicsBuilder = new LIVE2DCUBISMFRAMEWORK.PhysicsRigBuilder();
-                    physicsBuilder.setPhysics3Json(res2.physics.data);
-                    physicsRig = physicsBuilder
-                      .setTarget(coreModel)
-                      .setTimeScale(1)
-                      .build();
+                    try {
+                      const physicsBuilder = new LIVE2DCUBISMFRAMEWORK.PhysicsRigBuilder();
+                      physicsBuilder.setPhysics3Json(res2.physics.data);
+                      physicsRig = physicsBuilder
+                        .setTarget(coreModel)
+                        .setTimeScale(1)
+                        .build();
+                    } catch (e) {}
                   }
 
                   const motions = new Map<string, any>();
@@ -283,8 +350,10 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     const r = res2[key];
                     if (r?.data) {
                       const name = key.replace("motion_", "");
-                      const anim = LIVE2DCUBISMFRAMEWORK.Animation.fromMotion3Json(r.data);
-                      motions.set(name, anim);
+                      try {
+                        const anim = LIVE2DCUBISMFRAMEWORK.Animation.fromMotion3Json(r.data);
+                        motions.set(name, anim);
+                      } catch (e) {}
                     }
                   });
                   motionsRef.current = motions;
@@ -343,15 +412,19 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   model.masks.resize(app.view.width, app.view.height);
 
                   const deltaTime = 0.016;
+                  let idleStarted = false;
                   app.ticker.add((delta: number) => {
                     if (!model || destroyed) return;
                     const dt = deltaTime * delta;
 
-                    if (!model.animator.isPlaying) {
+                    if (!idleStarted && !model.animator.isPlaying) {
                       const idle = model.motions.get("idle") ||
                         model.motions.get("Idle") ||
                         model.motions.get("微笑-正常");
-                      if (idle) model.animator.getLayer("base").play(idle);
+                      if (idle) {
+                        model.animator.getLayer("base").play(idle);
+                        idleStarted = true;
+                      }
                     }
                     model._animator.updateAndEvaluate(dt);
 
@@ -408,10 +481,11 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     model._coreModel.drawables.resetDynamicFlags();
                   });
 
-                  const handleResize = () => {
+                  handleResize = () => {
                     if (destroyed || !container || !model) return;
                     const w = container.clientWidth;
                     const h = container.clientHeight;
+                    if (w === 0 || h === 0) return;
                     app.renderer.resize(w, h);
                     model.position.x = w * 0.5;
                     model.position.y = h * positionY;
@@ -427,36 +501,39 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   };
                   window.addEventListener("resize", handleResize);
 
-                  setIsLoading(false);
-                  onModelLoaded?.();
-                  resolve();
+                  if (!destroyed) {
+                    setIsLoading(false);
+                    setLoadError(null);
+                    onModelLoaded?.();
+                    resolve();
+                  } else {
+                    reject(new Error("destroyed"));
+                  }
                 } catch (err: any) {
+                  onError?.(err.message || "Failed to load model");
                   reject(err);
                 }
               });
             });
           });
         } catch (err: any) {
-          if (destroyed) return;
+          if (destroyed) {
+            isLoadingRef.current = false;
+            return;
+          }
           setLoadError(err.message || "Failed to load model");
           setIsLoading(false);
           onError?.(err.message || "Failed to load model");
+        } finally {
+          if (!destroyed) {
+            isLoadingRef.current = false;
+          }
         }
       };
 
       setup();
 
-      return () => {
-        destroyed = true;
-        if (app) {
-          try {
-            app.destroy(true);
-          } catch (e) {}
-          app = null;
-        }
-        modelRef.current = null;
-        appRef.current = null;
-      };
+      return cleanup;
     }, [modelPath, modelName, scale, positionY, onModelLoaded, onError]);
 
     return (
