@@ -269,6 +269,9 @@ export interface LifeState {
   currentMode: PersonaMode;
   // 最后更新时间
   lastUpdateTime: number;
+  // 自主行为相关
+  lastAutonomousAction?: string;
+  lastAutonomousActionTime?: number;
 }
 
 export interface DecisionResult {

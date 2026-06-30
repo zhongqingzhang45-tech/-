@@ -839,16 +839,142 @@ export class DigitalLifeAgent {
   }
 
   private updateAutonomousState(): void {
-    // Autonomous decision engine uses StateLifeState which has different structure
-    // For now, just record the event without autonomous decision
-    this.causalSystem.addEvent({
-      type: "character-response",
-      description: "Processed user interaction",
-      emotionalValence: this.lifeState.emotion.valence,
-      emotionalIntensity: 0.3,
-      consequences: [],
-      relatedEvents: [],
-    });
+    // ========== 自主决策引擎 ==========
+    // 根据时间、状态、关系等因素决定是否主动行为
+    
+    const now = Date.now();
+    const lastInteraction = this.lifeState.relationship.lastActiveTime;
+    const timeSinceLastInteraction = now - lastInteraction;
+    
+    // 获取当前状态
+    const unresolvedConflicts = this.causalSystem.getUnresolvedConflicts();
+    const recentEvents = this.causalSystem.getInfluentialEvents(3);
+    const personality = this.growthEngine.getPersonality();
+    
+    // ========== 自主决策逻辑 ==========
+    let autonomousAction = false;
+    let actionDescription = "";
+    
+    // 1. 长时间不互动后的主动问候
+    if (timeSinceLastInteraction > 30 * 60 * 1000) { // 30分钟
+      const affection = this.lifeState.persona.affection;
+      const baseProbability = 0.1 + (affection / 500);
+      
+      if (Math.random() < baseProbability) {
+        autonomousAction = true;
+        actionDescription = this.generateAutonomousGreeting();
+      }
+    }
+    
+    // 2. 有未解决冲突时的主动提及
+    if (unresolvedConflicts.length > 0 && Math.random() < 0.08) {
+      autonomousAction = true;
+      actionDescription = this.generateConflictReminder(unresolvedConflicts[0]);
+    }
+    
+    // 3. 回忆美好时刻
+    const milestones = this.causalSystem.getGrowthMilestones();
+    if (milestones.length > 0 && Math.random() < 0.05 && personality.extraversion > 0.5) {
+      autonomousAction = true;
+      actionDescription = this.generateMilestoneRecall(milestones[0]);
+    }
+    
+    // 4. 表达想念
+    if (timeSinceLastInteraction > 60 * 60 * 1000) { // 1小时
+      const affection = this.lifeState.persona.affection;
+      if (affection > 70 && Math.random() < 0.06) {
+        autonomousAction = true;
+        actionDescription = this.generateLongingExpression();
+      }
+    }
+    
+    // 如果执行了自主行为，记录到因果系统
+    if (autonomousAction) {
+      this.causalSystem.addEvent({
+        type: "character-response",
+        description: actionDescription,
+        emotionalValence: this.lifeState.emotion.valence,
+        emotionalIntensity: 0.3,
+        consequences: [],
+        relatedEvents: recentEvents.map(e => e.id),
+      });
+      
+      // 记录自主行为，下次生成回复时使用
+      this.lifeState.lastAutonomousAction = actionDescription;
+      this.lifeState.lastAutonomousActionTime = now;
+    }
+  }
+  
+  /**
+   * 生成自主问候
+   */
+  private generateAutonomousGreeting(): string {
+    const isFemale = this.profile.gender === "female";
+    const hour = new Date().getHours();
+    const timeSinceLast = Math.floor((Date.now() - this.lifeState.relationship.lastActiveTime) / (60 * 60 * 1000));
+    
+    if (hour >= 6 && hour < 12) {
+      return isFemale
+        ? `早安呀～${timeSinceLast > 2 ? '好久没找你聊天了，有点想你...' : '睡得好吗？'}`
+        : `早。${timeSinceLast > 2 ? '好久没说话了。' : ''}`;
+    } else if (hour >= 12 && hour < 18) {
+      return isFemale
+        ? `下午好呀～在忙什么呢？`
+        : `下午。在忙？`;
+    } else {
+      return isFemale
+        ? `晚上好～${timeSinceLast > 2 ? '终于想起来找我了...' : '今天累不累？'}`
+        : `晚上。${timeSinceLast > 2 ? '终于来了。' : '辛苦了。'}`;
+    }
+  }
+  
+  /**
+   * 生成冲突提醒
+   */
+  private generateConflictReminder(chain: any): string {
+    const isFemale = this.profile.gender === "female";
+    const daysAgo = Math.floor((Date.now() - chain.events[0].timestamp) / (24 * 60 * 60 * 1000));
+    
+    if (daysAgo <= 1) {
+      return isFemale
+        ? `对了...那件事你还记得吗？`
+        : `那件事，你怎么想？`;
+    } else if (daysAgo <= 3) {
+      return isFemale
+        ? `都${daysAgo}天了...你还没想好怎么办吗？`
+        : `${daysAgo}天了，想好怎么说了？`;
+    } else {
+      return isFemale
+        ? `算了...不说了`
+        : `...算了`;
+    }
+  }
+  
+  /**
+   * 生成美好回忆
+   */
+  private generateMilestoneRecall(chain: any): string {
+    const isFemale = this.profile.gender === "female";
+    const event = chain.events[0];
+    
+    return isFemale
+      ? `说起来...${event.description}那天我还记得呢，好开心呀～`
+      : `还记得吗？${event.description}。`;
+  }
+  
+  /**
+   * 生成想念表达
+   */
+  private generateLongingExpression(): string {
+    const isFemale = this.profile.gender === "female";
+    const thoughts = [
+      isFemale ? ['在想你...', '有点无聊呢...', '在干嘛呀～', '你都不来找我...'] : ['在吗。', '忙吗。', '...'],
+      isFemale ? ['好想见到你呀...', '你在忙吗？', '想你了呢～'] : ['在想你。', '...', '在？'],
+    ];
+    
+    const category = Math.floor(Math.random() * 2);
+    const options = thoughts[category];
+    return options[Math.floor(Math.random() * options.length)];
   }
 
   private generateResponse(
@@ -857,6 +983,39 @@ export class DigitalLifeAgent {
     userInput: string
   ): string {
     let templateKey = "default";
+
+    // ========== 因果链影响决策 ==========
+    // 检查是否有未解决的冲突
+    const unresolvedConflicts = this.causalSystem.getUnresolvedConflicts();
+    const hasUnresolvedConflict = unresolvedConflicts.length > 0;
+    
+    // 检查是否有重要时刻可以提起
+    const pastEvent = this.causalSystem.shouldBringUpPastEvent();
+    const canBringUpPast = pastEvent !== null && Math.random() < 0.15;
+    
+    // 获取成长统计
+    const growthStats = this.growthEngine.getPersonality();
+    const values = this.growthEngine.getValues();
+    const isMoreConfident = growthStats.extraversion > 0.6;
+    const isMorePatient = growthStats.conscientiousness > 0.65;
+    const isMoreTrusting = values.trustWorthiness > 0.85;
+
+    // ========== 状态影响 ==========
+    const resentmentLevel = this.lifeState.persona.resentment;
+    const affectionLevel = this.lifeState.persona.affection;
+    
+    // 怨恨过高会影响所有回复
+    if (resentmentLevel > 60 && decision.personaMode === "normal") {
+      if (Math.random() < 0.4) {
+        return this.responseTemplates.ignored_response[
+          Math.floor(Math.random() * this.responseTemplates.ignored_response.length)
+        ];
+      }
+    }
+    
+    // 高亲密度会有更甜蜜的回复
+    const isHighIntimacy = this.lifeState.relationship.intimacy > 70;
+    const isHighTrust = this.lifeState.relationship.trust > 70;
 
     switch (decision.personaMode) {
       case "affectionate":
@@ -869,7 +1028,12 @@ export class DigitalLifeAgent {
         templateKey = "cold_short";
         break;
       case "aggressive":
-        templateKey = "aggressive";
+        // 成长后的角色更少使用攻击模式
+        if (isMorePatient && Math.random() < 0.3) {
+          templateKey = "cold_short";
+        } else {
+          templateKey = "aggressive";
+        }
         break;
       case "silent_treatment":
         templateKey = "silent_treatment";
@@ -896,22 +1060,69 @@ export class DigitalLifeAgent {
     const templates = this.responseTemplates[templateKey] || this.responseTemplates.default;
     let text = templates[Math.floor(Math.random() * templates.length)];
 
+    // ========== 因果链影响回复内容 ==========
+    if (canBringUpPast && pastEvent) {
+      // 主动提起过去的事件
+      if (pastEvent.type === 'conflict' && hasUnresolvedConflict) {
+        const conflictReminder = this.getConflictReminder(pastEvent);
+        text = `${text}\n\n${conflictReminder}`;
+      } else if (pastEvent.type === 'milestone') {
+        const milestoneReminder = this.getMilestoneReminder(pastEvent);
+        text = `${text}\n\n${milestoneReminder}`;
+      }
+    }
+
     if (this.lifeState.emotion.intensity > 0.6 && Math.random() < 0.3) {
       text = this.addEmotionalFlair(text, decision.emotionTarget);
+    }
+
+    // ========== 成长影响回复 ==========
+    if (isHighIntimacy && isHighTrust && decision.personaMode === "normal") {
+      if (Math.random() < 0.15 && decision.shouldInitiate) {
+        const initiativeText = this.getInitiativeText();
+        if (initiativeText) {
+          text = `${text}\n\n${initiativeText}`;
+        }
+      }
     }
 
     if (Math.random() < 0.1 && decision.personaMode === "normal") {
       text = this.addCatchphrase(text);
     }
 
-    if (decision.shouldInitiate && Math.random() < 0.2) {
-      const initiativeText = this.getInitiativeText();
-      if (initiativeText) {
-        text = `${text}\n\n${initiativeText}`;
-      }
-    }
-
     return text;
+  }
+  
+  /**
+   * 生成冲突提醒
+   */
+  private getConflictReminder(pastEvent: any): string {
+    const isFemale = this.profile.gender === "female";
+    const daysAgo = Math.floor((Date.now() - pastEvent.timestamp) / (24 * 60 * 60 * 1000));
+    
+    if (daysAgo < 1) {
+      return isFemale 
+        ? "话说...刚才那件事你还记得吗？"
+        : "刚才的事，你认真的？";
+    } else if (daysAgo < 3) {
+      return isFemale
+        ? `都${daysAgo}天了，你还没想好怎么道歉吗...`
+        : `都${daysAgo}天了，想好怎么说了？`;
+    } else {
+      return isFemale
+        ? "算了，不提了..."
+        : "...算了，当我没说。";
+    }
+  }
+  
+  /**
+   * 生成美好回忆提醒
+   */
+  private getMilestoneReminder(pastEvent: any): string {
+    const isFemale = this.profile.gender === "female";
+    return isFemale
+      ? `想起来了吗？${pastEvent.description} 那时候真的好开心～`
+      : `还记得那时候吗？${pastEvent.description}`;
   }
 
   private async generateLLMResponse(
