@@ -14,6 +14,9 @@ const STORAGE_KEYS = {
   CAUSAL_CHAINS: "lifeos_causal_chains",
   MESSAGES: "lifeos_messages",
   SETTINGS: "lifeos_settings",
+  GROWTH_HISTORY: "lifeos_growth_history",
+  SKILLS_PROGRESS: "lifeos_skills_progress",
+  LAST_SYNC: "lifeos_last_sync",
 } as const;
 
 export interface PersistedData {
@@ -25,16 +28,28 @@ export interface PersistedData {
   messages: any[];
   lastSyncTime: number;
   settings: Record<string, any>;
+  growthHistory: GrowthHistoryRecord[];
+  skillsProgress: Record<string, number>;
+}
+
+export interface GrowthHistoryRecord {
+  timestamp: number;
+  level: number;
+  experience: number;
+  personality: Record<string, number>;
+  event: string;
 }
 
 export interface PersistenceOptions {
   autoSaveInterval?: number;
   maxLocalStorageSize?: number;
+  enableCompression?: boolean;
 }
 
 const DEFAULT_OPTIONS: PersistenceOptions = {
   autoSaveInterval: 30000,
   maxLocalStorageSize: 4 * 1024 * 1024,
+  enableCompression: true,
 };
 
 export class DataPersistence {
@@ -42,6 +57,8 @@ export class DataPersistence {
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private pendingSave: Set<string> = new Set();
   private listeners: Map<string, Set<(key: string) => void>> = new Map();
+  private isDirty: boolean = false;
+  private lastSaveTime: number = 0;
 
   constructor(options: PersistenceOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -52,6 +69,8 @@ export class DataPersistence {
   }
 
   private startAutoSave(): void {
+    if (typeof window === "undefined") return;
+    
     if (this.autoSaveTimer) {
       clearInterval(this.autoSaveTimer);
     }
@@ -61,14 +80,17 @@ export class DataPersistence {
   }
 
   private flushPendingSaves(): void {
-    if (this.pendingSave.size > 0) {
+    if (this.pendingSave.size > 0 && this.isDirty) {
       console.log(`[Persistence] Flushing ${this.pendingSave.size} pending saves`);
       this.pendingSave.clear();
+      this.isDirty = false;
+      this.lastSaveTime = Date.now();
     }
   }
 
   markDirty(key: string): void {
     this.pendingSave.add(key);
+    this.isDirty = true;
   }
 
   onSave(key: string, callback: (key: string) => void): () => void {
@@ -81,11 +103,12 @@ export class DataPersistence {
     };
   }
 
+  // ========== LifeState 保存/加载 ==========
   async saveLifeState(state: LifeState): Promise<void> {
     try {
       const serialized = JSON.stringify(state);
       if (serialized.length > (this.options.maxLocalStorageSize || 4 * 1024 * 1024)) {
-        console.warn("LifeState exceeds max size, compressing...");
+        console.warn("LifeState exceeds max size");
       }
       localStorage.setItem(STORAGE_KEYS.LIFE_STATE, serialized);
       this.markDirty(STORAGE_KEYS.LIFE_STATE);
@@ -106,6 +129,7 @@ export class DataPersistence {
     }
   }
 
+  // ========== Profile 保存/加载 ==========
   async saveProfile(profile: any): Promise<void> {
     try {
       localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
@@ -125,12 +149,11 @@ export class DataPersistence {
     }
   }
 
+  // ========== Memories 保存/加载 ==========
   async saveMemories(memories: any[]): Promise<void> {
     try {
-      localStorage.setItem(
-        STORAGE_KEYS.MEMORIES,
-        JSON.stringify(memories.slice(-1000))
-      );
+      const serialized = JSON.stringify(memories.slice(-1000));
+      localStorage.setItem(STORAGE_KEYS.MEMORIES, serialized);
       this.markDirty(STORAGE_KEYS.MEMORIES);
     } catch (error) {
       console.error("Failed to save memories:", error);
@@ -147,6 +170,7 @@ export class DataPersistence {
     }
   }
 
+  // ========== Causal Events 保存/加载 ==========
   async saveCausalData(
     events: CausalEvent[],
     chains: CausalChain[]
@@ -181,6 +205,7 @@ export class DataPersistence {
     }
   }
 
+  // ========== Messages 保存/加载 ==========
   async saveMessages(messages: any[]): Promise<void> {
     try {
       localStorage.setItem(
@@ -203,6 +228,7 @@ export class DataPersistence {
     }
   }
 
+  // ========== Settings 保存/加载 ==========
   async saveSettings(settings: Record<string, any>): Promise<void> {
     try {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
@@ -222,10 +248,55 @@ export class DataPersistence {
     }
   }
 
+  // ========== Growth History 保存/加载 ==========
+  async saveGrowthHistory(record: GrowthHistoryRecord): Promise<void> {
+    try {
+      const existing = this.loadGrowthHistory();
+      existing.push(record);
+      // 只保留最近 100 条记录
+      const trimmed = existing.slice(-100);
+      localStorage.setItem(STORAGE_KEYS.GROWTH_HISTORY, JSON.stringify(trimmed));
+      this.markDirty(STORAGE_KEYS.GROWTH_HISTORY);
+    } catch (error) {
+      console.error("Failed to save growth history:", error);
+    }
+  }
+
+  loadGrowthHistory(): GrowthHistoryRecord[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.GROWTH_HISTORY);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error("Failed to load growth history:", error);
+      return [];
+    }
+  }
+
+  // ========== Skills Progress 保存/加载 ==========
+  async saveSkillsProgress(skills: Record<string, number>): Promise<void> {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SKILLS_PROGRESS, JSON.stringify(skills));
+      this.markDirty(STORAGE_KEYS.SKILLS_PROGRESS);
+    } catch (error) {
+      console.error("Failed to save skills progress:", error);
+    }
+  }
+
+  loadSkillsProgress(): Record<string, number> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SKILLS_PROGRESS);
+      return data ? JSON.parse(data) : {};
+    } catch (error) {
+      console.error("Failed to load skills progress:", error);
+      return {};
+    }
+  }
+
   private notifyListeners(key: string): void {
     this.listeners.get(key)?.forEach((cb) => cb(key));
   }
 
+  // ========== 批量保存/加载 ==========
   async exportAllData(): Promise<PersistedData> {
     return {
       lifeState: this.loadLifeState(),
@@ -236,6 +307,8 @@ export class DataPersistence {
       messages: this.loadMessages(),
       lastSyncTime: Date.now(),
       settings: this.loadSettings(),
+      growthHistory: this.loadGrowthHistory(),
+      skillsProgress: this.loadSkillsProgress(),
     };
   }
 
@@ -248,20 +321,31 @@ export class DataPersistence {
     }
     if (data.messages) await this.saveMessages(data.messages);
     if (data.settings) await this.saveSettings(data.settings);
+    if (data.growthHistory) {
+      localStorage.setItem(STORAGE_KEYS.GROWTH_HISTORY, JSON.stringify(data.growthHistory));
+    }
+    if (data.skillsProgress) await this.saveSkillsProgress(data.skillsProgress);
   }
 
+  // ========== 存储管理 ==========
   clearAllData(): void {
     Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
+    this.pendingSave.clear();
+    this.isDirty = false;
   }
 
   getStorageUsage(): { used: number; available: number; percentage: number } {
+    if (typeof window === "undefined") {
+      return { used: 0, available: 5 * 1024 * 1024, percentage: 0 };
+    }
+    
     let used = 0;
     Object.values(STORAGE_KEYS).forEach((key) => {
       const data = localStorage.getItem(key);
       if (data) {
-        used += data.length * 2;
+        used += data.length * 2; // UTF-16 编码
       }
     });
 
@@ -271,6 +355,25 @@ export class DataPersistence {
       available: maxSize - used,
       percentage: (used / maxSize) * 100,
     };
+  }
+
+  getLastSyncTime(): number {
+    try {
+      const time = localStorage.getItem(STORAGE_KEYS.LAST_SYNC);
+      return time ? parseInt(time, 10) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  updateLastSyncTime(): void {
+    localStorage.setItem(STORAGE_KEYS.LAST_SYNC, Date.now().toString());
+  }
+
+  isDataStale(maxAge: number = 7 * 24 * 60 * 60 * 1000): boolean {
+    const lastSync = this.getLastSyncTime();
+    if (!lastSync) return true;
+    return Date.now() - lastSync > maxAge;
   }
 
   destroy(): void {

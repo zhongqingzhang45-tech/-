@@ -37,6 +37,13 @@ export interface CharacterAgentState {
   experience: number;
 }
 
+export interface StreamingMessage {
+  id: string;
+  content: string;
+  sender: "user" | "assistant";
+  done: boolean;
+}
+
 export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: UseCharacterAgentOptions = {}) {
   const {
     onUIInstruction,
@@ -51,6 +58,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
 
   const [agent, setAgent] = useState<DigitalLifeAgent | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const [mood, setMood] = useState<EmotionState | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [relationship, setRelationship] = useState<any>(null);
@@ -253,50 +261,61 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
-    const typingDuration = 800 + Math.random() * 1500;
+    // 创建流式消息
+    const streamingId = `stream_${Date.now()}`;
+    setStreamingMessage({
+      id: streamingId,
+      content: "",
+      sender: "assistant",
+      done: false,
+    });
 
-    setTimeout(async () => {
-      if (!agentRef.current) return;
+    try {
+      const stream = currentAgent.streamGenerateResponse(text, imageUrl);
 
-      try {
-        const result = await currentAgent.respond(text, imageUrl);
-
-        const assistantMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
+      for await (const chunk of stream) {
+        setStreamingMessage({
+          id: streamingId,
+          content: chunk.partialText,
           sender: "assistant",
-          content: result.text,
-          timestamp: Date.now(),
-          emotion: result.emotion,
-          personaMode: result.personaMode,
-        };
+          done: chunk.done,
+        });
 
-        setMessages((prev) => [...prev, assistantMsg]);
-        setMood(result.emotion);
-        setRelationship(currentAgent.lifeState.relationship);
-        setLifeState(currentAgent.getLifeState());
-        updateAgentState();
+        if (chunk.emotion) {
+          setMood(chunk.emotion);
+        }
 
-        applyUIInstructions(result.uiInstructions || []);
+        if (chunk.done) {
+          // 流结束，将消息添加到正式消息列表
+          const assistantMsg: ChatMessage = {
+            id: streamingId,
+            sender: "assistant",
+            content: chunk.partialText,
+            timestamp: Date.now(),
+            emotion: chunk.emotion || currentAgent.getMood(),
+            personaMode: chunk.personaMode || currentAgent.lifeState.currentMode,
+          };
 
-        if (result.expression) {
-          const expName = getExpressionForMood(result.expression as MoodType, currentAgent.profile.live2dModel);
+          setMessages((prev) => [...prev.filter(m => m.id !== streamingId), assistantMsg]);
+          setStreamingMessage(null);
+          setMood(currentAgent.getMood());
+          setRelationship(currentAgent.lifeState.relationship);
+          setLifeState(currentAgent.getLifeState());
+          updateAgentState();
+
+          // 应用 UI 指令
+          const result = currentAgent.getLifeState();
+          const expName = getExpressionForMood(result.emotion.mood as MoodType, currentAgent.profile.live2dModel);
           live2dRef?.current?.setExpression(expName);
         }
-
-        if (result.actions && result.actions.length > 0) {
-          setTimeout(() => {
-            const motionName = result.actions![0];
-            live2dRef?.current?.playMotion(motionName);
-          }, 300);
-        }
-
-        setIsTyping(false);
-      } catch (error) {
-        console.error("Error generating response:", error);
-        setIsTyping(false);
       }
-    }, typingDuration);
-  }, [live2dRef, applyUIInstructions, updateAgentState]);
+    } catch (error) {
+      console.error("Error generating streaming response:", error);
+      setStreamingMessage(null);
+    } finally {
+      setIsTyping(false);
+    }
+  }, [live2dRef, updateAgentState]);
 
   const triggerMood = useCallback((moodType: MoodType, intensity?: number) => {
     if (!agentRef.current) return;
@@ -363,6 +382,16 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
     return agentRef.current.getCausalStats();
   }, []);
 
+  const generateDiary = useCallback(async () => {
+    if (!agentRef.current) return null;
+    try {
+      return await agentRef.current.generateDiary();
+    } catch (error) {
+      console.error("Error generating diary:", error);
+      return null;
+    }
+  }, []);
+
   const forceSave = useCallback(async () => {
     if (!agentRef.current) return;
     await agentRef.current.forceSave();
@@ -371,6 +400,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
   return {
     agent,
     messages,
+    streamingMessage,
     mood,
     isTyping,
     relationship,
@@ -386,6 +416,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
     getGiftStats,
     getGrowthStats,
     getCausalStats,
+    generateDiary,
     forceSave,
     profile: agent?.profile ?? (FEMALE_CHARACTERS[0] as CharacterProfile),
   };

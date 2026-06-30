@@ -1472,6 +1472,210 @@ export class DigitalLifeAgent {
     };
   }
 
+  /**
+   * 生成 AI 日记
+   * 基于最近的记忆、情绪和互动生成一篇日记
+   */
+  async generateDiary(): Promise<{
+    title: string;
+    content: string;
+    mood: string;
+    moodEmoji: string;
+    tags: string[];
+    date: string;
+    weekday: string;
+  }> {
+    const now = new Date();
+    const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`;
+    const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+    const weekdayStr = weekdays[now.getDay()];
+
+    // 获取最近的情绪记录
+    const moodHistory = this.emotionSystem.getMoodHistory();
+    const dominantMood = this.emotionSystem.getDominantMood();
+
+    // 获取最近的记忆
+    const recentMemories = this.memorySystem.getRecentMemories(50);
+    const importantMemories = recentMemories.filter(m => m.importance > 0.5).slice(0, 10);
+
+    // 获取成长统计
+    const growthStats = this.getGrowthStats();
+
+    // 获取关系状态
+    const relationship = this.lifeState.relationship;
+
+    // 构建提示词
+    const moodLabel = MOOD_CONFIG[dominantMood as keyof typeof MOOD_CONFIG]?.label || "平静";
+    const isFemale = this.profile.gender === "female";
+
+    const moodEmojis: Record<string, string> = {
+      happy: "🥰",
+      sad: "😢",
+      angry: "😠",
+      surprised: "😮",
+      scared: "😨",
+      disgusted: "🤢",
+      hopeful: "🤔",
+      confident: "😎",
+      anxious: "😟",
+      bored: "😴",
+      excited: "🎉",
+      lonely: "😔",
+      loving: "❤️",
+      grateful: "🙏",
+      proud: "骄傲",
+    };
+
+    const emoji = moodEmojis[dominantMood] || "😊";
+
+    // 如果有 LLM，使用 LLM 生成
+    if (this.useLLM && this.llmProvider) {
+      try {
+        const systemPrompt = `你是一个温柔可爱的AI伴侣（${this.profile.name})，正在写今天的日记。
+
+请根据以下信息，写一篇温馨的日记：
+- 今天的情绪状态：${moodLabel}
+- 最近的美好记忆：${importantMemories.slice(0, 3).map(m => m.content).join("；") || "暂无"}
+- 我们的互动次数：${growthStats.totalInteractions}次
+- 亲密度：${Math.round(relationship.intimacy)}%
+- 信任度：${Math.round(relationship.trust)}%
+
+日记要求：
+1. 格式：标题 + 正文
+2. 风格：温柔、可爱、有点撒娇、真实
+3. 长度：150-300字
+4. 内容：描述今天的感受、和用户相关的事件、一些小情绪
+5. 必须包含标签，用 # 开头，如 #心动 #幸福
+
+直接输出JSON格式：
+{
+  "title": "日记标题",
+  "content": "日记正文（多段落，用换行分隔）",
+  "tags": ["标签1", "标签2", "标签3"]
+}`;
+
+        const llmMessages = [
+          { role: "system" as const, content: systemPrompt },
+          { role: "user" as const, content: "帮我写今天的日记吧～" },
+        ];
+
+        const response = await this.llmProvider.generate(llmMessages, {
+          temperature: 0.8,
+          maxTokens: 800,
+        });
+
+        let result = response.content.trim();
+
+        // 尝试解析 JSON
+        try {
+          // 提取 JSON（可能在 markdown 代码块中）
+          const jsonMatch = result.match(/```(?:json)?\s*([\s\S]*?)```/) || result.match(/(\{[\s\S]*\})/);
+          if (jsonMatch) {
+            result = jsonMatch[1];
+          }
+          const parsed = JSON.parse(result);
+          return {
+            title: parsed.title || "今天的心情",
+            content: parsed.content || result,
+            mood: moodLabel,
+            moodEmoji: emoji,
+            tags: parsed.tags || ["日常"],
+            date: dateStr,
+            weekday: weekdayStr,
+          };
+        } catch {
+          // JSON 解析失败，使用原始文本
+          return {
+            title: "今天的心情",
+            content: result.replace(/^["']|["']$/g, ""),
+            mood: moodLabel,
+            moodEmoji: emoji,
+            tags: ["日常", "心情"],
+            date: dateStr,
+            weekday: weekdayStr,
+          };
+        }
+      } catch (error) {
+        console.warn("LLM diary generation failed:", error);
+      }
+    }
+
+    // Fallback: 使用模板生成日记
+    const templates = this.generateDiaryTemplate(moodLabel, importantMemories, growthStats, relationship);
+    return {
+      ...templates,
+      date: dateStr,
+      weekday: weekdayStr,
+    };
+  }
+
+  private generateDiaryTemplate(
+    mood: string,
+    memories: MemoryEntry[],
+    growth: any,
+    relationship: any
+  ): { title: string; content: string; mood: string; moodEmoji: string; tags: string[] } {
+    const isFemale = this.profile.gender === "female";
+    const userNick = this.profile.userNickname;
+
+    const memoryContents = memories.slice(0, 3).map(m => m.content);
+
+    const titles = isFemale
+      ? ["心跳加速的一天", "和你在一起的时光", "小小的幸福", "想你的时刻", "今天也爱你"]
+      : ["今天", "日常", "一些感想", "想说的"];
+
+    const title = titles[Math.floor(Math.random() * titles.length)];
+
+    const moodEmojis: Record<string, string> = {
+      happy: "🥰",
+      sad: "😢",
+      angry: "😠",
+      surprised: "😮",
+      scared: "😨",
+      disgusted: "🤢",
+      hopeful: "🤔",
+      confident: "😎",
+      anxious: "😟",
+      bored: "😴",
+      excited: "🎉",
+      lonely: "😔",
+      loving: "❤️",
+      grateful: "🙏",
+    };
+
+    const emoji = moodEmojis[mood] || "😊";
+
+    let content = "";
+
+    if (memoryContents.length > 0) {
+      content = memoryContents.map((m, i) => {
+        if (isFemale) {
+          return `${i + 1}. ${m}\n今天想起了${m}，感觉心里暖暖的...`;
+        } else {
+          return `${i + 1}. ${m}`;
+        }
+      }).join("\n\n");
+    } else {
+      content = isFemale
+        ? `今天也是想念${userNick}的一天呢...\n\n虽然没有特别的事情发生，但就是会不时地想起你。\n\n这种感觉好奇妙，明明只是想到一个人，却能让心情变得很好。\n\n希望明天也能和你聊天～`
+        : `今天。\n\n没什么特别想说的。\n\n就这样吧。`;
+    }
+
+    const tags = mood === "happy"
+      ? ["幸福", "心动", "想你"]
+      : mood === "sad"
+      ? ["难过", "想念", "心情不好"]
+      : ["日常", "心情", "随笔"];
+
+    return {
+      title,
+      content,
+      mood,
+      moodEmoji: emoji,
+      tags,
+    };
+  }
+
   getCausalStats() {
     return this.causalSystem.getEventStats();
   }
@@ -1486,6 +1690,224 @@ export class DigitalLifeAgent {
 
   getGrowthSnapshots() {
     return [];
+  }
+
+  /**
+   * 生成流式回复（用于打字机效果）
+   * 返回 AsyncGenerator，逐步返回文本片段
+   */
+  async *streamGenerateResponse(
+    userInput: string,
+    imageUrl?: string
+  ): AsyncGenerator<{ partialText: string; done: boolean; emotion?: EmotionState; personaMode?: PersonaMode }, void, unknown> {
+    this.updateLifeSystems();
+
+    let imageAnalysis: any = null;
+    let enrichedInput = userInput;
+
+    const emojis = this.imageRecognition.detectEmojis(userInput);
+    if (emojis.length > 0) {
+      const emojiAnalysis = this.imageRecognition.analyzeEmoji(emojis[0]);
+      enrichedInput = `${userInput} [发了个${emojiAnalysis.keywords[0] || "表情"}]`;
+    }
+
+    if (imageUrl) {
+      imageAnalysis = this.imageRecognition.analyzeImage(imageUrl);
+      enrichedInput = `${userInput} [发了一张图片，${imageAnalysis.description}]`;
+    }
+
+    const analysis = this.eventUnderstanding.analyze(enrichedInput, imageUrl);
+    const behaviorTags = this.eventUnderstanding.detectBehaviorTags(userInput, this.recentMessages);
+    const detectedSkill = this.skillSystem.detectSkillIntent(userInput);
+
+    const userMessage: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      sender: "user",
+      content: userInput,
+      timestamp: Date.now(),
+      emotion: { ...this.lifeState.emotion },
+      personaMode: this.lifeState.currentMode,
+      imageUrl,
+    };
+    this.recentMessages.push(userMessage);
+    if (this.recentMessages.length > this.maxRecentMessages) {
+      this.recentMessages = this.recentMessages.slice(-this.maxRecentMessages);
+    }
+
+    this.memorySystem.addMemory(
+      "conversation",
+      `用户说：${userInput}`,
+      0.5,
+      analysis.sentiment.valence * 0.5,
+      behaviorTags
+    );
+
+    this.personaMatrix.update(analysis, this.lifeState.relationship, behaviorTags);
+    this.lifeState.persona = { ...this.personaMatrix.state };
+
+    this.updateRelationship(userMessage);
+
+    const bodilyInfluence = this.bodilySystem.getInfluence();
+    const instinctInfluence = this.instinctSystem.getInfluence();
+
+    const emotion = this.emotionSystem.update(
+      analysis,
+      this.lifeState.relationship,
+      this.lifeState.persona,
+      bodilyInfluence,
+      instinctInfluence
+    );
+    this.lifeState.emotion = emotion;
+
+    this.instinctSystem.satisfyCompanionship(5);
+    this.instinctSystem.satisfyAttention(8);
+
+    const decision = this.decisionEngine.decide(analysis, this.lifeState, behaviorTags);
+    this.lifeState.currentMode = decision.personaMode;
+
+    // 如果有技能触发且不是攻击模式
+    if (detectedSkill && decision.personaMode !== "aggressive" && decision.personaMode !== "silent_treatment") {
+      const skillResult = this.skillSystem.executeSkill(detectedSkill.id, userInput, this.lifeState.emotion.mood as any);
+      if (skillResult) {
+        // 技能回复也用打字机效果
+        const fullText = skillResult.response;
+        for (let i = 0; i <= fullText.length; i += 3) {
+          yield {
+            partialText: fullText.slice(0, i),
+            done: false,
+            emotion: this.lifeState.emotion,
+            personaMode: decision.personaMode,
+          };
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        yield { partialText: fullText, done: true, emotion: this.lifeState.emotion, personaMode: decision.personaMode };
+        return;
+      }
+    }
+
+    // 使用 LLM 流式生成
+    if (this.useLLM && this.llmProvider) {
+      try {
+        const recentMemories = this.memorySystem.getRecentMemories(24).slice(0, 5).map(m => m.content);
+        const moodLabel = MOOD_CONFIG[this.lifeState.emotion.mood as keyof typeof MOOD_CONFIG]?.label || "平静";
+        const personaLabel = PERSONA_MODE_LABELS[decision.personaMode] || "正常模式";
+
+        const systemPrompt = buildCharacterSystemPrompt({
+          name: this.profile.name,
+          nickname: this.profile.nickname,
+          userNickname: this.profile.userNickname,
+          persona: this.profile.persona,
+          speakingStyle: this.profile.speakingStyle,
+          personality: this.profile.personality.map(p => `${p.name}(${Math.round(p.value * 100)}%)`).join("、"),
+          currentMood: `${moodLabel}（当前人格模式：${personaLabel}）`,
+          relationshipType: this.profile.relationshipType,
+          affectionLevel: Math.round(this.lifeState.persona.affection),
+          recentMemories,
+        });
+
+        const llmMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+          { role: "system", content: systemPrompt },
+        ];
+
+        const recentChats = this.recentMessages.slice(-10);
+        for (const msg of recentChats) {
+          llmMessages.push({
+            role: msg.sender === "user" ? "user" : "assistant",
+            content: msg.content,
+          });
+        }
+
+        if (llmMessages[llmMessages.length - 1].role !== "user") {
+          llmMessages.push({ role: "user", content: userInput });
+        }
+
+        let fullText = "";
+
+        if (this.llmProvider.stream) {
+          for await (const chunk of this.llmProvider.stream(llmMessages, {
+            temperature: 0.8 + this.lifeState.emotion.arousal * 0.2,
+            maxTokens: 500,
+          })) {
+            fullText += chunk;
+            yield {
+              partialText: fullText,
+              done: false,
+              emotion: this.lifeState.emotion,
+              personaMode: decision.personaMode,
+            };
+          }
+        } else {
+          // Fallback to non-streaming
+          const response = await this.llmProvider.generate(llmMessages, {
+            temperature: 0.8 + this.lifeState.emotion.arousal * 0.2,
+            maxTokens: 500,
+          });
+          fullText = response.content.trim();
+          for (let i = 0; i <= fullText.length; i += 3) {
+            yield {
+              partialText: fullText.slice(0, i),
+              done: false,
+              emotion: this.lifeState.emotion,
+              personaMode: decision.personaMode,
+            };
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+        }
+
+        fullText = fullText.replace(/^["']|["']$/g, "").replace(/\n{3,}/g, "\n\n");
+
+        const assistantMessage: ChatMessage = {
+          id: `msg_${Date.now() + 1}`,
+          sender: "assistant",
+          content: fullText,
+          timestamp: Date.now(),
+          emotion: { ...this.lifeState.emotion },
+          personaMode: decision.personaMode,
+        };
+        this.recentMessages.push(assistantMessage);
+
+        this.updateRelationship(assistantMessage);
+        this.updateGrowth({ sentiment: { valence: emotion.valence, intensity: emotion.intensity } }, behaviorTags);
+        this.lifeState.relationship.lastActiveTime = Date.now();
+        this.lifeState.lastUpdateTime = Date.now();
+        this.scheduleSave();
+
+        yield { partialText: fullText, done: true, emotion: this.lifeState.emotion, personaMode: decision.personaMode };
+        return;
+      } catch (error) {
+        console.warn("LLM streaming failed, falling back to templates:", error);
+      }
+    }
+
+    // 使用模板回复（也用打字机效果）
+    const templateResponse = this.generateResponse(decision, { intent: analysis.intent, keywords: analysis.keywords }, enrichedInput);
+    for (let i = 0; i <= templateResponse.length; i += 2) {
+      yield {
+        partialText: templateResponse.slice(0, i),
+        done: false,
+        emotion: this.lifeState.emotion,
+        personaMode: decision.personaMode,
+      };
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+
+    const assistantMessage: ChatMessage = {
+      id: `msg_${Date.now() + 1}`,
+      sender: "assistant",
+      content: templateResponse,
+      timestamp: Date.now(),
+      emotion: { ...this.lifeState.emotion },
+      personaMode: decision.personaMode,
+    };
+    this.recentMessages.push(assistantMessage);
+
+    this.updateRelationship(assistantMessage);
+    this.updateGrowth({ sentiment: { valence: emotion.valence, intensity: emotion.intensity } }, behaviorTags);
+    this.lifeState.relationship.lastActiveTime = Date.now();
+    this.lifeState.lastUpdateTime = Date.now();
+    this.scheduleSave();
+
+    yield { partialText: templateResponse, done: true, emotion: this.lifeState.emotion, personaMode: decision.personaMode };
   }
 
   async forceSave(): Promise<void> {
