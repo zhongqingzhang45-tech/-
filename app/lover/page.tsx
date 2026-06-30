@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { ChatMessage } from "@/data/lover";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Gift, GiftRequest } from "@/lib/core/digital-life";
+import { getExpressionForMood, getRandomMotionForMood } from "@/lib/core/live2d-manager";
 import type { Live2DPlayerRef } from "@/components/Lover/Live2DPlayer";
 import DiaryPage from "@/components/Lover/DiaryPage";
 
@@ -110,25 +111,19 @@ export default function LoverPage() {
     if (messages.length > 0 && modelReady) {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg.sender === "assistant" && !isTyping) {
-        const mood = lastMsg.emotion.mood;
-        const expMap: Record<string, string> = {
-          happy: "happy-01",
-          sad: "sad",
-          angry: "angry",
-          shy: "shy",
-          surprised: "surprise",
-        };
-        const expName = expMap[mood] || "smile";
+        const mood = lastMsg.emotion.mood as MoodType;
+        const expName = getExpressionForMood(mood, currentCharacter.model);
         live2dRef.current?.setExpression(expName);
 
-        if (Math.random() > 0.5) {
+        if (Math.random() > 0.4) {
           setTimeout(() => {
-            live2dRef.current?.triggerRandomMotion();
+            const motionName = getRandomMotionForMood(mood, currentCharacter.model);
+            live2dRef.current?.playMotion(motionName);
           }, 300);
         }
       }
     }
-  }, [messages, isTyping, modelReady]);
+  }, [messages, isTyping, modelReady, currentCharacter.model]);
 
   const convertedMessages: ChatMessage[] = messages.map((msg) => ({
     id: msg.id,
@@ -727,7 +722,9 @@ export default function LoverPage() {
                           if (result?.success) {
                             setCoinBalance(agent?.getCoinBalance() || 0);
                             setTimeout(() => setGiftTab("inventory"), 500);
-                            live2dRef.current?.triggerRandomMotion();
+                            const happyMotion = getRandomMotionForMood("happy", currentCharacter.model);
+                            live2dRef.current?.playMotion(happyMotion);
+                            live2dRef.current?.setExpression(getExpressionForMood("happy", currentCharacter.model));
                           }
                         }}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"

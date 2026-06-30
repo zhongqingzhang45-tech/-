@@ -3,7 +3,6 @@ import { MoodType } from "./digital-life";
 export interface Live2DExpression {
   id: string;
   name: string;
-  index: number;
   file?: string;
 }
 
@@ -19,38 +18,103 @@ export interface Live2DModelConfig {
   path: string;
   modelFile: string;
   scale: number;
-  position: { x: number; y: number };
+  positionY: number;
   expressions: Live2DExpression[];
   motions: Live2DMotion[];
-  emotionMap: Record<string, number>;
+  emotionToExpression: Record<MoodType, string>;
+  emotionToMotions: Record<MoodType, string[]>;
 }
 
 export const DEFAULT_EMOTION_MAP: Record<MoodType, string> = {
-  neutral: "neutral",
-  happy: "happy",
-  excited: "happy",
+  neutral: "smile",
+  happy: "happy-02",
+  excited: "happy-01",
   shy: "shy",
-  love: "love",
+  love: "shy",
   sad: "sad",
   angry: "angry",
   jealous: "angry",
-  sleepy: "sleepy",
-  thoughtful: "thinking",
-  playful: "happy",
-  surprised: "surprised",
-  cold: "neutral",
+  sleepy: "coldness",
+  thoughtful: "coldness",
+  playful: "happy-01",
+  surprised: "surprise",
+  cold: "coldness",
   disdain: "angry",
   tsundere: "angry",
   coquettish: "shy",
   pua: "angry",
   hurt: "sad",
   disappointed: "sad",
-  smug: "happy",
+  smug: "happy-02",
+};
+
+export const HARU_GREETER_EXPRESSIONS: Live2DExpression[] = [
+  { id: "smile", name: "微笑", file: "expressions/微笑.exp3.json" },
+  { id: "happy-01", name: "开心张嘴", file: "expressions/开心张嘴.exp3.json" },
+  { id: "happy-02", name: "开心眯眼", file: "expressions/开心眯眼.exp3.json" },
+  { id: "angry", name: "生气", file: "expressions/生气.exp3.json" },
+  { id: "sad", name: "难过", file: "expressions/难过.exp3.json" },
+  { id: "surprise", name: "惊讶", file: "expressions/惊讶.exp3.json" },
+  { id: "shy", name: "脸红", file: "expressions/脸红.exp3.json" },
+  { id: "coldness", name: "冷漠", file: "expressions/冷漠.exp3.json" },
+];
+
+export const HARU_GREETER_MOTIONS: Live2DMotion[] = [
+  { id: "微笑-正常", name: "待机", group: "Idle", file: "motions/微笑-正常.motion3.json" },
+  { id: "俏皮-微微摇头", name: "俏皮摇头", group: "TapBody", file: "motions/俏皮-微微摇头.motion3.json" },
+  { id: "否定-微微摇头", name: "否定摇头", group: "TapBody", file: "motions/否定-微微摇头.motion3.json" },
+  { id: "否定-摆双手摇头", name: "强烈否定", group: "TapBody", file: "motions/否定-摆双手摇头.motion3.json" },
+  { id: "微笑-向前浅鞠躬", name: "浅鞠躬", group: "TapBody", file: "motions/微笑-向前浅鞠躬.motion3.json" },
+  { id: "微笑-向前深鞠躬", name: "深鞠躬", group: "TapBody", file: "motions/微笑-向前深鞠躬.motion3.json" },
+  { id: "微笑-抬手往右指引", name: "右指引", group: "TapBody", file: "motions/微笑-抬手往右指引.motion3.json" },
+  { id: "微笑-抬手往左指引", name: "左指引", group: "TapBody", file: "motions/微笑-抬手往左指引.motion3.json" },
+  { id: "微笑-点头", name: "点头", group: "TapBody", file: "motions/微笑-点头.motion3.json" },
+  { id: "微笑-背手点头", name: "背手点头", group: "TapBody", file: "motions/微笑-背手点头.motion3.json" },
+  { id: "惊吓-往后一仰", name: "惊吓后仰", group: "TapBody", file: "motions/惊吓-往后一仰.motion3.json" },
+  { id: "惊吓-闭眼张开双手后瞪眼", name: "惊吓瞪眼", group: "TapBody", file: "motions/惊吓-闭眼张开双手后瞪眼.motion3.json" },
+  { id: "惊讶-叉手张嘴点头", name: "惊讶点头", group: "TapBody", file: "motions/惊讶-叉手张嘴点头.motion3.json" },
+  { id: "惊讶-双手放开", name: "惊讶放手", group: "TapBody", file: "motions/惊讶-双手放开.motion3.json" },
+  { id: "惊讶-张开双手点头", name: "惊讶张手", group: "TapBody", file: "motions/惊讶-张开双手点头.motion3.json" },
+  { id: "无奈-叉手点头", name: "无奈", group: "TapBody", file: "motions/无奈-叉手点头.motion3.json" },
+  { id: "生气-被惊后埋头看地", name: "生气埋头", group: "TapBody", file: "motions/生气-被惊后埋头看地.motion3.json" },
+  { id: "疑惑-张开双手定睛狠狠往前一看", name: "疑惑定睛", group: "TapBody", file: "motions/疑惑-张开双手定睛狠狠往前一看.motion3.json" },
+  { id: "疑惑-张开双手定睛轻微往前一看", name: "疑惑轻看", group: "TapBody", file: "motions/疑惑-张开双手定睛轻微往前一看.motion3.json" },
+  { id: "疑虑-手放嘴角", name: "疑虑", group: "TapBody", file: "motions/疑虑-手放嘴角.motion3.json" },
+  { id: "脸红-眯眼埋头", name: "害羞埋头", group: "TapBody", file: "motions/脸红-眯眼埋头.motion3.json" },
+  { id: "脸红-眯眼笑", name: "害羞笑", group: "TapBody", file: "motions/脸红-眯眼笑.motion3.json" },
+  { id: "脸红-身体往前倾", name: "害羞前倾", group: "TapBody", file: "motions/脸红-身体往前倾.motion3.json" },
+  { id: "难过-双手放胸前", name: "难过抱胸", group: "TapBody", file: "motions/难过-双手放胸前.motion3.json" },
+  { id: "难过-睁眼瘪嘴", name: "难过瘪嘴", group: "TapBody", file: "motions/难过-睁眼瘪嘴.motion3.json" },
+  { id: "高兴-左右摇摆", name: "高兴摇摆", group: "TapBody", file: "motions/高兴-左右摇摆.motion3.json" },
+  { id: "高兴-身体前倾眯眼", name: "高兴前倾", group: "TapBody", file: "motions/高兴-身体前倾眯眼.motion3.json" },
+];
+
+export const HARU_EMOTION_TO_MOTIONS: Record<MoodType, string[]> = {
+  neutral: ["微笑-正常", "微笑-点头", "微笑-背手点头"],
+  happy: ["高兴-左右摇摆", "高兴-身体前倾眯眼", "脸红-眯眼笑"],
+  excited: ["高兴-左右摇摆", "惊讶-张开双手点头", "俏皮-微微摇头"],
+  shy: ["脸红-眯眼埋头", "脸红-眯眼笑", "脸红-身体往前倾"],
+  love: ["脸红-眯眼笑", "脸红-身体往前倾", "微笑-向前浅鞠躬"],
+  sad: ["难过-双手放胸前", "难过-睁眼瘪嘴"],
+  angry: ["生气-被惊后埋头看地", "否定-摆双手摇头"],
+  jealous: ["生气-被惊后埋头看地", "无奈-叉手点头"],
+  sleepy: ["微笑-正常"],
+  thoughtful: ["疑虑-手放嘴角", "疑惑-张开双手定睛轻微往前一看"],
+  playful: ["俏皮-微微摇头", "高兴-左右摇摆"],
+  surprised: ["惊吓-往后一仰", "惊吓-闭眼张开双手后瞪眼", "惊讶-双手放开"],
+  cold: ["无奈-叉手点头", "微笑-正常"],
+  disdain: ["无奈-叉手点头", "否定-微微摇头"],
+  tsundere: ["生气-被惊后埋头看地", "脸红-眯眼笑"],
+  coquettish: ["脸红-身体往前倾", "俏皮-微微摇头"],
+  pua: ["无奈-叉手点头", "否定-微微摇头"],
+  hurt: ["难过-双手放胸前", "难过-睁眼瘪嘴"],
+  disappointed: ["难过-睁眼瘪嘴", "无奈-叉手点头"],
+  smug: ["高兴-身体前倾眯眼", "微笑-背手点头"],
 };
 
 export class Live2DManager {
   private model: any = null;
-  private currentExpression: string = "neutral";
+  private currentExpression: string = "smile";
   private currentMotion: string | null = null;
   private config: Live2DModelConfig | null = null;
   private container: HTMLElement | null = null;
@@ -105,7 +169,7 @@ export class Live2DManager {
   }
 
   setMood(mood: MoodType): void {
-    const expressionId = DEFAULT_EMOTION_MAP[mood];
+    const expressionId = this.config?.emotionToExpression[mood] || DEFAULT_EMOTION_MAP[mood];
     if (expressionId) {
       this.setExpression(expressionId);
     }
@@ -119,6 +183,13 @@ export class Live2DManager {
       this.currentMotion = motionId;
       this.emit("motionStarted", motionId);
     }
+  }
+
+  playMoodMotion(mood: MoodType): void {
+    if (!this.config) return;
+    const motions = this.config.emotionToMotions[mood] || ["微笑-正常"];
+    const randomMotion = motions[Math.floor(Math.random() * motions.length)];
+    this.playMotion(randomMotion);
   }
 
   idleMotion(): void {
@@ -138,6 +209,14 @@ export class Live2DManager {
 
   getCurrentExpression(): string {
     return this.currentExpression;
+  }
+
+  getExpressions(): Live2DExpression[] {
+    return this.config?.expressions || [];
+  }
+
+  getMotions(): Live2DMotion[] {
+    return this.config?.motions || [];
   }
 
   isModelLoaded(): boolean {
@@ -166,67 +245,44 @@ export class Live2DManager {
 
 export const BUILTIN_MODELS: Live2DModelConfig[] = [
   {
-    name: "shizuku",
-    path: "/live2d-models/shizuku/",
-    modelFile: "shizuku.model3.json",
-    scale: 1,
-    position: { x: 0, y: 0 },
-    expressions: [
-      { id: "neutral", name: "正常", index: 0 },
-      { id: "happy", name: "开心", index: 1 },
-      { id: "shy", name: "害羞", index: 2 },
-      { id: "sad", name: "难过", index: 3 },
-      { id: "angry", name: "生气", index: 4 },
-      { id: "surprised", name: "惊讶", index: 5 },
-    ],
-    motions: [
-      { id: "idle", name: "待机", group: "idle", file: "motion/01.motion3.json" },
-      { id: "happy", name: "开心", group: "tap_body", file: "motion/02.motion3.json" },
-      { id: "shy", name: "害羞", group: "tap_head", file: "motion/03.motion3.json" },
-      { id: "sad", name: "难过", group: "tap_body", file: "motion/04.motion3.json" },
-    ],
-    emotionMap: {
-      neutral: 0,
-      happy: 1,
-      shy: 2,
-      sad: 3,
-      angry: 4,
-      surprised: 5,
-    },
-  },
-  {
-    name: "mao_pro",
-    path: "/live2d-models/mao_pro/",
-    modelFile: "mao_pro.model3.json",
-    scale: 1,
-    position: { x: 0, y: 0 },
-    expressions: [
-      { id: "exp_01", name: "表情1", index: 0 },
-      { id: "exp_02", name: "表情2", index: 1 },
-      { id: "exp_03", name: "表情3", index: 2 },
-      { id: "exp_04", name: "表情4", index: 3 },
-      { id: "exp_05", name: "表情5", index: 4 },
-      { id: "exp_06", name: "表情6", index: 5 },
-      { id: "exp_07", name: "表情7", index: 6 },
-      { id: "exp_08", name: "表情8", index: 7 },
-    ],
-    motions: [
-      { id: "mtn_01", name: "动作1", group: "motion", file: "motions/mtn_01.motion3.json" },
-      { id: "mtn_02", name: "动作2", group: "motion", file: "motions/mtn_02.motion3.json" },
-      { id: "mtn_03", name: "动作3", group: "motion", file: "motions/mtn_03.motion3.json" },
-      { id: "mtn_04", name: "动作4", group: "motion", file: "motions/mtn_04.motion3.json" },
-    ],
-    emotionMap: {
-      neutral: 0,
-      happy: 1,
-      shy: 2,
-      sad: 3,
-      angry: 4,
-      surprised: 5,
-    },
+    name: "HaruGreeter",
+    path: "/live2d-models/HaruGreeter/",
+    modelFile: "HaruGreeter.model3.json",
+    scale: 2,
+    positionY: 0.55,
+    expressions: HARU_GREETER_EXPRESSIONS,
+    motions: HARU_GREETER_MOTIONS,
+    emotionToExpression: DEFAULT_EMOTION_MAP,
+    emotionToMotions: HARU_EMOTION_TO_MOTIONS,
   },
 ];
 
+export function getModelConfig(modelName: string): Live2DModelConfig | undefined {
+  return BUILTIN_MODELS.find((m) => m.name.toLowerCase() === modelName.toLowerCase()) || BUILTIN_MODELS[0];
+}
+
 export function createLive2DManager() {
   return new Live2DManager();
+}
+
+export function getExpressionForMood(mood: MoodType, modelName?: string): string {
+  if (modelName) {
+    const config = getModelConfig(modelName);
+    if (config?.emotionToExpression[mood]) {
+      return config.emotionToExpression[mood];
+    }
+  }
+  return DEFAULT_EMOTION_MAP[mood] || "smile";
+}
+
+export function getRandomMotionForMood(mood: MoodType, modelName?: string): string {
+  if (modelName) {
+    const config = getModelConfig(modelName);
+    const motions = config?.emotionToMotions[mood];
+    if (motions && motions.length > 0) {
+      return motions[Math.floor(Math.random() * motions.length)];
+    }
+  }
+  const fallbackMotions = HARU_EMOTION_TO_MOTIONS[mood] || ["微笑-正常"];
+  return fallbackMotions[Math.floor(Math.random() * fallbackMotions.length)];
 }
