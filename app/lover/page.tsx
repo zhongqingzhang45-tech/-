@@ -69,6 +69,13 @@ export default function LoverPage() {
   
   // 数据管理状态
   const [showDataConfirm, setShowDataConfirm] = useState<string | null>(null);
+  // 语音通话状态
+  const [isInCall, setIsInCall] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [callPhase, setCallPhase] = useState<"idle" | "calling" | "connected" | "ended">("idle");
+  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const callLoopRef = useRef<boolean>(false);
+
   const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -306,6 +313,103 @@ export default function LoverPage() {
     setShowSkills(false);
   };
 
+  // 语音通话功能
+  const startCall = useCallback(() => {
+    setCallPhase("calling");
+    setIsInCall(true);
+    setCallDuration(0);
+
+    const callGreetings = [
+      "喂～亲爱的，你终于打来啦～ 🥰",
+      "嗨～想我了吗？",
+      "喂？是你呀～ 好开心！",
+      "亲爱的～ 我等你好久了呢～",
+    ];
+    const greeting = callGreetings[Math.floor(Math.random() * callGreetings.length)];
+
+    setTimeout(() => {
+      setCallPhase("connected");
+      callLoopRef.current = true;
+
+      callTimerRef.current = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
+
+      if (voiceEnabled) {
+        speak(greeting, { emotion: "happy" });
+      }
+      sendMessage(greeting);
+      live2dRef.current?.setExpression(getExpressionForMood("happy", currentCharacter.model));
+      live2dRef.current?.playMotion(getRandomMotionForMood("happy", currentCharacter.model));
+    }, 1500);
+  }, [voiceEnabled, speak, sendMessage, currentCharacter.model]);
+
+  const endCall = useCallback(() => {
+    callLoopRef.current = false;
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+    stopListening();
+    setCallPhase("ended");
+    setIsInCall(false);
+
+    const farewells = [
+      "拜拜～ 记得再打给我哦～ 💕",
+      "晚安亲爱的，下次再聊～",
+      "哼，这么快就要挂了呀... 好吧，拜拜～",
+      "爱你哦～ 拜拜！ 🥰",
+    ];
+    const farewell = farewells[Math.floor(Math.random() * farewells.length)];
+    if (voiceEnabled) {
+      speak(farewell, { emotion: "affectionate" });
+    }
+    sendMessage(farewell);
+
+    setTimeout(() => {
+      setCallPhase("idle");
+      setCallDuration(0);
+    }, 2000);
+  }, [voiceEnabled, speak, sendMessage, stopListening]);
+
+  const handlePhoneClick = () => {
+    if (isInCall) {
+      endCall();
+    } else {
+      startCall();
+    }
+  };
+
+  // 模型点击互动 - 触发表情和动作
+  const handleModelClick = useCallback(() => {
+    if (!modelReady) return;
+
+    const interactions = [
+      { mood: "happy" as MoodType, text: "呀～ 你碰我了呢～ 好开心！" },
+      { mood: "shy" as MoodType, text: "讨、讨厌啦... 突然碰人家..." },
+      { mood: "love" as MoodType, text: "嘿嘿～ 最喜欢你了 ❤️" },
+      { mood: "playful" as MoodType, text: "哈哈哈，好痒啦～ 别闹～" },
+      { mood: "surprised" as MoodType, text: "哇！吓我一跳！" },
+    ];
+
+    const interaction = interactions[Math.floor(Math.random() * interactions.length)];
+    const expName = getExpressionForMood(interaction.mood, currentCharacter.model);
+    const motionName = getRandomMotionForMood(interaction.mood, currentCharacter.model);
+
+    live2dRef.current?.setExpression(expName);
+    live2dRef.current?.playMotion(motionName);
+
+    if (voiceEnabled && Math.random() > 0.5) {
+      speak(interaction.text, { emotion: interaction.mood as any });
+    }
+  }, [modelReady, currentCharacter.model, voiceEnabled, speak]);
+
+  const formatCallDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
     <main 
       className="relative h-screen w-screen overflow-hidden flex flex-col"
@@ -369,10 +473,30 @@ export default function LoverPage() {
 
         <div className="ml-auto flex items-center gap-2">
           <button 
+            onClick={handlePhoneClick}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105"
-            style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            style={{ 
+              backgroundColor: isInCall 
+                ? "rgba(239, 68, 68, 0.3)" 
+                : "rgba(255,255,255,0.08)",
+            }}
+            title={isInCall ? "挂断" : "语音通话"}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.65">
+            <svg 
+              width="15" 
+              height="15" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              opacity="0.7"
+              style={{
+                transform: isInCall ? "rotate(135deg)" : "none",
+                transition: "transform 0.3s ease",
+              }}
+            >
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
             </svg>
           </button>
@@ -390,11 +514,14 @@ export default function LoverPage() {
       </header>
 
       <div className="flex-1 flex min-h-0 relative">
-        <div className="absolute inset-0 pointer-events-none z-0 md:relative md:pointer-events-auto md:flex md:w-[38%] lg:w-[35%] md:items-end md:justify-start">
+        <div 
+          className="absolute inset-0 z-0 md:relative md:flex md:w-[38%] lg:w-[35%] md:items-end md:justify-start cursor-pointer"
+          onClick={handleModelClick}
+        >
           <div className="absolute top-0 left-0 w-full h-64 md:relative md:w-full md:h-full">
             <Live2DPlayer
               key={currentCharacter.id}
-              forwardedRef={live2dRef}
+              ref={live2dRef}
               modelPath={currentCharacter.path}
               modelName={currentCharacter.model}
               scale={isMobile ? 1.5 : currentCharacter.scale}
@@ -736,6 +863,91 @@ export default function LoverPage() {
           )}
         </div>
       </div>
+
+      {/* 语音通话界面 */}
+      {isInCall && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+             style={{ 
+               background: "linear-gradient(180deg, #1a1a28 0%, #2a1a3e 100%)" }}
+        >
+          <div className="text-center flex-1 flex flex-col items-center justify-center">
+            <div className="w-28 h-28 rounded-full flex items-center justify-center text-5xl mb-6"
+                 style={{
+                   background: "linear-gradient(135deg, #f472b6 0%, #a78bfa 100%)",
+                   boxShadow: "0 0 60px rgba(244, 114, 182, 0.3)",
+                   animation: callPhase === "calling" ? "pulse 1.5s ease-in-out infinite" : "none",
+                 }}>
+              {profile?.gender === "male" ? "👨" : "👩"}
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">{profile?.name || "小春"}</h2>
+            <p className="text-white/60 text-sm mb-8">
+              {callPhase === "calling" && "正在呼叫..."}
+              {callPhase === "connected" && `通话中 ${formatCallDuration(callDuration)}`}
+              {callPhase === "ended" && "通话已结束"}
+            </p>
+
+            {callPhase === "connected" && (
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-green-400 text-xs">语音已连接</span>
+              </div>
+            )}
+          </div>
+
+          {/* 通话控制按钮 */}
+          <div className="pb-16 flex items-center gap-12">
+            <button
+              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {voiceEnabled ? (
+                  <>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  </>
+                ) : (
+                  <>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <line x1="23" y1="9" x2="17" y2="15" />
+                    <line x1="17" y1="9" x2="23" y2="15" />
+                  </>
+                )}
+              </svg>
+            </button>
+
+            <button
+              onClick={endCall}
+              className="w-16 h-16 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              style={{ 
+                backgroundColor: "#ef4444",
+                boxShadow: "0 4px 20px rgba(239, 68, 68, 0.5)",
+              }}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                   style={{ transform: "rotate(135deg)" }}>
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+            </button>
+
+            <button
+              onClick={handleMicToggle}
+              className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              style={{ 
+                backgroundColor: micActive ? "rgba(239, 68, 68, 0.4)" : "rgba(255,255,255,0.15)",
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSkills && (
         <>

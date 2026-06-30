@@ -9,7 +9,6 @@ interface Live2DPlayerProps {
   positionY?: number;
   onModelLoaded?: () => void;
   onError?: (error: string) => void;
-  forwardedRef?: React.Ref<Live2DPlayerRef>;
 }
 
 export interface Live2DPlayerRef {
@@ -35,7 +34,7 @@ const SCRIPTS = [
   "/vendor/live2dv3/live2dcubismpixi.js",
 ];
 
-let loadPromise: Promise<void> | null = null;
+let globalLoadPromise: Promise<void> | null = null;
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -45,6 +44,7 @@ function loadScript(src: string): Promise<void> {
     }
     const script = document.createElement("script");
     script.src = src;
+    script.async = false;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(script);
@@ -52,16 +52,30 @@ function loadScript(src: string): Promise<void> {
 }
 
 function loadAllScripts(): Promise<void> {
-  if (loadPromise) return loadPromise;
-  loadPromise = SCRIPTS.reduce(
+  if (globalLoadPromise) return globalLoadPromise;
+  globalLoadPromise = SCRIPTS.reduce(
     (p, src) => p.then(() => loadScript(src)),
     Promise.resolve()
   );
-  return loadPromise;
+  return globalLoadPromise;
+}
+
+function checkWebGLSupport(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+    );
+  } catch {
+    return false;
+  }
 }
 
 function checkLibs(): boolean {
   return !!(
+    typeof window !== "undefined" &&
     window.PIXI &&
     window.LIVE2DCUBISMFRAMEWORK &&
     window.LIVE2DCUBISMPIXI &&
@@ -69,31 +83,41 @@ function checkLibs(): boolean {
   );
 }
 
+function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+}
+
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
-  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, forwardedRef }, ref) => {
-    const actualRef = (forwardedRef || ref) as React.RefObject<Live2DPlayerRef>;
+  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<any>(null);
     const motionsRef = useRef<Map<string, any>>(new Map());
     const expressionsRef = useRef<Map<string, { id: string; value: number; blend: string }[]>>(new Map());
-    const currentExpressionRef = useRef<string>("");
     const appRef = useRef<any>(null);
+    const isLoadedRef = useRef(false);
     const isLoadingRef = useRef(false);
+    const destroyedRef = useRef(false);
+    const resizeObserverRef = useRef<any>(null);
+    const isMobileRef = useRef(false);
+    const lastTapRef = useRef<number>(0);
+    const extraCleanupRef = useRef<(() => void) | null>(null);
+
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [webglSupported, setWebglSupported] = useState(true);
 
-    useImperativeHandle(actualRef, () => ({
+    useImperativeHandle(ref, () => ({
       playMotion: (motionId: string) => {
         const model = modelRef.current;
         if (!model?.animator) return;
         const motion = motionsRef.current.get(motionId) ||
-                      motionsRef.current.get(motionId.toLowerCase()) ||
-                      motionsRef.current.get(motionId.toUpperCase());
+                      motionsRef.current.get(motionId.toLowerCase());
         if (!motion) return;
         const layer = model.animator.getLayer("base");
         if (layer) {
-          layer.play(motion);
+          try { layer.play(motion); } catch (e) {}
         }
       },
       triggerRandomMotion: () => {
@@ -101,15 +125,16 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
         if (!model?.animator) return;
         const motionKeys = Array.from(motionsRef.current.keys());
         if (motionKeys.length === 0) return;
-        const nonIdleKeys = motionKeys.filter(k => !k.toLowerCase().includes('idle'));
-        const key = nonIdleKeys.length > 0
-          ? nonIdleKeys[Math.floor(Math.random() * nonIdleKeys.length)]
-          : motionKeys[Math.floor(Math.random() * motionKeys.length)];
+        const nonIdleKeys = motionKeys.filter(
+          k => !k.toLowerCase().includes("idle") && !k.includes("微笑-正常")
+        );
+        const keys = nonIdleKeys.length > 0 ? nonIdleKeys : motionKeys;
+        const key = keys[Math.floor(Math.random() * keys.length)];
         const motion = motionsRef.current.get(key);
         if (!motion) return;
         const layer = model.animator.getLayer("base");
         if (layer) {
-          layer.play(motion);
+          try { layer.play(motion); } catch (e) {}
         }
       },
       setExpression: (name: string) => {
@@ -117,16 +142,28 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
         if (!model) return;
         const params = expressionsRef.current.get(name) ||
                     expressionsRef.current.get(name.toLowerCase());
-        if (!params) return;
-        currentExpressionRef.current = name;
-        params.forEach(({ id, value, blend }) => {
-          if (blend === "Add") {
-            model.addParameterValueById(id, value);
-          } else if (blend === "Multiply") {
-            model.multiplyParameterValueById(id, value);
-          } else {
-            model.setParameterValueById(id, value);
+        if (!params) {
+          const keys = Array.from(expressionsRef.current.keys());
+          if (keys.length > 0) {
+            const fallback = expressionsRef.current.get(keys[0]);
+            if (fallback) {
+              fallback.forEach(({ id, value, blend }) => {
+                try {
+                  if (blend === "Add") model.addParameterValueById(id, value);
+                  else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
+                  else model.setParameterValueById(id, value);
+                } catch (e) {}
+              });
+            }
           }
+          return;
+        }
+        params.forEach(({ id, value, blend }) => {
+          try {
+            if (blend === "Add") model.addParameterValueById(id, value);
+            else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
+            else model.setParameterValueById(id, value);
+          } catch (e) {}
         });
       },
       getModelInfo: () => ({
@@ -136,22 +173,45 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     }));
 
     useEffect(() => {
-      let destroyed = false;
+      setWebglSupported(checkWebGLSupport());
+    }, []);
+
+    useEffect(() => {
+      if (!webglSupported) {
+        setIsLoading(false);
+        setLoadError("当前设备不支持WebGL，无法显示Live2D模型");
+        return;
+      }
+
+      if (isLoadedRef.current || isLoadingRef.current) return;
+      isLoadingRef.current = true;
+      destroyedRef.current = false;
+
       let app: any = null;
-      let handleResize: (() => void) | null = null;
+      let animFrameId: number | null = null;
 
       const cleanup = () => {
-        destroyed = true;
+        destroyedRef.current = true;
 
-        if (handleResize) {
-          window.removeEventListener("resize", handleResize);
-          handleResize = null;
+        if (extraCleanupRef.current) {
+          try { extraCleanupRef.current(); } catch (e) {}
+          extraCleanupRef.current = null;
+        }
+
+        if (resizeObserverRef.current) {
+          resizeObserverRef.current.disconnect();
+          resizeObserverRef.current = null;
+        }
+
+        if (animFrameId !== null) {
+          cancelAnimationFrame(animFrameId);
+          animFrameId = null;
         }
 
         if (app) {
           try {
-            app.ticker.removeAllListeners();
-            app.destroy(true, {
+            app.ticker?.removeAllListeners?.();
+            app.destroy?.({
               children: true,
               texture: true,
               baseTexture: true,
@@ -170,52 +230,53 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
         appRef.current = null;
         motionsRef.current.clear();
         expressionsRef.current.clear();
-        currentExpressionRef.current = "";
+        isLoadedRef.current = false;
         isLoadingRef.current = false;
       };
 
       const setup = async () => {
-        if (isLoadingRef.current) return;
-        isLoadingRef.current = true;
-
         try {
           await loadAllScripts();
 
-          if (destroyed || !canvasContainerRef.current) {
-            isLoadingRef.current = false;
-            return;
-          }
+          if (destroyedRef.current) return;
           if (!checkLibs()) {
-            throw new Error("Live2D libraries not available");
+            throw new Error("Live2D libraries failed to load");
           }
 
-          if (destroyed || !canvasContainerRef.current) {
-            isLoadingRef.current = false;
-            return;
-          }
-
-          while (canvasContainerRef.current.firstChild) {
-            canvasContainerRef.current.removeChild(canvasContainerRef.current.firstChild);
-          }
-
+          if (destroyedRef.current || !canvasContainerRef.current) return;
           const container = canvasContainerRef.current;
+          isMobileRef.current = isMobileDevice();
+
+          while (container.firstChild) {
+            container.removeChild(container.firstChild);
+          }
+
           const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
-          const width = container.clientWidth;
-          const height = container.clientHeight;
+          const width = container.clientWidth || window.innerWidth;
+          const height = container.clientHeight || window.innerHeight * 0.5;
 
           if (width === 0 || height === 0) {
             throw new Error("Container has no size");
           }
 
+          const isMobile = isMobileRef.current;
+          const resolution = isMobile
+            ? Math.min(window.devicePixelRatio || 1, 1.5)
+            : Math.min(window.devicePixelRatio || 1, 2);
+
           app = new PIXI.Application(width, height, {
             transparent: true,
-            antialias: true,
-            resolution: window.devicePixelRatio || 1,
+            antialias: !isMobile,
+            resolution,
             autoDensity: true,
             backgroundAlpha: 0,
+            preserveDrawingBuffer: false,
           });
           app.view.style.display = "block";
           app.view.style.background = "transparent";
+          app.view.style.width = "100%";
+          app.view.style.height = "100%";
+          app.view.style.touchAction = "none";
           container.appendChild(app.view);
           appRef.current = app;
 
@@ -233,23 +294,14 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
           await new Promise<void>((resolve, reject) => {
             const onError = (err: any) => {
-              if (destroyed) {
-                reject(new Error("destroyed"));
-              } else {
-                reject(err);
-              }
+              if (destroyedRef.current) reject(new Error("destroyed"));
+              else reject(err);
             };
 
             loader.load((_l1: any, res1: any) => {
-              if (destroyed) {
-                reject(new Error("destroyed"));
-                return;
-              }
+              if (destroyedRef.current) { reject(new Error("destroyed")); return; }
               const model3 = res1.model_json?.data;
-              if (!model3) {
-                reject(new Error("Failed to load model json"));
-                return;
-              }
+              if (!model3) { reject(new Error("Failed to load model json")); return; }
 
               if (model3.FileReferences?.Moc) {
                 loader.add("moc", modelDir + model3.FileReferences.Moc, {
@@ -306,10 +358,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
               }
 
               loader.load((_l2: any, res2: any) => {
-                if (destroyed) {
-                  reject(new Error("destroyed"));
-                  return;
-                }
+                if (destroyedRef.current) { reject(new Error("destroyed")); return; }
                 try {
                   let moc = null;
                   if (res2.moc?.data) {
@@ -395,113 +444,232 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   );
 
                   app.stage.addChild(model);
-                  app.stage.addChild(model.masks);
+                  if (model.masks) {
+                    app.stage.addChild(model.masks);
+                  }
 
-                  const modelScale = (width * 0.5 * 0.06) * scale;
+                  const baseScale = Math.min(width, height) * 0.0015 * scale;
+                  const modelScale = baseScale > 0 ? baseScale : 1;
                   model.position.x = width * 0.5;
                   model.position.y = height * positionY;
                   model.scale.x = modelScale;
                   model.scale.y = modelScale;
 
-                  if (model.height <= 200) {
-                    const s = (width * 0.5 * 0.6) * scale;
-                    model.scale.x = s;
-                    model.scale.y = s;
+                  if (model.masks?.resize) {
+                    model.masks.resize(app.view.width, app.view.height);
                   }
 
-                  model.masks.resize(app.view.width, app.view.height);
+                  let lastTime = performance.now();
+                  const animate = () => {
+                    if (destroyedRef.current || !model) return;
 
-                  const deltaTime = 0.016;
-                  let idleStarted = false;
-                  app.ticker.add((delta: number) => {
-                    if (!model || destroyed) return;
-                    const dt = deltaTime * delta;
+                    const now = performance.now();
+                    const dt = Math.min((now - lastTime) / 1000, 0.05);
+                    lastTime = now;
 
-                    if (!idleStarted && !model.animator.isPlaying) {
-                      const idle = model.motions.get("idle") ||
-                        model.motions.get("Idle") ||
-                        model.motions.get("微笑-正常");
+                    if (!model.animator.isPlaying) {
+                      const idle = model.motions?.get?.("idle") ||
+                        model.motions?.get?.("Idle") ||
+                        model.motions?.get?.("微笑-正常") ||
+                        (motions.size > 0 ? Array.from(motions.values())[0] : null);
                       if (idle) {
-                        model.animator.getLayer("base").play(idle);
-                        idleStarted = true;
-                      }
-                    }
-                    model._animator.updateAndEvaluate(dt);
-
-                    if (model.inDrag) {
-                      model.addParameterValueById("ParamAngleX", model.pointerX * 30);
-                      model.addParameterValueById("ParamAngleY", -model.pointerY * 30);
-                      model.addParameterValueById("ParamBodyAngleX", model.pointerX * 10);
-                      model.addParameterValueById("ParamBodyAngleY", -model.pointerY * 10);
-                      model.addParameterValueById("ParamEyeBallX", model.pointerX);
-                      model.addParameterValueById("ParamEyeBallY", -model.pointerY);
-                    }
-
-                    if (model._physicsRig) {
-                      model._physicsRig.updateAndEvaluate(dt);
-                    }
-
-                    model._coreModel.update();
-
-                    let sort = false;
-                    for (let m = 0; m < model._meshes.length; ++m) {
-                      const mesh = model._meshes[m];
-                      mesh.alpha = model._coreModel.drawables.opacities[m];
-                      mesh.visible = Live2DCubismCore.Utils.hasIsVisibleBit(
-                        model._coreModel.drawables.dynamicFlags[m]
-                      );
-                      if (
-                        Live2DCubismCore.Utils.hasVertexPositionsDidChangeBit(
-                          model._coreModel.drawables.dynamicFlags[m]
-                        )
-                      ) {
-                        mesh.vertices = model._coreModel.drawables.vertexPositions[m];
-                        mesh.dirtyVertex = true;
-                      }
-                      if (
-                        Live2DCubismCore.Utils.hasRenderOrderDidChangeBit(
-                          model._coreModel.drawables.dynamicFlags[m]
-                        )
-                      ) {
-                        sort = true;
+                        try { model.animator.getLayer("base").play(idle); } catch (e) {}
                       }
                     }
 
-                    if (sort) {
-                      model.children.sort((a: any, b: any) => {
-                        const aIdx = model._meshes.indexOf(a);
-                        const bIdx = model._meshes.indexOf(b);
-                        return (
-                          model._coreModel.drawables.renderOrders[aIdx] -
-                          model._coreModel.drawables.renderOrders[bIdx]
-                        );
-                      });
-                    }
+                    try {
+                      model._animator?.updateAndEvaluate?.(dt);
 
-                    model._coreModel.drawables.resetDynamicFlags();
-                  });
+                      if (model.inDrag) {
+                        model.addParameterValueById?.("ParamAngleX", model.pointerX * 30);
+                        model.addParameterValueById?.("ParamAngleY", -model.pointerY * 30);
+                        model.addParameterValueById?.("ParamBodyAngleX", model.pointerX * 10);
+                        model.addParameterValueById?.("ParamEyeBallX", model.pointerX);
+                        model.addParameterValueById?.("ParamEyeBallY", -model.pointerY);
+                      }
 
-                  handleResize = () => {
-                    if (destroyed || !container || !model) return;
+                      if (model._physicsRig) {
+                        model._physicsRig.updateAndEvaluate?.(dt);
+                      }
+
+                      model._coreModel?.update?.();
+
+                      if (model._meshes) {
+                        let sort = false;
+                        for (let m = 0; m < model._meshes.length; ++m) {
+                          const mesh = model._meshes[m];
+                          mesh.alpha = model._coreModel.drawables.opacities[m];
+                          mesh.visible = Live2DCubismCore.Utils.hasIsVisibleBit(
+                            model._coreModel.drawables.dynamicFlags[m]
+                          );
+                          if (
+                            Live2DCubismCore.Utils.hasVertexPositionsDidChangeBit?.(
+                              model._coreModel.drawables.dynamicFlags[m]
+                            )
+                          ) {
+                            mesh.vertices = model._coreModel.drawables.vertexPositions[m];
+                            mesh.dirtyVertex = true;
+                          }
+                          if (
+                            Live2DCubismCore.Utils.hasRenderOrderDidChangeBit?.(
+                              model._coreModel.drawables.dynamicFlags[m]
+                            )
+                          ) {
+                            sort = true;
+                          }
+                        }
+
+                        if (sort) {
+                          model.children.sort((a: any, b: any) => {
+                            const aIdx = model._meshes.indexOf(a);
+                            const bIdx = model._meshes.indexOf(b);
+                            return (
+                              model._coreModel.drawables.renderOrders[aIdx] -
+                              model._coreModel.drawables.renderOrders[bIdx]
+                            );
+                          });
+                        }
+
+                        model._coreModel.drawables.resetDynamicFlags?.();
+                      }
+                    } catch (e) {}
+
+                    animFrameId = requestAnimationFrame(animate);
+                  };
+                  animFrameId = requestAnimationFrame(animate);
+
+                  const handleResize = () => {
+                    if (destroyedRef.current || !container || !model || !app) return;
                     const w = container.clientWidth;
                     const h = container.clientHeight;
                     if (w === 0 || h === 0) return;
-                    app.renderer.resize(w, h);
-                    model.position.x = w * 0.5;
-                    model.position.y = h * positionY;
-                    const newScale = (w * 0.5 * 0.06) * scale;
-                    model.scale.x = newScale;
-                    model.scale.y = newScale;
-                    if (model.height <= 200) {
-                      const s = (w * 0.5 * 0.6) * scale;
-                      model.scale.x = s;
-                      model.scale.y = s;
-                    }
-                    model.masks.resize(app.view.width, app.view.height);
+                    try {
+                      app.renderer.resize(w, h);
+                      model.position.x = w * 0.5;
+                      model.position.y = h * positionY;
+                      const newScale = Math.min(w, h) * 0.0015 * scale;
+                      if (newScale > 0) {
+                        model.scale.x = newScale;
+                        model.scale.y = newScale;
+                      }
+                      if (model.masks?.resize) {
+                        model.masks.resize(app.view.width, app.view.height);
+                      }
+                    } catch (e) {}
                   };
-                  window.addEventListener("resize", handleResize);
 
-                  if (!destroyed) {
+                  if ("ResizeObserver" in window) {
+                    resizeObserverRef.current = new ResizeObserver(handleResize);
+                    resizeObserverRef.current.observe(container);
+                  } else {
+                    (window as any).addEventListener("resize", handleResize);
+                  }
+
+                  // 触摸和鼠标互动
+                  const handlePointerDown = (e: any) => {
+                    if (!model || destroyedRef.current) return;
+                    model.inDrag = true;
+                    updatePointerPosition(e);
+                  };
+
+                  const handlePointerMove = (e: any) => {
+                    if (!model || destroyedRef.current) return;
+                    if (model.inDrag) {
+                      updatePointerPosition(e);
+                    }
+                  };
+
+                  const handlePointerUp = () => {
+                    if (!model || destroyedRef.current) return;
+                    model.inDrag = false;
+                  };
+
+                  const handleTap = (e: any) => {
+                    if (!model || destroyedRef.current) return;
+                    const now = Date.now();
+                    if (now - lastTapRef.current < 300) return;
+                    lastTapRef.current = now;
+                    triggerRandomMotion();
+                    triggerRandomExpression();
+                  };
+
+                  const updatePointerPosition = (e: any) => {
+                    if (!model || !app) return;
+                    const rect = app.view.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                    const y = ((clientY - rect.top) / rect.height) * 2 - 1;
+                    model.pointerX = Math.max(-1, Math.min(1, x));
+                    model.pointerY = Math.max(-1, Math.min(1, y));
+                  };
+
+                  const triggerRandomMotion = () => {
+                    const motionKeys = Array.from(motionsRef.current.keys());
+                    if (motionKeys.length === 0) return;
+                    const nonIdleKeys = motionKeys.filter(
+                      k => !k.toLowerCase().includes("idle") && !k.includes("微笑-正常")
+                    );
+                    const keys = nonIdleKeys.length > 0 ? nonIdleKeys : motionKeys;
+                    const key = keys[Math.floor(Math.random() * keys.length)];
+                    const motion = motionsRef.current.get(key);
+                    if (!motion || !model?.animator) return;
+                    const layer = model.animator.getLayer("base");
+                    if (layer) {
+                      try { layer.play(motion); } catch (e) {}
+                    }
+                  };
+
+                  const triggerRandomExpression = () => {
+                    const expKeys = Array.from(expressionsRef.current.keys());
+                    if (expKeys.length === 0) return;
+                    const key = expKeys[Math.floor(Math.random() * expKeys.length)];
+                    const params = expressionsRef.current.get(key);
+                    if (!params || !model) return;
+                    params.forEach(({ id, value, blend }) => {
+                      try {
+                        if (blend === "Add") model.addParameterValueById(id, value);
+                        else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
+                        else model.setParameterValueById(id, value);
+                      } catch (e) {}
+                    });
+                  };
+
+                  const view = app.view as HTMLCanvasElement;
+                  view.addEventListener("mousedown", handlePointerDown);
+                  view.addEventListener("mousemove", handlePointerMove);
+                  view.addEventListener("mouseup", handlePointerUp);
+                  view.addEventListener("mouseleave", handlePointerUp);
+                  view.addEventListener("touchstart", (e: TouchEvent) => {
+                    e.preventDefault();
+                    handlePointerDown(e);
+                    handleTap(e);
+                  }, { passive: false });
+                  view.addEventListener("touchmove", (e: TouchEvent) => {
+                    e.preventDefault();
+                    handlePointerMove(e);
+                  }, { passive: false });
+                  view.addEventListener("touchend", handlePointerUp);
+                  view.addEventListener("click", handleTap);
+
+                  const cleanupInteractions = () => {
+                    if (app?.view) {
+                      const view = app.view as HTMLCanvasElement;
+                      view.removeEventListener("mousedown", handlePointerDown);
+                      view.removeEventListener("mousemove", handlePointerMove);
+                      view.removeEventListener("mouseup", handlePointerUp);
+                      view.removeEventListener("mouseleave", handlePointerUp);
+                      view.removeEventListener("touchstart", handlePointerDown);
+                      view.removeEventListener("touchmove", handlePointerMove);
+                      view.removeEventListener("touchend", handlePointerUp);
+                      view.removeEventListener("click", handleTap);
+                    }
+                  };
+
+                  extraCleanupRef.current = cleanupInteractions;
+
+                  if (!destroyedRef.current) {
+                    isLoadedRef.current = true;
                     setIsLoading(false);
                     setLoadError(null);
                     onModelLoaded?.();
@@ -510,45 +678,54 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     reject(new Error("destroyed"));
                   }
                 } catch (err: any) {
-                  onError?.(err.message || "Failed to load model");
                   reject(err);
                 }
               });
             });
           });
         } catch (err: any) {
-          if (destroyed) {
-            isLoadingRef.current = false;
-            return;
-          }
-          setLoadError(err.message || "Failed to load model");
+          if (destroyedRef.current) return;
+          const msg = err.message || "Failed to load model";
+          setLoadError(msg);
           setIsLoading(false);
-          onError?.(err.message || "Failed to load model");
-        } finally {
-          if (!destroyed) {
-            isLoadingRef.current = false;
-          }
+          onError?.(msg);
+          isLoadingRef.current = false;
         }
       };
 
       setup();
 
-      return cleanup;
-    }, [modelPath, modelName, scale, positionY, onModelLoaded, onError]);
+      return () => {
+        cleanup();
+      };
+    }, [modelPath, modelName, scale, positionY, onModelLoaded, onError, webglSupported]);
+
+    if (!webglSupported) {
+      return (
+        <div ref={containerRef} className="w-full h-full relative flex items-center justify-center">
+          <div className="text-center text-white/40 text-sm px-4">
+            <div className="text-4xl mb-3">🎀</div>
+            <p>当前设备不支持WebGL</p>
+            <p className="text-xs mt-2 opacity-70">无法显示Live2D模型</p>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div ref={containerRef} className="w-full h-full relative">
         <div ref={canvasContainerRef} className="w-full h-full absolute inset-0" />
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"
+                 style={{ borderWidth: "3px" }} />
           </div>
         )}
         {loadError && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-red-400 text-sm text-center px-4">
-              <div className="mb-2">模型加载失败</div>
-              <div className="text-xs opacity-70">{loadError}</div>
+            <div className="text-white/40 text-sm text-center px-4">
+              <div className="text-3xl mb-2">💭</div>
+              <div className="text-xs opacity-70">模型加载中...</div>
             </div>
           </div>
         )}
