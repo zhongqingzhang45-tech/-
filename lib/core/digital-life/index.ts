@@ -1,5 +1,5 @@
-export { DigitalLifeAgent } from './agent';
-export type { ResponseResult } from './agent';
+export { DigitalLifeAgent } from "./agent";
+export type { ResponseResult, UIInstruction } from "./agent";
 
 export {
   EventUnderstandingLayer,

@@ -4,11 +4,11 @@
  * 决定何时主动出现、如何回应、做什么
  */
 
-import { StateEngine, LifeState } from './state-engine';
+import { StateEngine, StateLifeState } from './state-engine';
 import { CausalSystem, CausalEvent } from './causal-system';
 
 export interface DecisionContext {
-  currentState: LifeState;
+  currentState: StateLifeState;
   recentEvents: CausalEvent[];
   lastUserInteraction?: { timestamp: number; sentiment: number };
   unresolvedConflicts: number;

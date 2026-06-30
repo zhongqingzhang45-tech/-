@@ -4,7 +4,10 @@
  * 状态之间相互影响，形成真实的生命感
  */
 
-export interface LifeState {
+// Re-export LifeState from types for consistency
+export type { LifeState } from './types';
+
+export interface StateLifeState {
   // 情绪维度
   emotion: {
     mood: string; // 当前心情
@@ -50,26 +53,26 @@ export interface LifeState {
 }
 
 export interface StateInfluence {
-  source: keyof LifeState;
-  target: keyof LifeState;
+  source: keyof StateLifeState;
+  target: keyof StateLifeState;
   weight: number; // 影响权重
   direction: 'positive' | 'negative'; // 正向还是负向影响
 }
 
 export class StateEngine {
-  private state: LifeState;
-  private stateHistory: LifeState[] = [];
+  private state: StateLifeState;
+  private stateHistory: StateLifeState[] = [];
   private lastUpdateTime: number = Date.now();
   private decayInterval: number = 1000 * 60; // 每分钟衰减一次
 
-  constructor(initialState?: Partial<LifeState>) {
+  constructor(initialState?: Partial<StateLifeState>) {
     this.state = this.createDefaultState();
     if (initialState) {
       this.state = { ...this.state, ...initialState };
     }
   }
 
-  private createDefaultState(): LifeState {
+  private createDefaultState(): StateLifeState {
     const now = new Date();
     return {
       emotion: {
@@ -278,7 +281,7 @@ export class StateEngine {
   /**
    * 获取当前状态
    */
-  getState(): LifeState {
+  getState(): StateLifeState {
     this.update();
     return { ...this.state };
   }

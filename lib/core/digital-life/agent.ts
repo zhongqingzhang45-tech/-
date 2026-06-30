@@ -22,14 +22,26 @@ import {
   DecisionEngine,
   PersonaMatrixSystem,
   MemorySystem,
+  TriggerEngine,
 } from "./systems";
 import { SkillSystem, SkillResult } from "./skills";
 import { ImageRecognition } from "./image-recognition";
 import { GiftSystem } from "./gift-system";
 import { ContextService } from "./context-service";
 import { DeviceFingerprint } from "./device-binding";
+import { StateEngine } from "./state-engine";
+import { GrowthEvolutionEngine } from "./growth-engine";
+import { CausalSystem, CausalEvent } from "./causal-system";
+import { AutonomousDecisionEngine } from "./autonomous-decision-engine";
+import { DataPersistence, defaultPersistence } from "../persistence";
 import type { LLMConfig, LLMProviderInterface } from "../llm/types";
 import { createLLMProvider, buildCharacterSystemPrompt } from "../llm";
+
+export interface UIInstruction {
+  type: "expression" | "motion" | "mode_change" | "gift_received" | "level_up" | "milestone" | "skill_improve";
+  payload: any;
+  priority: "low" | "medium" | "high";
+}
 
 export interface ResponseResult {
   text: string;
@@ -38,6 +50,12 @@ export interface ResponseResult {
   expression?: string;
   voiceText?: string;
   personaMode: PersonaMode;
+  uiInstructions?: UIInstruction[];
+  autonomousDecision?: {
+    shouldInitiate: boolean;
+    suggestedTopic?: string;
+    emotionalApproach?: string;
+  };
 }
 
 export class DigitalLifeAgent {
@@ -57,6 +75,15 @@ export class DigitalLifeAgent {
   private contextService: ContextService;
   private deviceFingerprint: DeviceFingerprint;
   
+  private stateEngine: StateEngine;
+  private growthEngine: GrowthEvolutionEngine;
+  private causalSystem: CausalSystem;
+  private autonomousDecisionEngine: AutonomousDecisionEngine;
+  
+  private persistence: DataPersistence;
+  private autoSaveEnabled: boolean = true;
+  private saveDebounceTimer: NodeJS.Timeout | null = null;
+  
   private recentMessages: ChatMessage[] = [];
   private maxRecentMessages: number = 100;
   
@@ -66,10 +93,22 @@ export class DigitalLifeAgent {
   private llmConfig: LLMConfig | null = null;
   private useLLM: boolean = false;
 
-  constructor(profile: CharacterProfile) {
+  constructor(
+    profile: CharacterProfile,
+    persistence: DataPersistence = defaultPersistence
+  ) {
     this.profile = profile;
-    this.lifeState = JSON.parse(JSON.stringify(DEFAULT_LIFE_STATE));
-    this.lifeState.relationship.relationshipType = profile.relationshipType;
+    this.persistence = persistence;
+    
+    this.stateEngine = new StateEngine();
+    
+    const savedState = persistence.loadLifeState();
+    if (savedState) {
+      this.lifeState = savedState;
+    } else {
+      this.lifeState = JSON.parse(JSON.stringify(DEFAULT_LIFE_STATE));
+      this.lifeState.relationship.relationshipType = profile.relationshipType;
+    }
     
     this.eventUnderstanding = new EventUnderstandingLayer();
     this.bodilySystem = new BodilySystem(this.lifeState.body);
@@ -88,6 +127,22 @@ export class DigitalLifeAgent {
     this.giftSystem = new GiftSystem();
     this.contextService = new ContextService();
     this.deviceFingerprint = DeviceFingerprint.getInstance();
+    
+    const savedGrowthSnapshots = []; // persistence.loadGrowthSnapshots();
+    this.growthEngine = new GrowthEvolutionEngine();
+    
+    const { events, chains } = persistence.loadCausalData();
+    this.causalSystem = new CausalSystem();
+    
+    this.autonomousDecisionEngine = new AutonomousDecisionEngine(
+      this.stateEngine,
+      this.causalSystem
+    );
+    
+    const savedMessages = persistence.loadMessages();
+    if (savedMessages.length > 0) {
+      this.recentMessages = savedMessages;
+    }
     
     this.initializeTemplates();
     this.seedMemories();
@@ -448,6 +503,37 @@ export class DigitalLifeAgent {
     );
   }
 
+  private scheduleSave(): void {
+    if (!this.autoSaveEnabled) return;
+    if (this.saveDebounceTimer) {
+      clearTimeout(this.saveDebounceTimer);
+    }
+    this.saveDebounceTimer = setTimeout(() => {
+      this.saveAllData();
+    }, 1000);
+  }
+
+  private async saveAllData(): Promise<void> {
+    try {
+      await this.persistence.saveLifeState(this.lifeState);
+      await this.persistence.saveMessages(this.recentMessages);
+    } catch (error) {
+      console.error("Failed to save data:", error);
+    }
+  }
+
+  enableAutoSave(): void {
+    this.autoSaveEnabled = true;
+  }
+
+  disableAutoSave(): void {
+    this.autoSaveEnabled = false;
+    if (this.saveDebounceTimer) {
+      clearTimeout(this.saveDebounceTimer);
+      this.saveDebounceTimer = null;
+    }
+  }
+
   async respond(userInput: string, imageUrl?: string): Promise<ResponseResult> {
     this.updateLifeSystems();
 
@@ -482,6 +568,8 @@ export class DigitalLifeAgent {
       }
     }
 
+    const uiInstructions: UIInstruction[] = [];
+
     if (giftResult && giftResult.success) {
       const { effect } = giftResult;
       if (effect.affectionBonus) {
@@ -496,6 +584,12 @@ export class DigitalLifeAgent {
         this.emotionSystem.triggerMood(effect.moodBoost as any, 0.7);
         this.lifeState.emotion = { ...this.emotionSystem.state };
       }
+      
+      uiInstructions.push({
+        type: "gift_received",
+        payload: { gift: giftResult.effect?.gift },
+        priority: "high",
+      });
     }
 
     contextResponse = this.contextService.generateContextualResponse(userInput);
@@ -584,6 +678,14 @@ export class DigitalLifeAgent {
     const decision = this.decisionEngine.decide(analysis, this.lifeState, behaviorTags);
     this.lifeState.currentMode = decision.personaMode;
 
+    if (decision.personaMode !== this.lifeState.currentMode) {
+      uiInstructions.push({
+        type: "mode_change",
+        payload: { newMode: decision.personaMode },
+        priority: "medium",
+      });
+    }
+
     if (decision.shouldColdTreat && !this.lifeState.relationship.coldTreatmentActive) {
       this.lifeState.relationship.coldTreatmentActive = true;
       this.lifeState.relationship.coldTreatmentStartTime = Date.now();
@@ -602,6 +704,15 @@ export class DigitalLifeAgent {
       this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
     }
 
+    this.causalSystem.addEvent({
+      type: "user-action",
+      description: userInput.substring(0, 50),
+      emotionalValence: analysis.sentiment.valence,
+      emotionalIntensity: analysis.sentiment.dominance || 0.5,
+      consequences: [],
+      relatedEvents: [],
+    });
+
     let responseText: string;
     let skillResult: SkillResult | null = null;
 
@@ -617,6 +728,12 @@ export class DigitalLifeAgent {
           this.emotionSystem.triggerMood(skillResult.targetMood as any, skillResult.moodIntensity || 0.5);
           this.lifeState.emotion = { ...this.emotionSystem.state };
         }
+        
+        uiInstructions.push({
+          type: "skill_improve",
+          payload: { skill: detectedSkill.id, result: skillResult },
+          priority: "low",
+        });
       } else {
         responseText = this.useLLM
           ? await this.generateLLMResponse(enrichedInput, decision)
@@ -630,6 +747,20 @@ export class DigitalLifeAgent {
 
     if (giftResult && giftResult.success && giftResult.message) {
       responseText = giftResult.message;
+    }
+
+    uiInstructions.push({
+      type: "expression",
+      payload: { expression: this.lifeState.emotion.mood },
+      priority: "high",
+    });
+
+    if (decision.actionPlan && decision.actionPlan.length > 0) {
+      uiInstructions.push({
+        type: "motion",
+        payload: { motion: decision.actionPlan[0] },
+        priority: "medium",
+      });
     }
 
     const assistantMessage: ChatMessage = {
@@ -650,10 +781,27 @@ export class DigitalLifeAgent {
     );
 
     this.updateRelationship(assistantMessage);
-    this.updateGrowth();
+    this.updateGrowth({ sentiment: { valence: emotion.valence, intensity: emotion.intensity } }, behaviorTags);
 
+    const previousLevel = this.lifeState.growth.level;
     this.lifeState.relationship.lastActiveTime = Date.now();
     this.lifeState.lastUpdateTime = Date.now();
+
+    if (this.lifeState.growth.level > previousLevel) {
+      uiInstructions.push({
+        type: "level_up",
+        payload: { newLevel: this.lifeState.growth.level },
+        priority: "high",
+      });
+    }
+
+    this.processGrowthInteraction(
+      { intent: analysis.intent, keywords: analysis.keywords, sentiment: { valence: analysis.sentiment.valence, intensity: analysis.sentiment.dominance || 0.5 } },
+      behaviorTags
+    );
+    this.updateAutonomousState();
+
+    this.scheduleSave();
 
     return {
       text: responseText,
@@ -662,7 +810,45 @@ export class DigitalLifeAgent {
       expression: this.lifeState.emotion.mood,
       voiceText: responseText,
       personaMode: decision.personaMode,
+      uiInstructions,
     };
+  }
+
+  private processGrowthInteraction(
+    analysis: { intent: string; keywords: string[]; sentiment: { valence: number; intensity: number } },
+    behaviorTags: BehaviorTag[]
+  ): void {
+    let interactionType: 'affection' | 'conflict' | 'learning' | 'challenge' | 'support' = 'affection';
+
+    if (analysis.keywords.includes("jealousy") || analysis.keywords.includes("ignore")) {
+      interactionType = 'conflict';
+    } else if (analysis.keywords.includes("learn") || analysis.keywords.includes("teach")) {
+      interactionType = 'learning';
+    } else if (analysis.keywords.includes("challenge") || analysis.keywords.includes("试试")) {
+      interactionType = 'challenge';
+    } else if (analysis.sentiment.valence > 0.5) {
+      interactionType = 'support';
+    }
+
+    this.growthEngine.processInteraction({
+      type: interactionType,
+      description: analysis.intent,
+      intensity: analysis.sentiment.intensity,
+      userMood: analysis.sentiment.valence,
+    });
+  }
+
+  private updateAutonomousState(): void {
+    // Autonomous decision engine uses StateLifeState which has different structure
+    // For now, just record the event without autonomous decision
+    this.causalSystem.addEvent({
+      type: "character-response",
+      description: "Processed user interaction",
+      emotionalValence: this.lifeState.emotion.valence,
+      emotionalIntensity: 0.3,
+      consequences: [],
+      relatedEvents: [],
+    });
   }
 
   private generateResponse(
@@ -905,9 +1091,13 @@ export class DigitalLifeAgent {
     else rel.relationshipLevel = 1;
   }
 
-  private updateGrowth(): void {
+  private updateGrowth(
+    analysis: { sentiment: { valence: number; intensity: number } },
+    behaviorTags: BehaviorTag[]
+  ): void {
     const growth = this.lifeState.growth;
-    growth.experience += 1;
+    const expGain = 1 + (analysis.sentiment.valence > 0 ? 1 : 0);
+    growth.experience += expGain;
     
     const expNeeded = growth.level * 100;
     if (growth.experience >= expNeeded) {
@@ -956,11 +1146,13 @@ export class DigitalLifeAgent {
 
   updateProfile(updates: Partial<CharacterProfile>): void {
     this.profile = { ...this.profile, ...updates };
+    this.scheduleSave();
   }
 
   triggerMood(mood: any, intensity: number = 0.8): void {
     this.emotionSystem.triggerMood(mood, intensity);
     this.lifeState.emotion = { ...this.emotionSystem.state };
+    this.scheduleSave();
   }
 
   reconcile(): boolean {
@@ -970,6 +1162,7 @@ export class DigitalLifeAgent {
     this.personaMatrix.state.resentment = Math.max(0, this.personaMatrix.state.resentment - 15);
     this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
     this.lifeState.currentMode = "reconciliation";
+    this.scheduleSave();
     return true;
   }
 
@@ -1054,5 +1247,66 @@ export class DigitalLifeAgent {
       this.lifeState.currentMode,
       this.lifeState.persona.resentment
     );
+  }
+
+  getGrowthStats() {
+    return {
+      level: this.lifeState.growth.level,
+      experience: this.lifeState.growth.experience,
+      personality: this.growthEngine.getPersonality(),
+      values: this.growthEngine.getValues(),
+      totalInteractions: this.growthEngine.getTotalInteractions(),
+      growthComparison: this.growthEngine.getGrowthComparison(30),
+      growthNarrative: this.growthEngine.generateGrowthNarrative(),
+    };
+  }
+
+  getCausalStats() {
+    return this.causalSystem.getEventStats();
+  }
+
+  getCausalNarrative() {
+    return this.causalSystem.generateCausalNarrative();
+  }
+
+  getInfluentialEvents() {
+    return this.causalSystem.getInfluentialEvents();
+  }
+
+  getGrowthSnapshots() {
+    return [];
+  }
+
+  async forceSave(): Promise<void> {
+    if (this.saveDebounceTimer) {
+      clearTimeout(this.saveDebounceTimer);
+      this.saveDebounceTimer = null;
+    }
+    await this.saveAllData();
+  }
+
+  reset(): void {
+    this.disableAutoSave();
+    this.persistence.clearAllData();
+    
+    this.lifeState = JSON.parse(JSON.stringify(DEFAULT_LIFE_STATE));
+    this.lifeState.relationship.relationshipType = this.profile.relationshipType;
+    this.recentMessages = [];
+    
+    this.bodilySystem = new BodilySystem(this.lifeState.body);
+    this.instinctSystem = new InstinctSystem(this.lifeState.instinct);
+    this.emotionSystem = new EmotionSystem(
+      this.lifeState.emotion,
+      this.profile.personality,
+      this.profile.tsundereLevel,
+      this.profile.puaTendency
+    );
+    this.personaMatrix = new PersonaMatrixSystem(this.lifeState.persona, this.profile);
+    this.memorySystem = new MemorySystem();
+    this.growthEngine = new GrowthEvolutionEngine();
+    this.causalSystem = new CausalSystem();
+    
+    this.seedMemories();
+    this.enableAutoSave();
   }
 }

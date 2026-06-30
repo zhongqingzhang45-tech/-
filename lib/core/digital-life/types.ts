@@ -235,15 +235,39 @@ export interface ConversationContext {
 }
 
 export interface LifeState {
+  // 身体状态
   body: BodilyState;
+  // 本能状态
   instinct: InstinctState;
-  emotion: EmotionState;
-  persona: PersonaMatrix;
+  // 情绪状态
+  emotion: {
+    mood: MoodType;
+    intensity: number;
+    valence: number;
+    arousal: number;
+    dominance: number;
+  };
+  // 人格矩阵
+  persona: {
+    affection: number;
+    resentment: number;
+    volatility: number;
+    dominance: number;
+    selfEsteem: number;
+    trust: number;
+    attachmentAnxiety: number;
+  };
+  // 关系状态
   relationship: RelationshipState;
+  // 成长状态
   growth: GrowthState;
+  // 价值观
   values: ValueSystem;
+  // 记忆缓冲
   memoryBuffer: MemoryBuffer;
+  // 当前人格模式
   currentMode: PersonaMode;
+  // 最后更新时间
   lastUpdateTime: number;
 }
 
