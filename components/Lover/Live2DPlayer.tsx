@@ -284,14 +284,13 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           appRef.current = app;
 
           const basePath = modelPath.endsWith("/") ? modelPath : `${modelPath}/`;
-          const modelDir = `${modelName}/`;
           const modelFile = `${modelName}.model3.json`;
           const motionKeys: string[] = [];
           const expressionKeys: string[] = [];
           let textureCount = 0;
 
           const loader = new PIXI.loaders.Loader(basePath);
-          loader.add("model_json", modelDir + modelFile, {
+          loader.add("model_json", modelFile, {
             xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
           });
 
@@ -307,23 +306,23 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
               if (!model3) { reject(new Error("Failed to load model json")); return; }
 
               if (model3.FileReferences?.Moc) {
-                loader.add("moc", modelDir + model3.FileReferences.Moc, {
+                loader.add("moc", model3.FileReferences.Moc, {
                   xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER,
                 });
               }
               if (model3.FileReferences?.Textures) {
                 model3.FileReferences.Textures.forEach((tex: string, i: number) => {
-                  loader.add(`texture${i}`, modelDir + tex);
+                  loader.add(`texture${i}`, tex);
                   textureCount++;
                 });
               }
               if (model3.FileReferences?.Physics) {
-                loader.add("physics", modelDir + model3.FileReferences.Physics, {
+                loader.add("physics", model3.FileReferences.Physics, {
                   xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
                 });
               }
               if (model3.FileReferences?.Pose) {
-                loader.add("pose", modelDir + model3.FileReferences.Pose, {
+                loader.add("pose", model3.FileReferences.Pose, {
                   xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
                 });
               }
@@ -333,7 +332,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     const motionName = mot.File.split("/").pop().split(".").shift();
                     const key = `motion_${motionName}`;
                     if (!motionKeys.includes(key)) {
-                      loader.add(key, modelDir + mot.File, {
+                      loader.add(key, mot.File, {
                         xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
                       });
                       motionKeys.push(key);
@@ -345,7 +344,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                 model3.FileReferences.Expressions.forEach((exp: any) => {
                   const key = `exp_${exp.Name}`;
                   if (!expressionKeys.includes(key)) {
-                    loader.add(key, modelDir + exp.File, {
+                    loader.add(key, exp.File, {
                       xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
                     });
                     expressionKeys.push(key);
