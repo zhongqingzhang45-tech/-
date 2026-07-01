@@ -84,11 +84,6 @@ function checkLibs(): boolean {
   );
 }
 
-function isMobileDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-}
-
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
   ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, forwardedRef }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -100,9 +95,6 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     const isLoadedRef = useRef(false);
     const isLoadingRef = useRef(false);
     const destroyedRef = useRef(false);
-    const resizeObserverRef = useRef<any>(null);
-    const isMobileRef = useRef(false);
-    const lastTapRef = useRef<number>(0);
     const extraCleanupRef = useRef<(() => void) | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
@@ -201,11 +193,6 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           extraCleanupRef.current = null;
         }
 
-        if (resizeObserverRef.current) {
-          resizeObserverRef.current.disconnect();
-          resizeObserverRef.current = null;
-        }
-
         if (animFrameId !== null) {
           cancelAnimationFrame(animFrameId);
           animFrameId = null;
@@ -248,21 +235,41 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
           if (destroyedRef.current || !canvasContainerRef.current) return;
           const container = canvasContainerRef.current;
-          isMobileRef.current = isMobileDevice();
 
           while (container.firstChild) {
             container.removeChild(container.firstChild);
           }
 
           const { PIXI, LIVE2DCUBISMFRAMEWORK, LIVE2DCUBISMPIXI, Live2DCubismCore } = window;
-          const width = container.clientWidth || window.innerWidth;
-          const height = container.clientHeight || window.innerHeight * 0.5;
 
-          if (width === 0 || height === 0) {
-            throw new Error("Container has no size");
-          }
+          const updateSize = () => {
+            if (!app || !container) return;
+            const w = container.clientWidth || 300;
+            const h = container.clientHeight || 400;
+            try {
+              app.renderer.resize(w, h);
+              if (modelRef.current) {
+                modelRef.current.position.x = w * 0.5;
+                modelRef.current.position.y = h * positionY;
+                const newScale = Math.min(w, h) * 0.0015 * scale;
+                if (newScale > 0) {
+                  modelRef.current.scale.x = newScale;
+                  modelRef.current.scale.y = newScale;
+                }
+                if (modelRef.current.masks?.resize) {
+                  modelRef.current.masks.resize(app.view.width, app.view.height);
+                }
+              }
+            } catch (e) {}
+          };
 
-          const isMobile = isMobileRef.current;
+          const width = container.clientWidth || 300;
+          const height = container.clientHeight || 400;
+
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          ) || width < 768;
+
           const resolution = isMobile
             ? Math.min(window.devicePixelRatio || 1, 1.5)
             : Math.min(window.devicePixelRatio || 1, 2);
@@ -541,33 +548,30 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   animFrameId = requestAnimationFrame(animate);
 
                   const handleResize = () => {
-                    if (destroyedRef.current || !container || !model || !app) return;
-                    const w = container.clientWidth;
-                    const h = container.clientHeight;
-                    if (w === 0 || h === 0) return;
-                    try {
-                      app.renderer.resize(w, h);
-                      model.position.x = w * 0.5;
-                      model.position.y = h * positionY;
-                      const newScale = Math.min(w, h) * 0.0015 * scale;
-                      if (newScale > 0) {
-                        model.scale.x = newScale;
-                        model.scale.y = newScale;
-                      }
-                      if (model.masks?.resize) {
-                        model.masks.resize(app.view.width, app.view.height);
-                      }
-                    } catch (e) {}
+                    updateSize();
                   };
 
-                  if ("ResizeObserver" in window) {
-                    resizeObserverRef.current = new ResizeObserver(handleResize);
-                    resizeObserverRef.current.observe(container);
+                  let ro: any = null;
+                  if (typeof ResizeObserver !== "undefined") {
+                    ro = new ResizeObserver(handleResize);
+                    ro.observe(container);
                   } else {
                     (window as any).addEventListener("resize", handleResize);
                   }
 
-                  // 触摸和鼠标互动
+                  let lastTap = 0;
+
+                  const updatePointerPosition = (e: any) => {
+                    if (!model || !app) return;
+                    const rect = app.view.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                    const y = ((clientY - rect.top) / rect.height) * 2 - 1;
+                    model.pointerX = Math.max(-1, Math.min(1, x));
+                    model.pointerY = Math.max(-1, Math.min(1, y));
+                  };
+
                   const handlePointerDown = (e: any) => {
                     if (!model || destroyedRef.current) return;
                     model.inDrag = true;
@@ -589,146 +593,152 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   const handleTap = (e: any) => {
                     if (!model || destroyedRef.current) return;
                     const now = Date.now();
-                    if (now - lastTapRef.current < 300) return;
-                    lastTapRef.current = now;
-                    triggerRandomMotion();
-                    triggerRandomExpression();
-                  };
+                    if (now - lastTap < 300) return;
+                    lastTap = now;
 
-                  const updatePointerPosition = (e: any) => {
-                    if (!model || !app) return;
-                    const rect = app.view.getBoundingClientRect();
-                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
-                    const y = ((clientY - rect.top) / rect.height) * 2 - 1;
-                    model.pointerX = Math.max(-1, Math.min(1, x));
-                    model.pointerY = Math.max(-1, Math.min(1, y));
-                  };
-
-                  const triggerRandomMotion = () => {
-                    const motionKeys = Array.from(motionsRef.current.keys());
-                    if (motionKeys.length === 0) return;
-                    const nonIdleKeys = motionKeys.filter(
+                    const keys = Array.from(motionsRef.current.keys());
+                    const nonIdleKeys = keys.filter(
                       k => !k.toLowerCase().includes("idle") && !k.includes("微笑-正常")
                     );
-                    const keys = nonIdleKeys.length > 0 ? nonIdleKeys : motionKeys;
-                    const key = keys[Math.floor(Math.random() * keys.length)];
-                    const motion = motionsRef.current.get(key);
-                    if (!motion || !model?.animator) return;
-                    const layer = model.animator.getLayer("base");
-                    if (layer) {
-                      try { layer.play(motion); } catch (e) {}
+                    const useKeys = nonIdleKeys.length > 0 ? nonIdleKeys : keys;
+                    if (useKeys.length > 0) {
+                      const key = useKeys[Math.floor(Math.random() * useKeys.length)];
+                      const motion = motionsRef.current.get(key);
+                      if (motion && model.animator) {
+                        const layer = model.animator.getLayer("base");
+                        if (layer) {
+                          try { layer.play(motion); } catch (e) {}
+                        }
+                      }
                     }
-                  };
 
-                  const triggerRandomExpression = () => {
                     const expKeys = Array.from(expressionsRef.current.keys());
-                    if (expKeys.length === 0) return;
-                    const key = expKeys[Math.floor(Math.random() * expKeys.length)];
-                    const params = expressionsRef.current.get(key);
-                    if (!params || !model) return;
-                    params.forEach(({ id, value, blend }) => {
-                      try {
-                        if (blend === "Add") model.addParameterValueById(id, value);
-                        else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
-                        else model.setParameterValueById(id, value);
-                      } catch (e) {}
-                    });
-                  };
-
-                  const view = app.view as HTMLCanvasElement;
-                  view.addEventListener("mousedown", handlePointerDown);
-                  view.addEventListener("mousemove", handlePointerMove);
-                  view.addEventListener("mouseup", handlePointerUp);
-                  view.addEventListener("mouseleave", handlePointerUp);
-                  view.addEventListener("touchstart", (e: TouchEvent) => {
-                    e.preventDefault();
-                    handlePointerDown(e);
-                    handleTap(e);
-                  }, { passive: false });
-                  view.addEventListener("touchmove", (e: TouchEvent) => {
-                    e.preventDefault();
-                    handlePointerMove(e);
-                  }, { passive: false });
-                  view.addEventListener("touchend", handlePointerUp);
-                  view.addEventListener("click", handleTap);
-
-                  const cleanupInteractions = () => {
-                    if (app?.view) {
-                      const view = app.view as HTMLCanvasElement;
-                      view.removeEventListener("mousedown", handlePointerDown);
-                      view.removeEventListener("mousemove", handlePointerMove);
-                      view.removeEventListener("mouseup", handlePointerUp);
-                      view.removeEventListener("mouseleave", handlePointerUp);
-                      view.removeEventListener("touchstart", handlePointerDown);
-                      view.removeEventListener("touchmove", handlePointerMove);
-                      view.removeEventListener("touchend", handlePointerUp);
-                      view.removeEventListener("click", handleTap);
+                    if (expKeys.length > 0) {
+                      const expKey = expKeys[Math.floor(Math.random() * expKeys.length)];
+                      const expParams = expressionsRef.current.get(expKey);
+                      if (expParams) {
+                        expParams.forEach(({ id, value, blend }) => {
+                          try {
+                            if (blend === "Add") model.addParameterValueById(id, value);
+                            else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
+                            else model.setParameterValueById(id, value);
+                          } catch (e) {}
+                        });
+                      }
                     }
                   };
 
-                  extraCleanupRef.current = cleanupInteractions;
+                  const canvasEl = app.view as HTMLCanvasElement;
+                  canvasEl.addEventListener("mousedown", handlePointerDown);
+                  canvasEl.addEventListener("mousemove", handlePointerMove);
+                  canvasEl.addEventListener("mouseup", handlePointerUp);
+                  canvasEl.addEventListener("mouseleave", handlePointerUp);
+                  canvasEl.addEventListener("click", handleTap);
+                  canvasEl.addEventListener("touchstart", handlePointerDown, { passive: true });
+                  canvasEl.addEventListener("touchmove", handlePointerMove, { passive: true });
+                  canvasEl.addEventListener("touchend", handlePointerUp);
 
-                  if (!destroyedRef.current) {
-                    isLoadedRef.current = true;
-                    setIsLoading(false);
-                    setLoadError(null);
-                    onModelLoaded?.();
-                    resolve();
-                  } else {
-                    reject(new Error("destroyed"));
-                  }
-                } catch (err: any) {
+                  extraCleanupRef.current = () => {
+                    if (ro) {
+                      ro.disconnect();
+                      ro = null;
+                    } else {
+                      (window as any).removeEventListener("resize", handleResize);
+                    }
+                    if (canvasEl) {
+                      canvasEl.removeEventListener("mousedown", handlePointerDown);
+                      canvasEl.removeEventListener("mousemove", handlePointerMove);
+                      canvasEl.removeEventListener("mouseup", handlePointerUp);
+                      canvasEl.removeEventListener("mouseleave", handlePointerUp);
+                      canvasEl.removeEventListener("click", handleTap);
+                      canvasEl.removeEventListener("touchstart", handlePointerDown);
+                      canvasEl.removeEventListener("touchmove", handlePointerMove);
+                      canvasEl.removeEventListener("touchend", handlePointerUp);
+                    }
+                  };
+
+                  isLoadedRef.current = true;
+                  setIsLoading(false);
+                  onModelLoaded?.();
+
+                  resolve();
+                } catch (err) {
                   reject(err);
                 }
               });
             });
+
+            loader.onError.add(onError);
           });
         } catch (err: any) {
-          if (destroyedRef.current) return;
-          const msg = err.message || "Failed to load model";
-          setLoadError(msg);
+          if (err?.message !== "destroyed") {
+            console.error("Live2D load error:", err);
+            setLoadError(err?.message || "模型加载失败");
+            onError?.(err?.message || "模型加载失败");
+          }
           setIsLoading(false);
-          onError?.(msg);
           isLoadingRef.current = false;
         }
       };
 
       setup();
 
-      return () => {
-        cleanup();
-      };
-    }, [modelPath, modelName, scale, positionY, onModelLoaded, onError, webglSupported]);
-
-    if (!webglSupported) {
-      return (
-        <div ref={containerRef} className="w-full h-full relative flex items-center justify-center">
-          <div className="text-center text-white/40 text-sm px-4">
-            <div className="text-4xl mb-3">🎀</div>
-            <p>当前设备不支持WebGL</p>
-            <p className="text-xs mt-2 opacity-70">无法显示Live2D模型</p>
-          </div>
-        </div>
-      );
-    }
+      return cleanup;
+    }, [modelPath, modelName, scale, positionY, webglSupported, onModelLoaded, onError]);
 
     return (
-      <div ref={containerRef} className="w-full h-full relative">
-        <div ref={canvasContainerRef} className="w-full h-full absolute inset-0" />
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          ref={canvasContainerRef}
+          style={{
+            width: "100%",
+            height: "100%",
+          }}
+        />
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-10 h-10 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"
-                 style={{ borderWidth: "3px" }} />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "rgba(255,255,255,0.6)",
+              fontSize: "14px",
+            }}
+          >
+            加载中...
           </div>
         )}
         {loadError && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-white/40 text-sm text-center px-4">
-              <div className="text-3xl mb-2">💭</div>
-              <div className="text-xs opacity-70">模型加载中...</div>
-            </div>
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "rgba(255,100,100,0.8)",
+              fontSize: "14px",
+              textAlign: "center",
+              padding: "20px",
+            }}
+          >
+            {loadError}
           </div>
         )}
       </div>
