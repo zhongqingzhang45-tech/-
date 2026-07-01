@@ -315,7 +315,7 @@ function generateAzurLaneModels(): Live2DModelConfig[] {
   };
 
   return azurLaneModels.map((model) => ({
-    name: model.displayName,
+    name: model.name, // 使用英文文件名作为 name
     path: `/live2d-models/azurlane/${model.name}/`,
     modelFile: `${model.name}.model3.json`,
     scale: model.scale,
