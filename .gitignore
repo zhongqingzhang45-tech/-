@@ -28,3 +28,6 @@ npm-debug.log*
 # System
 .next/
 tsconfig.tsbuildinfo
+
+# External repos
+external/
