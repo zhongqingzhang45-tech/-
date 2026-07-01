@@ -16,6 +16,8 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG DATABASE_URL=postgresql://postgres:password@localhost:5432/lifeos?schema=public
+ENV DATABASE_URL=$DATABASE_URL
 RUN npm run build
 
 FROM base AS runner
