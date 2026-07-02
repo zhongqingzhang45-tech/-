@@ -11,4 +11,10 @@ export type {
   MemorySearchResult,
   PersonaConfig,
   RulesConfig,
+  YamlFrontMatter,
+  LayerLoadStrategy,
+  ProfileFileType,
+  CoreFileType,
+  InsightsFileType,
 } from "./types";
+export { DEFAULT_LOAD_STRATEGY } from "./types";

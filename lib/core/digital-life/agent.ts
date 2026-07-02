@@ -1516,7 +1516,7 @@ export class DigitalLifeAgent {
       const recentMemories = this.memorySystem.getRecentMemories(24).slice(0, 5).map(m => m.content);
       const moodLabel = MOOD_CONFIG[this.lifeState.emotion.mood as keyof typeof MOOD_CONFIG]?.label || "平静";
       const personaLabel = PERSONA_MODE_LABELS[decision.personaMode] || "正常模式";
-      const mdMemoryContext = this.mdMemory.getContextForPrompt(1500);
+      const mdMemoryContext = this.mdMemory.getContextForPrompt(userInput, 1500);
 
       const systemPrompt = buildCharacterSystemPrompt({
         name: this.profile.name,
@@ -2172,6 +2172,7 @@ export class DigitalLifeAgent {
         const recentMemories = this.memorySystem.getRecentMemories(24).slice(0, 5).map(m => m.content);
         const moodLabel = MOOD_CONFIG[this.lifeState.emotion.mood as keyof typeof MOOD_CONFIG]?.label || "平静";
         const personaLabel = PERSONA_MODE_LABELS[decision.personaMode] || "正常模式";
+        const mdMemoryContext = this.mdMemory.getContextForPrompt(undefined, 1000);
 
         const systemPrompt = buildCharacterSystemPrompt({
           name: this.profile.name,
@@ -2184,6 +2185,7 @@ export class DigitalLifeAgent {
           relationshipType: this.profile.relationshipType,
           affectionLevel: Math.round(this.lifeState.persona.affection),
           recentMemories,
+          extraContext: mdMemoryContext,
         });
 
         const llmMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

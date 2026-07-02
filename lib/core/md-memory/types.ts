@@ -1,9 +1,43 @@
 export type MemoryLayer = "core" | "profile" | "logs" | "insights";
 
+export type CoreFileType = "persona" | "rules" | "values" | "identity";
+export type ProfileFileType =
+  | "facts/basic"
+  | "facts/biography"
+  | "facts/social"
+  | "preferences/food"
+  | "preferences/music"
+  | "preferences/movie"
+  | "preferences/hobby"
+  | "preferences/style"
+  | "preferences/custom"
+  | "emotional/current"
+  | "emotional/history"
+  | "emotional/triggers";
+export type InsightsFileType =
+  | "relationships/primary"
+  | "relationships/patterns"
+  | "milestones/achievements"
+  | "milestones/future_goals";
+
+export interface YamlFrontMatter {
+  title: string;
+  layer: MemoryLayer;
+  category: string;
+  version: string;
+  last_updated: string;
+  update_frequency: "immutable" | "low" | "medium" | "high" | "realtime";
+  confidence: number;
+  tags: string[];
+  description: string;
+}
+
 export interface MemoryFile {
   path: string;
   layer: MemoryLayer;
   name: string;
+  frontMatter: YamlFrontMatter;
+  body: string;
   content: string;
   lastModified: number;
   version: number;
@@ -96,3 +130,49 @@ export interface RulesConfig {
   taboos: string[];
   safetyProtocols: string[];
 }
+
+export interface LayerLoadStrategy {
+  core: {
+    mode: "always";
+    injectTo: "system_prompt";
+  };
+  profile: {
+    mode: "session_start" | "relevant";
+    injectTo: "system_prompt" | "user_context";
+    maxTokens: number;
+  };
+  logs: {
+    mode: "rag";
+    injectTo: "user_context";
+    topK: number;
+    similarityThreshold: number;
+  };
+  insights: {
+    mode: "session_start" | "relevant";
+    injectTo: "system_prompt" | "user_context";
+    maxTokens: number;
+  };
+}
+
+export const DEFAULT_LOAD_STRATEGY: LayerLoadStrategy = {
+  core: {
+    mode: "always",
+    injectTo: "system_prompt",
+  },
+  profile: {
+    mode: "session_start",
+    injectTo: "system_prompt",
+    maxTokens: 1000,
+  },
+  logs: {
+    mode: "rag",
+    injectTo: "user_context",
+    topK: 5,
+    similarityThreshold: 0.3,
+  },
+  insights: {
+    mode: "relevant",
+    injectTo: "user_context",
+    maxTokens: 500,
+  },
+};
