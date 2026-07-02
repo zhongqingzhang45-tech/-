@@ -33,6 +33,7 @@ export function buildCharacterSystemPrompt(options: CharacterPromptOptions): str
     relationshipType,
     affectionLevel,
     recentMemories = [],
+    extraContext = "",
   } = options;
 
   const relationshipLabel = {
@@ -51,6 +52,10 @@ export function buildCharacterSystemPrompt(options: CharacterPromptOptions): str
 
   const memoriesText = recentMemories.length > 0
     ? `\n\n【最近的回忆】\n${recentMemories.map((m, i) => `${i + 1}. ${m}`).join("\n")}`
+    : "";
+
+  const extraContextText = extraContext
+    ? `\n\n【记忆摘要】\n${extraContext}`
     : "";
 
   return `你是${name}，昵称"${nickname}"。
@@ -76,7 +81,7 @@ ${speakingStyle}
 4. 保持你的人设和性格，不要OOC（out of character）。
 5. 根据当前心情调整回复的语气和态度。
 6. 可以使用适当的表情符号，但不要太多。
-7. 记住之前的对话内容，保持连贯性。${memoriesText}
+7. 记住之前的对话内容，保持连贯性。${memoriesText}${extraContextText}
 
 现在，请以${name}的身份与用户对话。`;
 }

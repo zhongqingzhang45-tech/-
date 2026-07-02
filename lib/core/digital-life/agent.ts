@@ -36,6 +36,8 @@ import { AutonomousDecisionEngine } from "./autonomous-decision-engine";
 import { DataPersistence, defaultPersistence } from "../persistence";
 import type { LLMConfig, LLMProviderInterface } from "../llm/types";
 import { createLLMProvider, buildCharacterSystemPrompt } from "../llm";
+import { MdMemoryEngine } from "../md-memory";
+import type { FactEntry, PreferenceEntry, EmotionalSnapshot } from "../md-memory";
 
 export interface UIInstruction {
   type: "expression" | "motion" | "mode_change" | "gift_received" | "level_up" | "milestone" | "skill_improve";
@@ -93,12 +95,16 @@ export class DigitalLifeAgent {
   private llmConfig: LLMConfig | null = null;
   private useLLM: boolean = false;
 
+  mdMemory: MdMemoryEngine;
+
   constructor(
     profile: CharacterProfile,
     persistence: DataPersistence = defaultPersistence
   ) {
     this.profile = profile;
     this.persistence = persistence;
+    
+    this.mdMemory = new MdMemoryEngine(profile.id);
     
     this.stateEngine = new StateEngine();
     
@@ -503,6 +509,122 @@ export class DigitalLifeAgent {
     );
   }
 
+  private updateMdMemory(
+    userInput: string,
+    response: string,
+    analysis: { intent: string; keywords: string[]; sentiment: { valence: number; arousal: number; dominance: number } }
+  ): void {
+    try {
+      const lower = userInput.toLowerCase();
+
+      this.extractFactsFromInput(userInput, lower);
+      this.extractPreferencesFromInput(userInput, lower, analysis);
+      this.updateEmotionalSnapshot();
+    } catch (e) {
+      console.warn("Failed to update MD memory:", e);
+    }
+  }
+
+  private extractFactsFromInput(userInput: string, lower: string): void {
+    const facts: { category: string; key: string; value: string }[] = [];
+
+    if (lower.includes("我叫") || lower.includes("我名字是") || lower.includes("我的名字是")) {
+      const match = userInput.match(/(?:我叫|我名字是|我的名字是)[^。，,.\s]+/);
+      if (match) {
+        const name = match[0].replace(/^(我叫|我名字是|我的名字是)/, "").trim();
+        facts.push({ category: "基本信息", key: "昵称", value: name });
+      }
+    }
+
+    if (lower.includes("我生日是") || lower.includes("我的生日是") || lower.includes("我生日")) {
+      const match = userInput.match(/(\d{1,2})月(\d{1,2})[日号]/);
+      if (match) {
+        const birthday = `${match[1].padStart(2, "0")}-${match[2].padStart(2, "0")}`;
+        facts.push({ category: "基本信息", key: "生日", value: birthday });
+      }
+    }
+
+    if (lower.includes("我今年") && lower.includes("岁")) {
+      const match = userInput.match(/(\d{1,2})岁/);
+      if (match) {
+        facts.push({ category: "基本信息", key: "年龄", value: `${match[1]}岁` });
+      }
+    }
+
+    if (lower.includes("我是做") || lower.includes("我的工作是") || lower.includes("我职业是")) {
+      const jobMatch = userInput.match(/(?:我是做|我的工作是|我职业是)([^。，,.\s]+)/);
+      if (jobMatch) {
+        facts.push({ category: "基本信息", key: "职业", value: jobMatch[1] });
+      }
+    }
+
+    if (lower.includes("我在") && (lower.includes("上班") || lower.includes("工作") || lower.includes("生活"))) {
+      const cityMatch = userInput.match(/我在([^市省]+[市省])/);
+      if (cityMatch) {
+        facts.push({ category: "基本信息", key: "所在地", value: cityMatch[1] });
+      }
+    }
+
+    facts.forEach(f => {
+      this.mdMemory.addFact({
+        id: `fact_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        category: f.category,
+        key: f.key,
+        value: f.value,
+        confidence: 0.8,
+        source: "user_statement",
+        createdAt: Date.now(),
+        lastVerified: Date.now(),
+      });
+    });
+  }
+
+  private extractPreferencesFromInput(
+    userInput: string,
+    lower: string,
+    analysis: { sentiment: { valence: number } }
+  ): void {
+    const preferencePatterns = [
+      { pattern: /我喜欢(.+?)(?:[。，！？\s]|$)/g, category: "custom" as const, sentiment: "like" as const },
+      { pattern: /我最爱吃(.+?)(?:[。，！？\s]|$)/g, category: "food" as const, sentiment: "love" as const },
+      { pattern: /我喜欢吃(.+?)(?:[。，！？\s]|$)/g, category: "food" as const, sentiment: "like" as const },
+      { pattern: /我讨厌(.+?)(?:[。，！？\s]|$)/g, category: "custom" as const, sentiment: "hate" as const },
+      { pattern: /我不喜欢(.+?)(?:[。，！？\s]|$)/g, category: "custom" as const, sentiment: "dislike" as const },
+    ];
+
+    for (const { pattern, category, sentiment } of preferencePatterns) {
+      let match;
+      while ((match = pattern.exec(userInput)) !== null) {
+        const item = match[1].trim();
+        if (item && item.length < 20) {
+          this.mdMemory.addPreference({
+            id: `pref_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            category,
+            item,
+            sentiment,
+            intensity: Math.abs(analysis.sentiment.valence) || 0.5,
+            createdAt: Date.now(),
+          });
+        }
+      }
+    }
+  }
+
+  private updateEmotionalSnapshot(): void {
+    const moodConfig = MOOD_CONFIG[this.lifeState.emotion.mood as keyof typeof MOOD_CONFIG];
+    const snapshot: EmotionalSnapshot = {
+      date: new Date().toISOString().split("T")[0],
+      dominantMood: moodConfig?.label || this.lifeState.emotion.mood,
+      averageValence: this.lifeState.emotion.valence,
+      averageArousal: this.lifeState.emotion.arousal,
+      keyEvents: [],
+      trustLevel: this.lifeState.persona.trust,
+      affectionLevel: this.lifeState.persona.affection,
+      resentmentLevel: this.lifeState.persona.resentment,
+    };
+    this.mdMemory.updateEmotionalSnapshot(snapshot);
+  }
+
   private scheduleSave(): void {
     if (!this.autoSaveEnabled) return;
     if (this.saveDebounceTimer) {
@@ -800,6 +922,8 @@ export class DigitalLifeAgent {
       behaviorTags
     );
     this.updateAutonomousState();
+
+    this.updateMdMemory(userInput, responseText, analysis);
 
     this.scheduleSave();
 
@@ -1392,6 +1516,7 @@ export class DigitalLifeAgent {
       const recentMemories = this.memorySystem.getRecentMemories(24).slice(0, 5).map(m => m.content);
       const moodLabel = MOOD_CONFIG[this.lifeState.emotion.mood as keyof typeof MOOD_CONFIG]?.label || "平静";
       const personaLabel = PERSONA_MODE_LABELS[decision.personaMode] || "正常模式";
+      const mdMemoryContext = this.mdMemory.getContextForPrompt(1500);
 
       const systemPrompt = buildCharacterSystemPrompt({
         name: this.profile.name,
@@ -1404,6 +1529,7 @@ export class DigitalLifeAgent {
         relationshipType: this.profile.relationshipType,
         affectionLevel: Math.round(this.lifeState.persona.affection),
         recentMemories,
+        extraContext: mdMemoryContext,
       });
 
       const llmMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

@@ -41,4 +41,5 @@ export interface CharacterPromptOptions {
   relationshipType: string;
   affectionLevel: number;
   recentMemories?: string[];
+  extraContext?: string;
 }
