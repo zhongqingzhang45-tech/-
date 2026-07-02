@@ -307,6 +307,8 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
               else reject(err);
             };
 
+            loader.onError.add(onError);
+
             loader.load((_l1: any, res1: any) => {
               if (destroyedRef.current) { reject(new Error("destroyed")); return; }
               const model3 = res1.model_json?.data;
@@ -359,13 +361,6 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                 });
               }
 
-              let groups = null;
-              if (model3.Groups) {
-                try {
-                  groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3);
-                } catch (e) {}
-              }
-
               loader.load((_l2: any, res2: any) => {
                 if (destroyedRef.current) { reject(new Error("destroyed")); return; }
                 try {
@@ -377,9 +372,29 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
                   const textures: any[] = [];
                   for (let i = 0; i < textureCount; i++) {
-                    if (res2[`texture${i}`]?.texture) {
-                      textures[i] = res2[`texture${i}`].texture;
+                    const tex = res2[`texture${i}`]?.texture;
+                    if (!tex) {
+                      console.warn(`Texture ${i} not loaded, using placeholder`);
+                      const placeholder = PIXI.Texture.fromCanvas(
+                        (() => {
+                          const c = document.createElement("canvas");
+                          c.width = 256;
+                          c.height = 256;
+                          const ctx = c.getContext("2d");
+                          if (ctx) {
+                            ctx.fillStyle = "#ffcccc";
+                            ctx.fillRect(0, 0, 256, 256);
+                          }
+                          return c;
+                        })()
+                      );
+                      textures[i] = placeholder;
+                    } else {
+                      textures[i] = tex;
                     }
+                  }
+                  if (textures.length === 0) {
+                    throw new Error("No textures loaded");
                   }
 
                   const coreModel = Live2DCubismCore.Model.fromMoc(moc);
@@ -400,7 +415,9 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                         .setTarget(coreModel)
                         .setTimeScale(1)
                         .build();
-                    } catch (e) {}
+                    } catch (e) {
+                      console.warn("Physics rig creation failed:", e);
+                    }
                   }
 
                   const motions = new Map<string, any>();
@@ -431,6 +448,13 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   });
                   expressionsRef.current = expressions;
 
+                  let groups = null;
+                  if (model3.Groups) {
+                    try {
+                      groups = LIVE2DCUBISMFRAMEWORK.Groups.fromModel3Json(model3);
+                    } catch (e) {}
+                  }
+
                   const model = LIVE2DCUBISMPIXI.Model._create(
                     coreModel,
                     textures,
@@ -439,6 +463,10 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     null,
                     groups
                   );
+
+                  if (!model || !model.isValid) {
+                    throw new Error("Failed to create Live2D model (isValid=false)");
+                  }
 
                   model.motions = motions;
                   model.inDrag = false;
