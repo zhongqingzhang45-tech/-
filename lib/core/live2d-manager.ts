@@ -25,6 +25,151 @@ export interface Live2DModelConfig {
   emotionToMotions: Record<MoodType, string[]>;
 }
 
+export interface TouchZone {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface TouchReaction {
+  motion?: string;
+  expression?: string;
+  text?: string;
+  mood?: MoodType;
+}
+
+export interface TouchZoneConfig {
+  zone: TouchZone;
+  reactions: Partial<Record<MoodType, TouchReaction[]>>;
+  defaultReactions: TouchReaction[];
+}
+
+export const DEFAULT_TOUCH_ZONES: TouchZoneConfig[] = [
+  {
+    zone: { id: "head", name: "头", x: -0.3, y: -0.6, width: 0.6, height: 0.45 },
+    reactions: {
+      happy: [
+        { motion: "脸红-眯眼笑", expression: "happy-02", text: "嘿嘿～好舒服～" },
+        { motion: "高兴-左右摇摆", expression: "happy-01", text: "再摸摸嘛～" },
+      ],
+      shy: [
+        { motion: "脸红-眯眼埋头", expression: "shy", text: "别、别乱摸..." },
+      ],
+      angry: [
+        { motion: "生气-被惊后埋头看地", expression: "angry", text: "哼！别碰我的头！" },
+      ],
+      love: [
+        { motion: "脸红-眯眼笑", expression: "shy", text: "喜欢...被你摸摸头..." },
+      ],
+    },
+    defaultReactions: [
+      { motion: "俏皮-微微摇头", expression: "smile", text: "嗯？" },
+      { motion: "疑惑-张开双手定睛轻微往前一看", expression: "smile", text: "怎么啦？" },
+    ],
+  },
+  {
+    zone: { id: "cheek", name: "脸颊", x: -0.18, y: -0.4, width: 0.36, height: 0.25 },
+    reactions: {
+      happy: [
+        { motion: "脸红-眯眼笑", expression: "happy-02", text: "呀～好痒～" },
+      ],
+      shy: [
+        { motion: "脸红-身体往前倾", expression: "shy", text: "讨、讨厌..." },
+      ],
+      angry: [
+        { motion: "否定-微微摇头", expression: "angry", text: "别戳我！" },
+      ],
+      love: [
+        { motion: "脸红-眯眼埋头", expression: "shy", text: "笨蛋..." },
+      ],
+    },
+    defaultReactions: [
+      { motion: "疑惑-张开双手定睛轻微往前一看", text: "嗯？" },
+    ],
+  },
+  {
+    zone: { id: "shoulder", name: "肩膀", x: -0.45, y: -0.1, width: 0.9, height: 0.25 },
+    reactions: {
+      happy: [
+        { motion: "高兴-身体前倾眯眼", expression: "happy-01", text: "怎么啦？" },
+      ],
+      shy: [
+        { motion: "脸红-身体往前倾", expression: "shy", text: "干、干嘛..." },
+      ],
+      angry: [
+        { motion: "生气-被惊后埋头看地", expression: "angry", text: "别乱碰！" },
+      ],
+    },
+    defaultReactions: [
+      { motion: "微笑-点头", expression: "smile", text: "嗯？" },
+      { motion: "疑惑-手放嘴角", expression: "smile", text: "有什么事吗？" },
+    ],
+  },
+  {
+    zone: { id: "hand", name: "手", x: -0.55, y: 0.15, width: 0.25, height: 0.3 },
+    reactions: {
+      happy: [
+        { motion: "高兴-左右摇摆", expression: "happy-02", text: "牵手手～" },
+      ],
+      shy: [
+        { motion: "脸红-身体往前倾", expression: "shy", text: "手、手..." },
+      ],
+      love: [
+        { motion: "微笑-向前浅鞠躬", expression: "shy", text: "想一直牵着..." },
+      ],
+    },
+    defaultReactions: [
+      { motion: "俏皮-微微摇头", expression: "smile", text: "我的手好看吗？" },
+    ],
+  },
+  {
+    zone: { id: "body", name: "身体", x: -0.35, y: 0.0, width: 0.7, height: 0.5 },
+    reactions: {
+      happy: [
+        { motion: "高兴-身体前倾眯眼", expression: "happy-01", text: "哈哈别闹～" },
+      ],
+      shy: [
+        { motion: "脸红-眯眼埋头", expression: "shy", text: "别、别靠那么近..." },
+      ],
+      angry: [
+        { motion: "否定-摆双手摇头", expression: "angry", text: "变态！" },
+      ],
+    },
+    defaultReactions: [
+      { motion: "惊讶-双手放开", expression: "surprise", text: "诶？" },
+      { motion: "无奈-叉手点头", expression: "smile", text: "真是的..." },
+    ],
+  },
+];
+
+export const LIP_SYNC_PARAMS = {
+  mouthOpenY: "ParamMouthOpenY",
+  mouthForm: "ParamMouthForm",
+  mouthUp: "ParamMouthUp",
+  mouthLower: "ParamMouthLower",
+};
+
+export const EYE_PARAMS = {
+  eyeBallX: "ParamEyeBallX",
+  eyeBallY: "ParamEyeBallY",
+  eyeL: "ParamEyeL",
+  eyeR: "ParamEyeR",
+  eyeLSmile: "ParamEyeLSmile",
+  eyeRSmile: "ParamEyeRSmile",
+};
+
+export const IDLE_ANIMATION_CONFIG = {
+  blinkInterval: { min: 2000, max: 6000 },
+  blinkDuration: 150,
+  breatheAmplitude: 0.02,
+  breatheSpeed: 0.001,
+  saccadeInterval: { min: 3000, max: 8000 },
+  saccadeRange: 0.3,
+};
+
 export const DEFAULT_EMOTION_MAP: Record<MoodType, string> = {
   neutral: "smile",
   happy: "happy-02",
@@ -205,6 +350,36 @@ export class Live2DManager {
   blink(): void {
     if (!this.isLoaded) return;
     this.emit("blink");
+  }
+
+  setMouthOpen(value: number): void {
+    if (!this.isLoaded) return;
+    this.emit("mouthOpen", value);
+  }
+
+  setEyePosition(x: number, y: number): void {
+    if (!this.isLoaded) return;
+    this.emit("eyePosition", { x, y });
+  }
+
+  handleTouch(normalizedX: number, normalizedY: number, currentMood: MoodType): TouchReaction | null {
+    for (const zoneConfig of DEFAULT_TOUCH_ZONES) {
+      const zone = zoneConfig.zone;
+      if (
+        normalizedX >= zone.x &&
+        normalizedX <= zone.x + zone.width &&
+        normalizedY >= zone.y &&
+        normalizedY <= zone.y + zone.height
+      ) {
+        const moodReactions = zoneConfig.reactions[currentMood] || [];
+        const allReactions = [...moodReactions, ...zoneConfig.defaultReactions];
+        if (allReactions.length === 0) return null;
+        const reaction = allReactions[Math.floor(Math.random() * allReactions.length)];
+        this.emit("touched", { zone: zone.id, reaction });
+        return reaction;
+      }
+    }
+    return null;
   }
 
   getCurrentExpression(): string {

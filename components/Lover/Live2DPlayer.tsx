@@ -9,6 +9,8 @@ export interface Live2DPlayerProps {
   positionY?: number;
   onModelLoaded?: () => void;
   onError?: (error: string) => void;
+  onTouched?: (zone: string, reaction: { motion?: string; expression?: string; text?: string }) => void;
+  currentMood?: string;
   forwardedRef?: React.Ref<Live2DPlayerRef>;
 }
 
@@ -17,6 +19,9 @@ export interface Live2DPlayerRef {
   triggerRandomMotion: () => void;
   setExpression: (name: string) => void;
   getModelInfo: () => { motions: string[]; expressions: string[] };
+  startLipSync: (text?: string) => void;
+  stopLipSync: () => void;
+  setEyeTarget: (x: number, y: number) => void;
 }
 
 declare global {
@@ -85,7 +90,7 @@ function checkLibs(): boolean {
 }
 
 const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
-  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, forwardedRef }, ref) => {
+  ({ modelPath, modelName, scale = 1, positionY = 0.5, onModelLoaded, onError, onTouched, currentMood = "neutral", forwardedRef }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<any>(null);
@@ -96,6 +101,9 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     const isLoadingRef = useRef(false);
     const destroyedRef = useRef(false);
     const extraCleanupRef = useRef<(() => void) | null>(null);
+    const animationControllerRef = useRef<any>(null);
+    const moodRef = useRef(currentMood);
+    const onTouchedRef = useRef(onTouched);
 
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -165,11 +173,28 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
         motions: Array.from(motionsRef.current.keys()),
         expressions: Array.from(expressionsRef.current.keys()),
       }),
+      startLipSync: (text?: string) => {
+        animationControllerRef.current?.lipSync.startSpeaking(text);
+      },
+      stopLipSync: () => {
+        animationControllerRef.current?.lipSync.stopSpeaking();
+      },
+      setEyeTarget: (x: number, y: number) => {
+        animationControllerRef.current?.eyeTracking.setTarget(x, y);
+      },
     }));
 
     useEffect(() => {
       setWebglSupported(checkWebGLSupport());
     }, []);
+
+    useEffect(() => {
+      moodRef.current = currentMood;
+    }, [currentMood]);
+
+    useEffect(() => {
+      onTouchedRef.current = onTouched;
+    }, [onTouched]);
 
     useEffect(() => {
       if (!webglSupported) {
@@ -525,6 +550,12 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                         model.addParameterValueById?.("ParamEyeBallY", -model.pointerY);
                       }
 
+                      if (animationControllerRef.current) {
+                        try {
+                          animationControllerRef.current.update(dt);
+                        } catch (e) {}
+                      }
+
                       if (model._physicsRig) {
                         model._physicsRig.updateAndEvaluate?.(dt);
                       }
@@ -611,6 +642,14 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     if (model.inDrag) {
                       updatePointerPosition(e);
                     }
+                    if (animationControllerRef.current?.eyeTracking) {
+                      const rect = app.view.getBoundingClientRect();
+                      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                      const x = (clientX - rect.left) / rect.width * 2 - 1;
+                      const y = (clientY - rect.top) / rect.height * 2 - 1;
+                      animationControllerRef.current.eyeTracking.setTarget(x, -y);
+                    }
                   };
 
                   const handlePointerUp = () => {
@@ -624,34 +663,86 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     if (now - lastTap < 300) return;
                     lastTap = now;
 
-                    const keys = Array.from(motionsRef.current.keys());
-                    const nonIdleKeys = keys.filter(
-                      k => !k.toLowerCase().includes("idle") && !k.includes("微笑-正常")
-                    );
-                    const useKeys = nonIdleKeys.length > 0 ? nonIdleKeys : keys;
-                    if (useKeys.length > 0) {
-                      const key = useKeys[Math.floor(Math.random() * useKeys.length)];
-                      const motion = motionsRef.current.get(key);
-                      if (motion && model.animator) {
-                        const layer = model.animator.getLayer("base");
-                        if (layer) {
-                          try { layer.play(motion); } catch (e) {}
-                        }
+                    updatePointerPosition(e);
+                    const nx = model.pointerX || 0;
+                    const ny = -(model.pointerY || 0);
+
+                    const touchZones = [
+                      { id: "head", name: "头", x: -0.3, y: -0.6, w: 0.6, h: 0.45 },
+                      { id: "cheek", name: "脸颊", x: -0.18, y: -0.4, w: 0.36, h: 0.25 },
+                      { id: "shoulder", name: "肩膀", x: -0.45, y: -0.15, w: 0.9, h: 0.25 },
+                      { id: "body", name: "身体", x: -0.35, y: 0.0, w: 0.7, h: 0.5 },
+                      { id: "hand", name: "手", x: -0.55, y: 0.15, w: 0.25, h: 0.3 },
+                    ];
+
+                    let hitZone = null;
+                    for (const zone of touchZones) {
+                      if (nx >= zone.x && nx <= zone.x + zone.w &&
+                          ny >= zone.y && ny <= zone.y + zone.h) {
+                        hitZone = zone;
+                        break;
                       }
                     }
 
-                    const expKeys = Array.from(expressionsRef.current.keys());
-                    if (expKeys.length > 0) {
-                      const expKey = expKeys[Math.floor(Math.random() * expKeys.length)];
-                      const expParams = expressionsRef.current.get(expKey);
-                      if (expParams) {
-                        expParams.forEach(({ id, value, blend }) => {
-                          try {
-                            if (blend === "Add") model.addParameterValueById(id, value);
-                            else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
-                            else model.setParameterValueById(id, value);
-                          } catch (e) {}
-                        });
+                    if (hitZone) {
+                      const motionKeys = Array.from(motionsRef.current.keys());
+                      if (motionKeys.length > 0) {
+                        const key = motionKeys[Math.floor(Math.random() * motionKeys.length)];
+                        const motion = motionsRef.current.get(key);
+                        if (motion && model.animator) {
+                          const layer = model.animator.getLayer("base");
+                          if (layer) {
+                            try { layer.play(motion); } catch (e) {}
+                          }
+                        }
+                      }
+
+                      const expKeys = Array.from(expressionsRef.current.keys());
+                      if (expKeys.length > 0) {
+                        const expKey = expKeys[Math.floor(Math.random() * expKeys.length)];
+                        const expParams = expressionsRef.current.get(expKey);
+                        if (expParams) {
+                          expParams.forEach(({ id, value, blend }) => {
+                            try {
+                              if (blend === "Add") model.addParameterValueById(id, value);
+                              else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
+                              else model.setParameterValueById(id, value);
+                            } catch (e) {}
+                          });
+                        }
+                      }
+
+                      onTouchedRef.current?.(hitZone.id, { motion: "", expression: "", text: "" });
+                    } else {
+                      const keys = Array.from(motionsRef.current.keys());
+                      const nonIdleKeys = keys.filter(
+                        k => !k.toLowerCase().includes("idle") && !k.includes("微笑-正常")
+                      );
+                      const useKeys = nonIdleKeys.length > 0 ? nonIdleKeys : keys;
+                      if (useKeys.length > 0) {
+                        const key = useKeys[Math.floor(Math.random() * useKeys.length)];
+                        const motion = motionsRef.current.get(key);
+                        if (motion && model.animator) {
+                          const layer = model.animator.getLayer("base");
+                          if (layer) {
+                            try { layer.play(motion); } catch (e) {}
+                          }
+                        }
+                      }
+
+                      const expKeys = Array.from(expressionsRef.current.keys());
+                      if (expKeys.length > 0) {
+                        const expKey = expKeys[Math.floor(Math.random() * expKeys.length)];
+                        const expParams = expressionsRef.current.get(expKey);
+                        if (expParams) {
+                          expParams.forEach(({ id, value, blend }) => {
+                            try {
+                              if (blend === "Add") model.addParameterValueById(id, value);
+                              else if (blend === "Multiply") model.multiplyParameterValueById(id, value);
+                              else model.setParameterValueById(id, value);
+                            } catch (e) {}
+                          });
+                        }
                       }
                     }
                   };
@@ -683,7 +774,32 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                       canvasEl.removeEventListener("touchmove", handlePointerMove);
                       canvasEl.removeEventListener("touchend", handlePointerUp);
                     }
+                    if (animationControllerRef.current) {
+                      try { animationControllerRef.current.destroy(); } catch (e) {}
+                      animationControllerRef.current = null;
+                    }
                   };
+
+                  const initAnimationController = async () => {
+                    try {
+                      const mod = await import("@/lib/core/live2d-animation-controller");
+                      const controller = new mod.Live2DAnimationController();
+                      const modelWrapper = {
+                        setParameterValueById: (id: string, value: number) => {
+                          try { model.setParameterValueById(id, value); } catch (e) {}
+                        },
+                        getParameterValueById: (id: string) => {
+                          try { return model.getParameterValueById(id); } catch (e) { return 0; }
+                        },
+                      };
+                      controller.setModel(modelWrapper);
+                      controller.start();
+                      animationControllerRef.current = controller;
+                    } catch (e) {
+                      console.warn("Failed to init animation controller:", e);
+                    }
+                  };
+                  initAnimationController();
 
                   isLoadedRef.current = true;
                   setIsLoading(false);

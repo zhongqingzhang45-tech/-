@@ -256,6 +256,15 @@ export default function LoverPage() {
             live2dRef.current?.playMotion(motionName);
           }, 300);
         }
+
+        if (lastMsg.content) {
+          live2dRef.current?.startLipSync(lastMsg.content);
+          const charCount = lastMsg.content.length;
+          const duration = Math.max(1500, charCount * 150);
+          setTimeout(() => {
+            live2dRef.current?.stopLipSync();
+          }, duration);
+        }
       }
     }
   }, [messages, isTyping, modelReady, currentCharacter.model]);
@@ -531,8 +540,12 @@ export default function LoverPage() {
               modelName={currentCharacter.model}
               scale={isMobile ? 1.5 : currentCharacter.scale}
               positionY={isMobile ? 0.5 : currentCharacter.positionY}
+              currentMood={mood}
               onModelLoaded={() => setModelReady(true)}
               onError={(err) => console.error("Live2D error:", err)}
+              onTouched={(zone, reaction) => {
+                console.log("Touched zone:", zone);
+              }}
             />
           </div>
           <div 
