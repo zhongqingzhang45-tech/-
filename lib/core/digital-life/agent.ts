@@ -1747,6 +1747,158 @@ export class DigitalLifeAgent {
     this.scheduleSave();
   }
 
+  handleInteraction(zone: string): {
+    reaction: string;
+    affectionChange: number;
+    mood: string;
+    motion: string;
+  } {
+    const isFemale = this.profile.gender === "female";
+    const intimacy = this.lifeState.relationship.intimacy;
+    const resentment = this.lifeState.persona.resentment;
+
+    if (resentment > 60) {
+      this.personaMatrix.state.resentment = Math.min(100, resentment + 3);
+      this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
+      this.emotionSystem.triggerMood("angry", 0.6);
+      this.lifeState.emotion = { ...this.emotionSystem.state };
+      this.scheduleSave();
+      return {
+        reaction: isFemale ? "哼！别碰我！" : "……（躲开）",
+        affectionChange: -5,
+        mood: "angry",
+        motion: "shake",
+      };
+    }
+
+    let reaction = "";
+    let affectionDelta = 0;
+    let targetMood: string = "happy";
+    let motion = "idle";
+
+    switch (zone) {
+      case "head":
+        affectionDelta = 2;
+        targetMood = intimacy > 60 ? "affectionate" : "happy";
+        motion = "happy";
+        if (intimacy > 70) {
+          reaction = isFemale
+            ? "嘿嘿～摸头好舒服～再摸摸嘛 🥰"
+            : "……嗯。（闭上眼睛）";
+        } else if (intimacy > 40) {
+          reaction = isFemale
+            ? "哎？突然摸头... 有点害羞啦 😳"
+            : "做什么。（微微偏头）";
+        } else {
+          reaction = isFemale
+            ? "啊！你干嘛啦... 突然摸人家头 😤"
+            : "……（皱眉）";
+        }
+        break;
+
+      case "cheek":
+        affectionDelta = 3;
+        targetMood = intimacy > 50 ? "shy" : "surprised";
+        motion = "shy";
+        if (intimacy > 70) {
+          reaction = isFemale
+            ? "唔... 脸脸... 好痒啦～ 💕"
+            : "……（耳朵红了）";
+        } else if (intimacy > 40) {
+          reaction = isFemale
+            ? "哇！你怎么突然捏人家脸！ 😳"
+            : "别乱动。";
+        } else {
+          reaction = isFemale
+            ? "变态！你干什么！ 😠"
+            : "……（拍开手）";
+        }
+        break;
+
+      case "shoulder":
+        affectionDelta = 1;
+        targetMood = "calm";
+        motion = "idle";
+        reaction = isFemale
+          ? "怎么啦？有什么想对我说的吗？"
+          : "嗯？怎么了。";
+        break;
+
+      case "body":
+        affectionDelta = intimacy > 60 ? 2 : -3;
+        targetMood = intimacy > 60 ? "affectionate" : "angry";
+        motion = intimacy > 60 ? "happy" : "angry";
+        if (intimacy > 70) {
+          reaction = isFemale
+            ? "讨、讨厌啦... 这里很敏感的... 💕"
+            : "……随便你。";
+        } else if (intimacy > 50) {
+          reaction = isFemale
+            ? "喂！你往哪里摸呢！ 😳"
+            : "别乱碰。";
+        } else {
+          affectionDelta = -8;
+          this.personaMatrix.state.resentment = Math.min(100, resentment + 10);
+          this.lifeState.persona.resentment = this.personaMatrix.state.resentment;
+          reaction = isFemale
+            ? "变态啊！你给我走开！ 😠"
+            : "你想死吗。（冷眼）";
+        }
+        break;
+
+      case "hand":
+        affectionDelta = 2;
+        targetMood = intimacy > 50 ? "affectionate" : "shy";
+        motion = "happy";
+        if (intimacy > 70) {
+          reaction = isFemale
+            ? "牵手手～ 这样感觉好安心呢 💗"
+            : "……（握紧）";
+        } else if (intimacy > 40) {
+          reaction = isFemale
+            ? "哎？突然牵手... 你的手好温暖... 👉👈"
+            : "……（犹豫了一下，还是握住了）";
+        } else {
+          reaction = isFemale
+            ? "你、你干嘛牵人家手啦！ 😳"
+            : "……（抽回手）";
+        }
+        break;
+
+      default:
+        reaction = isFemale ? "嗯？怎么啦～" : "怎么了。";
+        break;
+    }
+
+    this.personaMatrix.state.affection = Math.max(0, Math.min(100,
+      this.personaMatrix.state.affection + affectionDelta
+    ));
+    this.lifeState.persona.affection = this.personaMatrix.state.affection;
+
+    this.emotionSystem.triggerMood(targetMood as any, 0.6);
+    this.lifeState.emotion = { ...this.emotionSystem.state };
+
+    this.memorySystem.addMemory(
+      "event",
+      `用户触摸了${zone}部位，反应：${reaction.substring(0, 30)}`,
+      0.4,
+      affectionDelta > 0 ? 0.4 : -0.5
+    );
+
+    this.lifeState.relationship.intimacy = Math.max(0, Math.min(100,
+      this.lifeState.relationship.intimacy + affectionDelta * 0.5
+    ));
+
+    this.scheduleSave();
+
+    return {
+      reaction,
+      affectionChange: affectionDelta,
+      mood: targetMood,
+      motion,
+    };
+  }
+
   reconcile(): boolean {
     if (!this.lifeState.relationship.coldTreatmentActive) return false;
     this.lifeState.relationship.coldTreatmentActive = false;

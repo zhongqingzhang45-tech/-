@@ -516,6 +516,28 @@ export class CommerceEngine {
     });
   }
 
+  getUnlockedScenes(): string[] {
+    return this.state.ownedItems
+      .filter(id => id.startsWith("scene_"))
+      .map(id => id.replace("scene_", ""));
+  }
+
+  getUnlockedCostumes(): string[] {
+    return this.state.ownedItems
+      .filter(id => id.startsWith("costume_"))
+      .map(id => id.replace("costume_", ""));
+  }
+
+  getUnlockedEffects(): string[] {
+    return this.state.ownedItems
+      .filter(id => id.startsWith("effect_"))
+      .map(id => id.replace("effect_", ""));
+  }
+
+  isItemOwned(itemId: string): boolean {
+    return this.state.ownedItems.includes(itemId);
+  }
+
   // ==================== 工具 ====================
 
   private generateRandomString(length: number): string {

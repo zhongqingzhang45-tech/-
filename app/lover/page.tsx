@@ -11,6 +11,7 @@ import { SceneBackground, LightingOverlay, ParticleCanvas } from "@/components/L
 import { ScenePanel, CostumePanel, SceneControlBar } from "@/components/Lover/ScenePanel";
 import { CommercePanel } from "@/components/Lover/CommercePanel";
 import { SCENE_CONFIGS, LIGHTING_CONFIGS, getTimeOfDayFromDate, getSceneConfig, SceneId, TimeOfDay, COSTUME_CONFIGS } from "@/lib/core/scene-system";
+import { getCommerceEngine, CommerceState } from "@/lib/core/commerce-system";
 import DiaryPage from "@/components/Lover/DiaryPage";
 
 const Live2DPlayerDynamic = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
@@ -42,7 +43,7 @@ function getModeColor(mode?: string): string {
 }
 
 export default function LoverPage() {
-  const { messages, streamingMessage, mood, isTyping, sendMessage, profile, lifeState, agent, generateDiary } = useCharacterAgent();
+  const { messages, streamingMessage, mood, isTyping, sendMessage, profile, lifeState, agent, generateDiary, handleInteraction } = useCharacterAgent();
   const { isListening, startListening, stopListening, speak, isSpeaking } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
@@ -60,6 +61,14 @@ export default function LoverPage() {
   const [showGiftPanel, setShowGiftPanel] = useState(false);
   const [giftTab, setGiftTab] = useState<"shop" | "inventory" | "wishlist" | "requests">("shop");
   const [coinBalance, setCoinBalance] = useState(100);
+
+  // 商业化引擎
+  const [commerceState, setCommerceState] = useState<CommerceState>(() => getCommerceEngine().getState());
+  const commerceEngine = getCommerceEngine();
+
+  useEffect(() => {
+    return commerceEngine.subscribe(setCommerceState);
+  }, [commerceEngine]);
   
   // LLM 配置状态
   const [llmProvider, setLlmProvider] = useState<"openai" | "anthropic" | "deepseek" | "qwen" | "glm" | "mock">("mock");
@@ -442,6 +451,26 @@ export default function LoverPage() {
     }
   }, [modelReady, currentCharacter.model, voiceEnabled, speak]);
 
+  const handleTouch = useCallback((zone: string) => {
+    if (!modelReady) return;
+    const result = handleInteraction(zone);
+    if (!result) return;
+
+    const motionName = getRandomMotionForMood(result.mood as MoodType, currentCharacter.model);
+    live2dRef.current?.playMotion(motionName);
+    live2dRef.current?.startLipSync(result.reaction);
+
+    const charCount = result.reaction.length;
+    const duration = Math.max(1500, charCount * 150);
+    setTimeout(() => {
+      live2dRef.current?.stopLipSync();
+    }, duration);
+
+    if (voiceEnabled) {
+      speak(result.reaction, { emotion: result.mood as any });
+    }
+  }, [modelReady, handleInteraction, currentCharacter.model, voiceEnabled, speak]);
+
   const formatCallDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -566,16 +595,16 @@ export default function LoverPage() {
               modelName={currentCharacter.model}
               scale={isMobile ? 1.5 : currentCharacter.scale}
               positionY={isMobile ? 0.5 : currentCharacter.positionY}
-              currentMood={mood}
+              currentMood={currentMood}
               onModelLoaded={() => setModelReady(true)}
               onError={(err) => console.error("Live2D error:", err)}
               onTouched={(zone, reaction) => {
-                console.log("Touched zone:", zone);
+                handleTouch(zone);
               }}
             />
           </div>
           <LightingOverlay lighting={lightingConfig} />
-          <ParticleCanvas particleType={sceneConfig.particleType || "none"} mood={mood} />
+          <ParticleCanvas particleType={sceneConfig.particleType || "none"} mood={currentMood} />
           <div 
             className="hidden md:block absolute bottom-0 left-0 w-full pointer-events-none z-20"
             style={{ 
@@ -609,7 +638,7 @@ export default function LoverPage() {
                   currentCostume={currentCostume}
                   onCostumeChange={setCurrentCostume}
                   userLevel={lifeState?.growth?.level || 1}
-                  ownedPremium={[]}
+                  ownedPremium={commerceEngine.getUnlockedCostumes()}
                 />
               </div>
             </div>

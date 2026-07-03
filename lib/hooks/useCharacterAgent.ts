@@ -330,6 +330,27 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
     onExpressionChange?.(moodType);
   }, [live2dRef, updateAgentState, onExpressionChange]);
 
+  const handleInteraction = useCallback((zone: string): {
+    reaction: string;
+    affectionChange: number;
+    mood: string;
+    motion: string;
+  } | null => {
+    if (!agentRef.current) return null;
+    const result = agentRef.current.handleInteraction(zone);
+    const newMood = agentRef.current.getMood();
+    setMood(newMood);
+    setLifeState(agentRef.current.getLifeState());
+    updateAgentState();
+
+    const expName = getExpressionForMood(result.mood as MoodType, agentRef.current.profile.live2dModel);
+    live2dRef?.current?.setExpression(expName);
+
+    onExpressionChange?.(result.mood as MoodType);
+
+    return result;
+  }, [live2dRef, updateAgentState, onExpressionChange]);
+
   const updateProfile = useCallback((updates: Partial<CharacterProfile>) => {
     if (!agentRef.current) return;
     agentRef.current.updateProfile(updates);
@@ -408,6 +429,7 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
     agentState,
     sendMessage,
     triggerMood,
+    handleInteraction,
     updateProfile,
     reconcile,
     reset,
