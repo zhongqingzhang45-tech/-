@@ -122,9 +122,7 @@ export class AutonomousDecisionEngine {
     const date = today.getDate().toString().padStart(2, '0');
     const monthDate = `${month}-${date}`;
 
-    // 这里可以和配置的特殊日期对比
-    // 例如: anniversary, birthday等
-    return false; // 暂时返回false
+    return false;
   }
 
   /**

@@ -1664,14 +1664,6 @@ export default function LoverPage() {
                     />
                   </div>
 
-                  {/* 测试按钮 */}
-                  <button
-                    onClick={() => speak("你好，这是一条测试语音。", { emotion: "happy" })}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
-                    style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                  >
-                    🔊 测试语音
-                  </button>
                 </div>
               )}
 

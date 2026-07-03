@@ -134,7 +134,6 @@ export class DigitalLifeAgent {
     this.contextService = new ContextService();
     this.deviceFingerprint = DeviceFingerprint.getInstance();
     
-    const savedGrowthSnapshots = []; // persistence.loadGrowthSnapshots();
     this.growthEngine = new GrowthEvolutionEngine();
     
     const { events, chains } = persistence.loadCausalData();

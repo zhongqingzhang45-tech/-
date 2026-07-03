@@ -157,7 +157,6 @@ localStorage.setItem("llm_base_url", "https://api.openai.com/v1"); // 可选
 │   │   │   ├── systems.ts        # 子系统（事件/身体/本能/情绪/决策/人格/记忆）
 │   │   │   ├── state-engine.ts   # 状态引擎
 │   │   │   ├── emotion-engine.ts # 情感引擎
-│   │   │   ├── memory-system.ts  # 记忆系统
 │   │   │   ├── skills.ts         # 技能系统
 │   │   │   ├── gift-system.ts    # 礼物系统
 │   │   │   ├── growth-engine.ts  # 成长引擎
@@ -177,7 +176,6 @@ localStorage.setItem("llm_base_url", "https://api.openai.com/v1"); // 可选
 │   │   ├── live2d-manager.ts      # Live2D 管理器
 │   │   ├── speech-pipeline.ts     # 语音流水线
 │   │   ├── index.ts               # 核心导出
-│   │   └── _legacy/               # v1 遗留代码（已废弃）
 │   └── hooks/                     # React Hooks
 │       ├── useCharacterAgent.ts   # 角色代理 Hook
 │       └── useSpeech.ts           # 语音 Hook

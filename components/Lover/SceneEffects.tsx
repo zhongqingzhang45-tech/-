@@ -221,7 +221,7 @@ export function ParticleCanvas({
     ro.observe(canvas.parentElement!);
 
     const createParticle = (): Particle => {
-      const shapes = config.shapes.length > 0 ? config.shapes : ["circle"];
+      const shapes: ("circle" | "star" | "heart" | "petal")[] = config.shapes.length > 0 ? config.shapes : ["circle"];
       const colors = config.colors.length > 0 ? config.colors : ["#ffffff"];
 
       return {

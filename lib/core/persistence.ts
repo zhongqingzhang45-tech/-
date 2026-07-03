@@ -81,7 +81,6 @@ export class DataPersistence {
 
   private flushPendingSaves(): void {
     if (this.pendingSave.size > 0 && this.isDirty) {
-      console.log(`[Persistence] Flushing ${this.pendingSave.size} pending saves`);
       this.pendingSave.clear();
       this.isDirty = false;
       this.lastSaveTime = Date.now();
