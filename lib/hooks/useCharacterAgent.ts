@@ -271,46 +271,129 @@ export function useCharacterAgent(profile?: Partial<CharacterProfile>, options: 
     });
 
     try {
-      const stream = currentAgent.streamGenerateResponse(text, imageUrl);
+      // 获取 userId（优先 session，否则用 email 或匿名标识）
+      let userId = "anonymous";
+      let sessionId = "";
+      if (typeof window !== "undefined") {
+        userId = localStorage.getItem("lover_email") || "anonymous";
+        sessionId = localStorage.getItem("session_id") || "";
+      }
 
-      for await (const chunk of stream) {
-        setStreamingMessage({
-          id: streamingId,
-          content: chunk.partialText,
-          sender: "assistant",
-          done: chunk.done,
-        });
+      const profile = currentAgent.profile;
 
-        if (chunk.emotion) {
-          setMood(chunk.emotion);
-        }
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionId ? { "x-session-id": sessionId } : {}),
+        },
+        body: JSON.stringify({
+          message: text,
+          imageUrl,
+          characterKey: profile.id,
+          userId,
+          characterProfile: {
+            name: profile.name,
+            nickname: profile.nickname,
+            persona: profile.persona,
+            speakingStyle: profile.speakingStyle,
+            userNickname: profile.userNickname,
+            relationshipType: profile.relationshipType,
+            gender: profile.gender,
+            likes: profile.likes,
+            dislikes: profile.dislikes,
+            catchphrases: profile.catchphrases,
+          },
+        }),
+      });
 
-        if (chunk.done) {
-          // 流结束，将消息添加到正式消息列表
-          const assistantMsg: ChatMessage = {
-            id: streamingId,
-            sender: "assistant",
-            content: chunk.partialText,
-            timestamp: Date.now(),
-            emotion: chunk.emotion || currentAgent.getMood(),
-            personaMode: chunk.personaMode || currentAgent.lifeState.currentMode,
-          };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Chat API error: ${response.status}`);
+      }
 
-          setMessages((prev) => [...prev.filter(m => m.id !== streamingId), assistantMsg]);
-          setStreamingMessage(null);
-          setMood(currentAgent.getMood());
-          setRelationship(currentAgent.lifeState.relationship);
-          setLifeState(currentAgent.getLifeState());
-          updateAgentState();
+      // 解析 SSE 流
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
 
-          // 应用 UI 指令
-          const result = currentAgent.getLifeState();
-          const expName = getExpressionForMood(result.emotion.mood as MoodType, currentAgent.profile.live2dModel);
-          live2dRef?.current?.setExpression(expName);
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+
+          const data = trimmed.slice(5).trim();
+          if (!data) continue;
+
+          try {
+            const parsed = JSON.parse(data);
+
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+
+            if (parsed.done) {
+              fullText = parsed.fullText || fullText;
+            }
+
+            if (parsed.content) {
+              fullText += parsed.content;
+              setStreamingMessage({
+                id: streamingId,
+                content: fullText,
+                sender: "assistant",
+                done: false,
+              });
+            }
+          } catch {
+            // 忽略解析错误
+          }
         }
       }
+
+      // 流结束，将消息添加到正式消息列表
+      const assistantMsg: ChatMessage = {
+        id: streamingId,
+        sender: "assistant",
+        content: fullText.trim(),
+        timestamp: Date.now(),
+        emotion: currentAgent.getMood(),
+        personaMode: currentAgent.lifeState.currentMode,
+      };
+
+      setMessages((prev) => [...prev.filter((m) => m.id !== streamingId), assistantMsg]);
+      setStreamingMessage(null);
+      setMood(currentAgent.getMood());
+      setRelationship(currentAgent.lifeState.relationship);
+      setLifeState(currentAgent.getLifeState());
+      updateAgentState();
+
+      // 应用 UI 指令
+      const result = currentAgent.getLifeState();
+      const expName = getExpressionForMood(result.emotion.mood as MoodType, currentAgent.profile.live2dModel);
+      live2dRef?.current?.setExpression(expName);
     } catch (error) {
-      console.error("Error generating streaming response:", error);
+      console.error("Error calling chat API:", error);
+      // 回退：显示错误提示
+      const errorMsg: ChatMessage = {
+        id: streamingId,
+        sender: "assistant",
+        content: "啊...网络好像出了点问题，等一下再聊好不好？🥺",
+        timestamp: Date.now(),
+        emotion: currentAgent.getMood(),
+        personaMode: "normal",
+      };
+      setMessages((prev) => [...prev.filter((m) => m.id !== streamingId), errorMsg]);
       setStreamingMessage(null);
     } finally {
       setIsTyping(false);

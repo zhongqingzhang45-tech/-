@@ -8,7 +8,6 @@ import { getExpressionForMood, getRandomMotionForMood, getModelConfig } from "@/
 import type { Live2DPlayerRef, Live2DPlayerProps } from "@/components/Lover/Live2DPlayer";
 import { SceneBackground, LightingOverlay, ParticleCanvas } from "@/components/Lover/SceneEffects";
 import { ScenePanel, CostumePanel, SceneControlBar } from "@/components/Lover/ScenePanel";
-import { CommercePanel } from "@/components/Lover/CommercePanel";
 import { SCENE_CONFIGS, LIGHTING_CONFIGS, getTimeOfDayFromDate, getSceneConfig, SceneId, TimeOfDay, COSTUME_CONFIGS } from "@/lib/core/scene-system";
 import { getCommerceEngine, CommerceState, SHOP_ITEMS } from "@/lib/core/commerce-system";
 import DiaryPage from "@/components/Lover/DiaryPage";
@@ -65,8 +64,6 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
   const { isListening, startListening, stopListening, speak, isSpeaking } = useSpeech();
 
   const [activeNav, setActiveNav] = useState("chat");
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"profile" | "voice" | "data" | "about">("profile");
   const [showSkills, setShowSkills] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [input, setInput] = useState("");
@@ -92,7 +89,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
   const [callDuration, setCallDuration] = useState(0);
   const [callPhase, setCallPhase] = useState<"idle" | "calling" | "connected" | "ended">("idle");
 
-  const [showDataConfirm, setShowDataConfirm] = useState<string | null>(null);
+
 
   const EMOJI_LIST = ["😊", "😂", "🥰", "😢", "😡", "🤔", "😴", "😏", "👍", "❤️", "🌹", "✨", "😭", "🥺", "😜", "🤩"];
 
@@ -312,30 +309,6 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
     setModelReady(true);
   }, []);
 
-  const exportData = useCallback(() => {
-    if (!agent) return;
-    const data = {
-      lifeState: agent.getLifeState(),
-      memories: agent.getMemories(100),
-      messages: agent.getRecentMessages(),
-      growthStats: agent.getGrowthStats(),
-      exportTime: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `lifeos-backup-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [agent]);
-
-  const clearAllData = useCallback(() => {
-    localStorage.clear();
-    agent?.reset();
-    window.location.reload();
-  }, [agent]);
-
   if (!isMounted) {
     return (
       <div className="h-screen w-screen flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0f" }}>
@@ -398,13 +371,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
           >
             📞
           </button>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
-            title="设置"
-          >
-            ⚙️
-          </button>
+          {/* 设置按钮已移除 —— LLM 配置完全由后端环境变量控制 */}
         </div>
       </header>
 
@@ -752,226 +719,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
         </div>
       )}
 
-      {/* 设置面板 */}
-      {showSettings && (
-        <div className="fixed inset-0 z-40 flex items-end md:items-center justify-center" onClick={() => setShowSettings(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div
-            className="relative z-10 w-full md:w-[420px] md:max-h-[80vh] max-h-[85vh] glass-strong rounded-t-3xl md:rounded-2xl overflow-hidden flex flex-col animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5">
-              <h3 className="text-white font-semibold text-base">设置</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-shrink-0 flex border-b border-white/5 px-2">
-              {(["profile", "voice", "data", "about"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setSettingsTab(tab)}
-                  className={`flex-1 py-2.5 text-xs font-medium relative transition-colors ${
-                    settingsTab === tab ? "text-white" : "text-ink-400 hover:text-white"
-                  }`}
-                >
-                  {tab === "profile" && "👤 资料"}
-                  {tab === "voice" && "🔊 声音"}
-                  {tab === "data" && "💾 数据"}
-                  {tab === "about" && "ℹ️ 关于"}
-                  {settingsTab === tab && (
-                    <span
-                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
-                      style={{ background: "linear-gradient(90deg, #8b5cf6, #ec4899)" }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {settingsTab === "profile" && (
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div
-                      className="w-16 h-16 rounded-2xl mx-auto mb-2 flex items-center justify-center text-2xl"
-                      style={{
-                        background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-                        boxShadow: "0 4px 16px rgba(139, 92, 246, 0.3)",
-                      }}
-                    >
-                      {currentCharacter.avatar}
-                    </div>
-                    <h4 className="text-white font-semibold">{currentCharacter.name}</h4>
-                    <p className="text-ink-400 text-xs mt-1">Lv.{lifeState?.growth?.level || 1}</p>
-                  </div>
-
-                  <div className="card p-3 rounded-xl space-y-3">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-ink-400">好感度</span>
-                        <span className="text-white">{lifeState?.persona?.affection || 0}/100</span>
-                      </div>
-                      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${lifeState?.persona?.affection || 0}%`, background: "linear-gradient(90deg, #ec4899, #f472b6)" }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-ink-400">信任度</span>
-                        <span className="text-white">{lifeState?.relationship?.trust || 0}/100</span>
-                      </div>
-                      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${lifeState?.relationship?.trust || 0}%`, background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-ink-400">亲密度</span>
-                        <span className="text-white">{lifeState?.relationship?.intimacy || 0}/100</span>
-                      </div>
-                      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${lifeState?.relationship?.intimacy || 0}%`, background: "linear-gradient(90deg, #10b981, #34d399)" }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {settingsTab === "voice" && (
-                <div className="space-y-4">
-                  <div className="card p-4 rounded-xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-white">语音播报</span>
-                      <button
-                        onClick={() => setVoiceEnabled(!voiceEnabled)}
-                        className={`w-11 h-6 rounded-full relative transition-all ${
-                          voiceEnabled ? "bg-brand-500" : "bg-white/10"
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ${
-                            voiceEnabled ? "left-5" : "left-0.5"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <div className="text-xs text-ink-500">
-                      浏览器语音合成，无需额外配置
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {settingsTab === "data" && (
-                <div className="space-y-3">
-                  <button
-                    onClick={exportData}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-white bg-white/5 hover:bg-white/10 transition-all text-left px-4"
-                  >
-                    📤 导出聊天数据
-                  </button>
-                  <button
-                    onClick={() => setShowDataConfirm("clear")}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-red-400 bg-red-500/5 hover:bg-red-500/10 transition-all text-left px-4"
-                  >
-                    🗑️ 清除所有数据
-                  </button>
-                </div>
-              )}
-
-              {settingsTab === "about" && (
-                <div className="text-center space-y-4">
-                  <div
-                    className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-2xl"
-                    style={{
-                      background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-                      boxShadow: "0 4px 16px rgba(139, 92, 246, 0.3)",
-                    }}
-                  >
-                    ✨
-                  </div>
-                  <div>
-                    <h4 className="text-white font-bold text-lg">星野</h4>
-                    <p className="text-ink-400 text-sm">LifeOS v2.0.0</p>
-                  </div>
-                  <div className="card p-4 rounded-xl space-y-2 text-left">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-ink-400">技术框架</span>
-                      <span className="text-white">Next.js 14.2</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-ink-400">渲染引擎</span>
-                      <span className="text-white">Pixi.js + Live2D</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-ink-400">AI 模型</span>
-                      <span className="text-white">模拟模式</span>
-                    </div>
-                  </div>
-                  <p className="text-ink-500 text-xs leading-relaxed">
-                    © 2024 星野 LifeOS<br />
-                    数字生命引擎驱动
-                  </p>
-                  <button
-                    onClick={() => {
-                      localStorage.removeItem("lover_logged_in");
-                      window.location.href = "/lover/login";
-                    }}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/15 transition-all"
-                  >
-                    退出登录
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 清除数据确认 */}
-      {showDataConfirm === "clear" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setShowDataConfirm(null)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div
-            className="relative z-10 w-[320px] glass-strong rounded-2xl p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h4 className="text-white font-semibold text-base mb-2">确认清除？</h4>
-            <p className="text-ink-400 text-sm mb-5">
-              所有聊天记录、角色数据和设置将被永久删除，此操作不可撤销。
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDataConfirm(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/15 transition-all"
-              >
-                取消
-              </button>
-              <button
-                onClick={clearAllData}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-all"
-                style={{ background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" }}
-              >
-                确认清除
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 设置面板已移除 —— LLM 配置完全由后端环境变量控制 */}
 
       {/* 技能面板 */}
       {showSkills && (
