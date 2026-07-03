@@ -328,6 +328,8 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           const expressionKeys: string[] = [];
           let textureCount = 0;
 
+          console.log("[Live2D] Loading model:", { basePath, modelFile, modelName });
+
           const loader = new PIXI.loaders.Loader(basePath);
           loader.add("model_json", modelFile, {
             xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON,
@@ -335,6 +337,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
           await new Promise<void>((resolve, reject) => {
             const onError = (err: any) => {
+              console.error("[Live2D] Loader error:", err);
               if (destroyedRef.current) reject(new Error("destroyed"));
               else reject(err);
             };
@@ -342,9 +345,18 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
             loader.onError.add(onError);
 
             loader.load((_l1: any, res1: any) => {
+              console.log("[Live2D] model_json loaded:", !!res1.model_json?.data);
               if (destroyedRef.current) { reject(new Error("destroyed")); return; }
               const model3 = res1.model_json?.data;
               if (!model3) { reject(new Error("Failed to load model json")); return; }
+
+              console.log("[Live2D] Model3 JSON:", { 
+                Version: model3.Version,
+                Moc: model3.FileReferences?.Moc,
+                TextureCount: model3.FileReferences?.Textures?.length,
+                MotionGroups: Object.keys(model3.FileReferences?.Motions || {}),
+                ExpressionCount: model3.FileReferences?.Expressions?.length,
+              });
 
               if (model3.FileReferences?.Moc) {
                 loader.add("moc", model3.FileReferences.Moc, {
@@ -394,19 +406,30 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
               }
 
               loader.load((_l2: any, res2: any) => {
+                console.log("[Live2D] All assets loaded:", {
+                  mocLoaded: !!res2.moc?.data,
+                  textureCount: textureCount,
+                  motionCount: motionKeys.length,
+                  expressionCount: expressionKeys.length,
+                  physicsLoaded: !!res2.physics?.data,
+                  poseLoaded: !!res2.pose?.data,
+                });
+
                 if (destroyedRef.current || !app) { reject(new Error("destroyed")); return; }
                 try {
                   let moc = null;
                   if (res2.moc?.data) {
+                    console.log("[Live2D] Creating MOC from ArrayBuffer, length:", res2.moc.data.byteLength);
                     moc = Live2DCubismCore.Moc.fromArrayBuffer(res2.moc.data);
                   }
+                  console.log("[Live2D] MOC created:", !!moc);
                   if (!moc) throw new Error("Failed to load moc file");
 
                   const textures: any[] = [];
                   for (let i = 0; i < textureCount; i++) {
                     const tex = res2[`texture${i}`]?.texture;
                     if (!tex) {
-                      console.warn(`Texture ${i} not loaded, using placeholder`);
+                      console.warn(`[Live2D] Texture ${i} not loaded, using placeholder`);
                       const placeholder = PIXI.Texture.fromCanvas(
                         (() => {
                           const c = document.createElement("canvas");
@@ -425,18 +448,23 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                       textures[i] = tex;
                     }
                   }
+                  console.log("[Live2D] Textures loaded:", textures.length);
                   if (textures.length === 0) {
                     throw new Error("No textures loaded");
                   }
 
+                  console.log("[Live2D] Creating core model...");
                   const coreModel = Live2DCubismCore.Model.fromMoc(moc);
+                  console.log("[Live2D] Core model created:", !!coreModel);
                   if (!coreModel) throw new Error("Failed to create core model");
 
+                  console.log("[Live2D] Creating animator...");
                   const animatorBuilder = new LIVE2DCUBISMFRAMEWORK.AnimatorBuilder();
                   const animator = animatorBuilder
                     .setTarget(coreModel)
                     .setTimeScale(1)
                     .build();
+                  console.log("[Live2D] Animator created:", !!animator);
 
                   let physicsRig = null;
                   if (res2.physics?.data) {
@@ -447,6 +475,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                         .setTarget(coreModel)
                         .setTimeScale(1)
                         .build();
+                      console.log("[Live2D] Physics rig created:", !!physicsRig);
                     } catch (e) {
                       console.warn("Physics rig creation failed:", e);
                     }
@@ -464,6 +493,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     }
                   });
                   motionsRef.current = motions;
+                  console.log("[Live2D] Motions parsed:", motions.size);
 
                   const expressions = new Map<string, { id: string; value: number; blend: string }[]>();
                   expressionKeys.forEach((key) => {
@@ -479,6 +509,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     }
                   });
                   expressionsRef.current = expressions;
+                  console.log("[Live2D] Expressions parsed:", expressions.size);
 
                   let groups = null;
                   if (model3.Groups) {
@@ -487,6 +518,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     } catch (e) {}
                   }
 
+                  console.log("[Live2D] Creating LIVE2DCUBISMPIXI.Model...");
                   const model = LIVE2DCUBISMPIXI.Model._create(
                     coreModel,
                     textures,
@@ -495,6 +527,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     null,
                     groups
                   );
+                  console.log("[Live2D] Model created:", !!model, "isValid:", model?.isValid);
 
                   if (!model || !model.isValid) {
                     throw new Error("Failed to create Live2D model (isValid=false)");
@@ -512,6 +545,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     1
                   );
 
+                  console.log("[Live2D] Adding model to stage...", !!app.stage);
                   if (!app || !app.stage || destroyedRef.current) {
                     throw new Error("App destroyed during model creation");
                   }
@@ -519,6 +553,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   if (model.masks) {
                     app.stage.addChild(model.masks);
                   }
+                  console.log("[Live2D] Model added to stage successfully!");
 
                   const baseScale = Math.min(width, height) * 0.0015 * scale;
                   const modelScale = baseScale > 0 ? baseScale : 1;
@@ -531,6 +566,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     model.masks.resize(app.view.width, app.view.height);
                   }
 
+                  console.log("[Live2D] Starting animation loop...");
                   let lastTime = performance.now();
                   const animate = () => {
                     if (destroyedRef.current || !model || !app) return;
@@ -615,6 +651,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     animFrameId = requestAnimationFrame(animate);
                   };
                   animFrameId = requestAnimationFrame(animate);
+                  console.log("[Live2D] Animation loop started!");
 
                   const handleResize = () => {
                     updateSize();
@@ -814,9 +851,11 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                   isLoadedRef.current = true;
                   setIsLoading(false);
                   onModelLoaded?.();
+                  console.log("[Live2D] Model loaded successfully!");
 
                   resolve();
                 } catch (err) {
+                  console.error("[Live2D] Error during model creation:", err);
                   reject(err);
                 }
               });
