@@ -9,6 +9,7 @@ import { getExpressionForMood, getRandomMotionForMood, getModelConfig, BUILTIN_M
 import type { Live2DPlayerRef, Live2DPlayerProps } from "@/components/Lover/Live2DPlayer";
 import { SceneBackground, LightingOverlay, ParticleCanvas } from "@/components/Lover/SceneEffects";
 import { ScenePanel, CostumePanel, SceneControlBar } from "@/components/Lover/ScenePanel";
+import { CommercePanel } from "@/components/Lover/CommercePanel";
 import { SCENE_CONFIGS, LIGHTING_CONFIGS, getTimeOfDayFromDate, getSceneConfig, SceneId, TimeOfDay, COSTUME_CONFIGS } from "@/lib/core/scene-system";
 import DiaryPage from "@/components/Lover/DiaryPage";
 
@@ -45,7 +46,7 @@ export default function LoverPage() {
   const { isListening, startListening, stopListening, speak, isSpeaking } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"profile" | "llm" | "model" | "voice" | "data" | "about">("profile");
+  const [settingsTab, setSettingsTab] = useState<"profile" | "llm" | "model" | "voice" | "data" | "shop" | "about">("profile");
   const [showSkills, setShowSkills] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [input, setInput] = useState("");
@@ -1264,6 +1265,7 @@ export default function LoverPage() {
                 { id: "llm", icon: "🤖", label: "AI模型" },
                 { id: "model", icon: "🎭", label: "形象" },
                 { id: "voice", icon: "🔊", label: "声音" },
+                { id: "shop", icon: "🛍️", label: "商城" },
                 { id: "data", icon: "💾", label: "数据" },
                 { id: "about", icon: "ℹ️", label: "关于" },
               ].map((tab) => (
@@ -1642,6 +1644,11 @@ export default function LoverPage() {
                     🔊 测试语音
                   </button>
                 </div>
+              )}
+
+              {/* ========== 商城与会员 ========== */}
+              {settingsTab === "shop" && (
+                <CommercePanel />
               )}
 
               {/* ========== 数据管理 ========== */}
