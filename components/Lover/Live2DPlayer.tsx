@@ -387,7 +387,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
               }
 
               loader.load((_l2: any, res2: any) => {
-                if (destroyedRef.current) { reject(new Error("destroyed")); return; }
+                if (destroyedRef.current || !app) { reject(new Error("destroyed")); return; }
                 try {
                   let moc = null;
                   if (res2.moc?.data) {
@@ -505,6 +505,9 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
                     1
                   );
 
+                  if (!app || !app.stage || destroyedRef.current) {
+                    throw new Error("App destroyed during model creation");
+                  }
                   app.stage.addChild(model);
                   if (model.masks) {
                     app.stage.addChild(model.masks);
@@ -523,7 +526,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
 
                   let lastTime = performance.now();
                   const animate = () => {
-                    if (destroyedRef.current || !model) return;
+                    if (destroyedRef.current || !model || !app) return;
 
                     const now = performance.now();
                     const dt = Math.min((now - lastTime) / 1000, 0.05);
