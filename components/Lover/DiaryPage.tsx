@@ -103,9 +103,17 @@ export default function DiaryPage({
 
     const checkAndGenerate = async () => {
       const today = new Date();
-      const { dateStr: todayDateStr } = formatDate(today);
+      const { dateStr: todayDateStr, weekday: todayWeekday } = formatDate(today);
 
-      const hasTodayEntry = entries.some(e => e.date === todayDateStr);
+      const storedEntries = localStorage.getItem("lover_diary_entries");
+      let allEntries = [...staticEntries];
+      if (storedEntries) {
+        try {
+          allEntries = [...allEntries, ...JSON.parse(storedEntries)];
+        } catch {}
+      }
+
+      const hasTodayEntry = allEntries.some(e => e.date === todayDateStr);
       if (hasTodayEntry) return;
 
       const lastGen = localStorage.getItem("lover_diary_last_generated");
@@ -121,8 +129,8 @@ export default function DiaryPage({
         if (diary) {
           const newEntry: DiaryEntry = {
             id: `ai_${Date.now()}`,
-            date: diary.date,
-            weekday: diary.weekday,
+            date: diary.date || todayDateStr,
+            weekday: diary.weekday || todayWeekday,
             mood: diary.mood,
             moodEmoji: diary.moodEmoji,
             title: diary.title,
@@ -131,18 +139,19 @@ export default function DiaryPage({
             isAIGenerated: true,
           };
 
-          const aiEntries = entries.filter(e => e.isAIGenerated);
-          const otherEntries = entries.filter(e => !e.isAIGenerated);
-          const updatedAiEntries = [newEntry, ...aiEntries];
+          const storedAiEntries = storedEntries ? JSON.parse(storedEntries) : [];
+          const updatedAiEntries = [newEntry, ...storedAiEntries];
 
-          setEntries([...otherEntries, ...updatedAiEntries]);
+          setEntries(prev => {
+            const prevAi = prev.filter(e => e.isAIGenerated);
+            const prevOther = prev.filter(e => !e.isAIGenerated);
+            return [...prevOther, newEntry, ...prevAi];
+          });
           setSelectedEntry(newEntry);
           setLastGenerated(new Date().toISOString());
 
-          if (typeof window !== "undefined") {
-            localStorage.setItem("lover_diary_entries", JSON.stringify(updatedAiEntries));
-            localStorage.setItem("lover_diary_last_generated", new Date().toISOString());
-          }
+          localStorage.setItem("lover_diary_entries", JSON.stringify(updatedAiEntries));
+          localStorage.setItem("lover_diary_last_generated", new Date().toISOString());
         }
       } catch (error) {
         console.error("Auto-generate diary failed:", error);
@@ -151,8 +160,9 @@ export default function DiaryPage({
       }
     };
 
-    checkAndGenerate();
-  }, [onGenerateDiary, entries]);
+    const timer = setTimeout(checkAndGenerate, 1000);
+    return () => clearTimeout(timer);
+  }, [onGenerateDiary]);
 
   const handleGenerateDiary = useCallback(async () => {
     if (!onGenerateDiary || isGenerating) return;

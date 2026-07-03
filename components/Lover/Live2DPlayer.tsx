@@ -306,7 +306,9 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
             ? Math.min(window.devicePixelRatio || 1, 1.5)
             : Math.min(window.devicePixelRatio || 1, 2);
 
-          app = new PIXI.Application(width, height, {
+          app = new PIXI.Application({
+            width,
+            height,
             transparent: true,
             antialias: !isMobile,
             resolution,
