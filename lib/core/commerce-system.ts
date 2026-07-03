@@ -229,6 +229,9 @@ export class CommerceEngine {
   }
 
   private loadState(): CommerceState {
+    if (typeof window === "undefined") {
+      return this.getDefaultState();
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {

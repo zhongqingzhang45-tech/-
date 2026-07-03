@@ -208,27 +208,25 @@ export default function DiaryPage({
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="text-center max-w-sm">
-          <div className="text-5xl mb-4">🔒</div>
-          <h3 className="text-lg font-medium text-white mb-2">日记已上锁</h3>
-          <p className="text-sm text-white/50 mb-6 leading-relaxed">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4 mx-auto" style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }}>
+            🔒
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-2">日记已上锁</h3>
+          <p className="text-sm text-ink-400 mb-6 leading-relaxed">
             这是{characterName}的私密日记<br />
             升级会员后即可解锁查看
           </p>
           <button
             onClick={() => setIsLocked(false)}
-            className="px-6 py-2.5 rounded-full text-sm font-medium text-white"
-            style={{
-              background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
-            }}
+            className="px-6 py-2.5 rounded-lg text-sm font-medium text-white btn-primary"
           >
-            💎 升级会员解锁
+            升级会员解锁
           </button>
         </div>
       </div>
     );
   }
 
-  // 按日期排序的日记（AI生成的在前）
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.isAIGenerated && !b.isAIGenerated) return -1;
     if (!a.isAIGenerated && b.isAIGenerated) return 1;
@@ -240,23 +238,19 @@ export default function DiaryPage({
       <div className="flex-shrink-0 px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            <span>📔</span>
+            <span className="text-lg">📔</span>
             <span>{characterName}的日记</span>
           </h2>
           <div className="flex items-center gap-2">
             <button
               onClick={handleGenerateDiary}
               disabled={isGenerating}
-              className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1 transition-all hover:opacity-90 disabled:opacity-50"
-              style={{
-                background: isGenerating ? "rgba(139, 92, 246, 0.3)" : "linear-gradient(135deg, #8b5cf6, #ec4899)",
-                color: "#fff",
-              }}
+              className="text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all disabled:opacity-50 btn-primary"
             >
               {isGenerating ? (
                 <>
-                  <span className="animate-spin">⚙️</span>
-                  <span>生成中...</span>
+                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>
+                  <span>生成中</span>
                 </>
               ) : (
                 <>
@@ -267,38 +261,41 @@ export default function DiaryPage({
             </button>
             <button
               onClick={() => setIsLocked(true)}
-              className="text-xs text-white/40 hover:text-white/60 transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
+              title="上锁"
             >
-              🔒 上锁
+              🔒
             </button>
           </div>
         </div>
 
-        {/* AI 日记提示 */}
         {lastGenerated && (
-          <div className="mb-2 text-xs text-white/30">
-            ✨ 最后AI生成: {new Date(lastGenerated).toLocaleDateString("zh-CN")}
+          <div className="mb-2 text-[11px] text-ink-500">
+            最后AI生成: {new Date(lastGenerated).toLocaleDateString("zh-CN")}
           </div>
         )}
 
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
           {sortedEntries.slice(0, 8).map((entry) => (
             <button
               key={entry.id}
               onClick={() => setSelectedEntry(entry)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs transition-all ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 selectedEntry?.id === entry.id
                   ? "text-white"
-                  : "text-white/50 hover:text-white/70"
+                  : "text-ink-400 hover:text-white"
               }`}
               style={{
                 backgroundColor: selectedEntry?.id === entry.id
-                  ? "rgba(139, 92, 246, 0.3)"
-                  : "rgba(255,255,255,0.06)",
+                  ? "rgba(139, 92, 246, 0.2)"
+                  : "rgba(255,255,255,0.04)",
+                border: selectedEntry?.id === entry.id
+                  ? "1px solid rgba(139,92,246,0.3)"
+                  : "1px solid rgba(255,255,255,0.06)",
               }}
             >
               {entry.moodEmoji} {entry.date}
-              {entry.isAIGenerated && " ✨"}
+              {entry.isAIGenerated && <span className="ml-1 text-brand-400">✨</span>}
             </button>
           ))}
         </div>
@@ -307,71 +304,58 @@ export default function DiaryPage({
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {selectedEntry ? (
           <div
-            className="rounded-2xl p-5 relative overflow-hidden"
+            className="rounded-xl p-5 relative overflow-hidden animate-fade-in"
             style={{
-              background: "linear-gradient(180deg, rgba(255,248,220,0.95) 0%, rgba(255,240,200,0.9) 100%)",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+              background: "linear-gradient(180deg, rgba(255,250,235,0.97) 0%, rgba(255,243,218,0.93) 100%)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              border: "1px solid rgba(200,180,140,0.2)",
             }}
           >
-            {/* 装饰线 */}
             <div
-              className="absolute left-0 top-0 bottom-0 w-8"
-              style={{
-                background: "linear-gradient(90deg, rgba(200,80,80,0.15) 0%, transparent 100%)",
-              }}
+              className="absolute left-0 top-0 bottom-0 w-1"
+              style={{ background: "linear-gradient(180deg, #ec4899 0%, #8b5cf6 100%)" }}
             />
 
-            {/* 横线装饰 */}
-            <div
-              className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none"
-              style={{
-                backgroundImage: "repeating-linear-gradient(transparent, transparent 27px, rgba(180,160,120,0.15) 27px, rgba(180,160,120,0.15) 28px)",
-              }}
-            />
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
+            <div className="relative z-10 pl-2">
+              <div className="flex items-start justify-between mb-4">
                 <div>
-                  <p
-                    className="text-xs mb-1"
-                    style={{ color: "#967969" }}
-                  >
+                  <p className="text-[11px] mb-1 text-stone-500">
                     {selectedEntry.date} · {selectedEntry.weekday}
                     {selectedEntry.isAIGenerated && " · AI生成"}
                   </p>
                   <h3
                     className="text-lg font-semibold"
                     style={{
-                      color: "#5c4a3d",
+                      color: "#3d3528",
                       fontFamily: '"Ma Shan Zheng", "KaiTi", "STKaiti", "楷体", serif',
                     }}
                   >
                     {selectedEntry.title}
                   </h3>
                 </div>
-                <div className="text-3xl">{selectedEntry.moodEmoji}</div>
+                <div className="text-2xl">{selectedEntry.moodEmoji}</div>
               </div>
 
               <div
-                className="text-sm leading-loose whitespace-pre-wrap mb-4"
+                className="text-sm whitespace-pre-wrap mb-4"
                 style={{
                   color: "#4a3c2f",
                   fontFamily: '"Ma Shan Zheng", "KaiTi", "STKaiti", "楷体", serif',
-                  lineHeight: "28px",
+                  lineHeight: "30px",
                   letterSpacing: "0.5px",
                 }}
               >
                 {selectedEntry.content}
               </div>
 
-              <div className="flex flex-wrap gap-2 mt-4 pt-4" style={{ borderTop: "1px dashed rgba(150,120,90,0.3)" }}>
+              <div className="flex flex-wrap gap-1.5 mt-4 pt-4" style={{ borderTop: "1px solid rgba(200,180,140,0.3)" }}>
                 {selectedEntry.tags.map((tag, i) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 rounded-full text-xs"
+                    className="px-2 py-0.5 rounded-md text-[11px] font-medium"
                     style={{
-                      backgroundColor: "rgba(180,140,100,0.15)",
-                      color: "#8b6914",
+                      backgroundColor: "rgba(139,92,246,0.1)",
+                      color: "#7c3aed",
                     }}
                   >
                     #{tag}
@@ -379,25 +363,21 @@ export default function DiaryPage({
                 ))}
               </div>
 
-              <div
-                className="mt-4 text-right text-xs"
-                style={{ color: "#a08060" }}
-              >
+              <div className="mt-4 text-right text-[11px] text-stone-500">
                 —— 爱你的{characterName}
               </div>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12">
-            <div className="text-4xl mb-4">📔</div>
-            <p className="text-white/40 text-sm mb-4">点击「AI写日记」生成新日记</p>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              📔
+            </div>
+            <p className="text-ink-400 text-sm mb-4">还没有日记，让TA自己写一篇吧</p>
             <button
               onClick={handleGenerateDiary}
               disabled={isGenerating}
-              className="px-6 py-3 rounded-full text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
-              style={{
-                background: isGenerating ? "rgba(139, 92, 246, 0.3)" : "linear-gradient(135deg, #8b5cf6, #ec4899)",
-              }}
+              className="px-6 py-2.5 rounded-lg text-sm font-medium text-white btn-primary disabled:opacity-50"
             >
               {isGenerating ? "生成中..." : "✨ 生成今日日记"}
             </button>
@@ -405,8 +385,8 @@ export default function DiaryPage({
         )}
 
         <div className="mt-4 text-center">
-          <p className="text-xs text-white/30">
-            {sortedEntries.length} 篇日记 · 点击「AI写日记」生成新内容
+          <p className="text-[11px] text-ink-500">
+            共 {sortedEntries.length} 篇日记
           </p>
         </div>
       </div>

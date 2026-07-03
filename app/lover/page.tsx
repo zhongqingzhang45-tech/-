@@ -481,7 +481,7 @@ export default function LoverPage() {
     <main 
       className="relative h-screen w-screen overflow-hidden flex flex-col"
       style={{ 
-        background: "radial-gradient(ellipse at 25% 80%, #2a2a3e 0%, #1a1a28 50%, #12121a 100%)",
+        background: "radial-gradient(ellipse at 30% 85%, #1e1a2e 0%, #14111e 50%, #0a0a0f 100%)",
       }}
     >
       <div 
@@ -491,45 +491,38 @@ export default function LoverPage() {
           bottom: "5%",
           width: "500px",
           height: "500px",
-          background: "radial-gradient(circle, rgba(147,112,219,0.18) 0%, rgba(147,112,219,0.06) 40%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, rgba(139,92,246,0.04) 40%, transparent 70%)",
           borderRadius: "50%",
           transform: "translateX(-30%)",
-          filter: "blur(30px)",
+          filter: "blur(40px)",
         }}
       />
 
       <header 
-        className="flex-shrink-0 h-14 flex items-center px-5 z-20"
-        style={{ 
-          backgroundColor: "rgba(18,18,26,0.75)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-        }}
+        className="flex-shrink-0 h-14 flex items-center px-4 md:px-5 z-20 glass"
       >
         <div className="flex items-center gap-3">
           <div 
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-base"
             style={{ 
-              background: profile?.gender === "male" 
-                ? "linear-gradient(135deg, #60a5fa 0%, #818cf8 100%)"
-                : "linear-gradient(135deg, #f472b6 0%, #a78bfa 100%)",
-              boxShadow: "0 2px 10px rgba(124,124,255,0.3)",
+              background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+              boxShadow: "0 2px 8px rgba(139,92,246,0.25)",
             }}
           >
             {profile?.name?.[0] || "星"}
           </div>
         </div>
 
-        <nav className="hidden md:flex items-center justify-center flex-1 gap-1">
+        <nav className="hidden md:flex items-center justify-center flex-1 gap-0.5">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveNav(item.id)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5"
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                activeNav === item.id ? "text-white" : "text-ink-400 hover:text-white"
+              }`}
               style={{
-                color: activeNav === item.id ? "#fff" : "rgba(255,255,255,0.45)",
-                backgroundColor: activeNav === item.id ? "rgba(255,255,255,0.1)" : "transparent",
+                backgroundColor: activeNav === item.id ? "rgba(139,92,246,0.15)" : "transparent",
               }}
             >
               <span className="text-[11px]">{item.icon}</span>
@@ -538,27 +531,25 @@ export default function LoverPage() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5">
           <button 
             onClick={handlePhoneClick}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105"
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-white/5`}
             style={{ 
               backgroundColor: isInCall 
-                ? "rgba(239, 68, 68, 0.3)" 
-                : "rgba(255,255,255,0.08)",
+                ? "rgba(239, 68, 68, 0.15)" 
+                : "transparent",
             }}
             title={isInCall ? "挂断" : "语音通话"}
           >
             <svg 
-              width="15" 
-              height="15" 
+              className="w-4 h-4"
               viewBox="0 0 24 24" 
               fill="none" 
-              stroke="white" 
+              stroke={isInCall ? "#ef4444" : "#8e8ea2"} 
               strokeWidth="2" 
               strokeLinecap="round" 
-              strokeLinejoin="round" 
-              opacity="0.7"
+              strokeLinejoin="round"
               style={{
                 transform: isInCall ? "rotate(135deg)" : "none",
                 transition: "transform 0.3s ease",
@@ -569,10 +560,9 @@ export default function LoverPage() {
           </button>
           <button 
             onClick={() => setShowSettings(!showSettings)}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105"
-            style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#8e8ea2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
@@ -1003,42 +993,48 @@ export default function LoverPage() {
 
       {/* 语音通话界面 */}
       {isInCall && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center"
-             style={{ 
-               background: "linear-gradient(180deg, #1a1a28 0%, #2a1a3e 100%)" }}
-        >
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center glass-strong">
           <div className="text-center flex-1 flex flex-col items-center justify-center">
-            <div className="w-28 h-28 rounded-full flex items-center justify-center text-5xl mb-6"
-                 style={{
-                   background: "linear-gradient(135deg, #f472b6 0%, #a78bfa 100%)",
-                   boxShadow: "0 0 60px rgba(244, 114, 182, 0.3)",
-                   animation: callPhase === "calling" ? "pulse 1.5s ease-in-out infinite" : "none",
-                 }}>
-              {profile?.gender === "male" ? "👨" : "👩"}
+            <div className="relative w-32 h-32 mb-8">
+              {callPhase === "calling" && (
+                <>
+                  <div className="absolute inset-0 rounded-full animate-ping" style={{ background: "rgba(139,92,246,0.2)" }} />
+                  <div className="absolute inset-0 rounded-full animate-ping" style={{ background: "rgba(236,72,153,0.15)", animationDelay: "0.5s" }} />
+                </>
+              )}
+              <div className="relative w-32 h-32 rounded-2xl flex items-center justify-center text-5xl"
+                   style={{
+                     background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+                     boxShadow: "0 8px 32px rgba(139,92,246,0.3)",
+                   }}>
+                {profile?.gender === "male" ? "👨" : "👩"}
+              </div>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">{profile?.name || "小春"}</h2>
-            <p className="text-white/60 text-sm mb-8">
+            <h2 className="text-xl font-semibold text-white mb-2">{profile?.name || "小春"}</h2>
+            <p className="text-ink-400 text-sm mb-6">
               {callPhase === "calling" && "正在呼叫..."}
-              {callPhase === "connected" && `通话中 ${formatCallDuration(callDuration)}`}
+              {callPhase === "connected" && `${formatCallDuration(callDuration)}`}
               {callPhase === "ended" && "通话已结束"}
             </p>
 
             {callPhase === "connected" && (
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+              <div className="flex items-center gap-2 mb-8 px-3 py-1.5 rounded-full" style={{ backgroundColor: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                 <span className="text-green-400 text-xs">语音已连接</span>
               </div>
             )}
           </div>
 
-          {/* 通话控制按钮 */}
-          <div className="pb-16 flex items-center gap-12">
+          <div className="pb-16 flex items-center gap-8">
             <button
               onClick={() => setVoiceEnabled(!voiceEnabled)}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-110"
-              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all hover:bg-white/10"
+              style={{ 
+                backgroundColor: voiceEnabled ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={voiceEnabled ? "#22c55e" : "#8e8ea2"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {voiceEnabled ? (
                   <>
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -1056,13 +1052,13 @@ export default function LoverPage() {
 
             <button
               onClick={endCall}
-              className="w-16 h-16 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center transition-all hover:scale-105"
               style={{ 
                 backgroundColor: "#ef4444",
-                boxShadow: "0 4px 20px rgba(239, 68, 68, 0.5)",
+                boxShadow: "0 8px 24px rgba(239, 68, 68, 0.35)",
               }}
             >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                    style={{ transform: "rotate(135deg)" }}>
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
               </svg>
@@ -1070,12 +1066,13 @@ export default function LoverPage() {
 
             <button
               onClick={handleMicToggle}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-all hover:scale-110"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all hover:bg-white/10"
               style={{ 
-                backgroundColor: micActive ? "rgba(239, 68, 68, 0.4)" : "rgba(255,255,255,0.15)",
+                backgroundColor: micActive ? "rgba(239, 68, 68, 0.15)" : "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={micActive ? "#ef4444" : "#8e8ea2"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="23" />
@@ -1089,31 +1086,28 @@ export default function LoverPage() {
       {showSkills && (
         <>
           <div 
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowSkills(false)}
           />
           <div 
-            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-0 md:top-auto md:bottom-24 md:w-80 z-50 md:mr-28 rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto max-h-[60vh] md:max-h-[70vh]"
-            style={{ backgroundColor: "#1a1a28" }}
+            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-0 md:top-auto md:bottom-24 md:w-80 z-50 md:mr-28 rounded-t-2xl md:rounded-xl glass-strong overflow-y-auto max-h-[60vh] md:max-h-[70vh] animate-slide-up"
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <h2 className="text-base font-semibold text-white">✨ 技能</h2>
+            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+              <h2 className="text-sm font-semibold text-white">技能</h2>
               <button 
                 onClick={() => setShowSkills(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white/90"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
 
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-1.5">
               {skills.map((skill) => (
                 <button
                   key={skill.id}
                   onClick={() => handleSkillClick(skill.id, skill.triggers[0])}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:bg-white/5"
-                  style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all hover:bg-white/5 card"
                 >
                   <span className="text-2xl">{skill.icon}</span>
                   <div className="flex-1 min-w-0">
@@ -1136,32 +1130,30 @@ export default function LoverPage() {
 
       {showGiftPanel && (
         <>
-          <div 
-            className="fixed inset-0 z-40"
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowGiftPanel(false)}
           />
-          <div 
-            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:top-[50%] md:-translate-y-1/2 md:w-[90%] md:max-w-md z-50 rounded-t-3xl md:rounded-2xl shadow-2xl overflow-y-auto max-h-[85vh]"
-            style={{ backgroundColor: "#1a1a28" }}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0" style={{ backgroundColor: "#1a1a28", borderColor: "rgba(255,255,255,0.05)" }}>
+          <div className="fixed bottom-0 left-0 right-0 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:top-[50%] md:-translate-y-1/2 md:w-[90%] md:max-w-md z-50 rounded-t-2xl md:rounded-xl overflow-y-auto max-h-[85vh] glass-strong animate-slide-up">
+            <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
               <div className="flex items-center gap-3">
-                <span className="text-xl">🎁</span>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(236,72,153,0.15))", border: "1px solid rgba(139,92,246,0.3)" }}>
+                  🎁
+                </div>
                 <h2 className="text-base font-semibold text-white">礼物中心</h2>
-                <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: "rgba(251,191,36,0.2)", color: "#fbbf24" }}>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-medium" style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1))", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" }}>
                   💰 {coinBalance}
                 </span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowGiftPanel(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white/90"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
 
-            <div className="flex border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+            <div className="flex border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
               {[
                 { id: "shop", label: "商店", icon: "🏪" },
                 { id: "inventory", label: "背包", icon: "🎒" },
@@ -1171,12 +1163,14 @@ export default function LoverPage() {
                 <button
                   key={tab.id}
                   onClick={() => setGiftTab(tab.id as any)}
-                  className={`flex-1 py-3 text-xs font-medium transition-all ${
-                    giftTab === tab.id ? "text-white border-b-2" : "text-white/40"
+                  className={`flex-1 py-3 text-xs font-medium transition-all relative ${
+                    giftTab === tab.id ? "text-white" : "text-ink-400"
                   }`}
-                  style={{ borderColor: giftTab === tab.id ? "#8b5cf6" : "transparent" }}
                 >
                   {tab.icon} {tab.label}
+                  {giftTab === tab.id && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }} />
+                  )}
                 </button>
               ))}
             </div>
@@ -1184,7 +1178,7 @@ export default function LoverPage() {
             <div className="p-4 space-y-3">
               {giftTab === "shop" && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {agent?.getAvailableGifts().slice(0, 6).map((gift: Gift) => (
                       <button
                         key={gift.id}
@@ -1194,30 +1188,35 @@ export default function LoverPage() {
                             setCoinBalance(agent?.getCoinBalance() || 0);
                           }
                         }}
-                        className="p-3 rounded-xl text-center transition-all hover:scale-105"
-                        style={{ 
-                          backgroundColor: coinBalance >= gift.price ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)",
+                        className="p-3 rounded-xl text-center transition-all active:scale-95"
+                        style={{
+                          background: coinBalance >= gift.price
+                            ? "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(236,72,153,0.04))"
+                            : "rgba(30,30,40,0.4)",
+                          border: `1px solid ${coinBalance >= gift.price ? "rgba(139,92,246,0.2)" : "rgba(255,255,255,0.04)"}`,
                           opacity: coinBalance >= gift.price ? 1 : 0.5,
                         }}
                       >
                         <span className="text-3xl">{gift.icon}</span>
-                        <p className="text-xs font-medium text-white mt-1">{gift.name}</p>
-                        <p className="text-xs" style={{ color: "#fbbf24" }}>💰 {gift.price}</p>
+                        <p className="text-xs font-medium text-white mt-1.5">{gift.name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: "#fbbf24" }}>💰 {gift.price}</p>
                       </button>
                     ))}
                   </div>
-                  <p className="text-center text-white/30 text-xs mt-2">点击礼物购买，发送时说「送礼物」即可赠送给 TA</p>
+                  <p className="text-center text-ink-500 text-xs mt-2">点击礼物购买，发送时说「送礼物」即可赠送给 TA</p>
                 </>
               )}
 
               {giftTab === "inventory" && (
                 <>
                   {agent?.getUserGifts().map(({ gift, userGift }: any) => (
-                    <div key={gift.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
-                      <span className="text-3xl">{gift.icon}</span>
-                      <div className="flex-1">
+                    <div key={gift.id} className="flex items-center gap-3 p-3 rounded-xl card">
+                      <div className="w-11 h-11 rounded-lg flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "rgba(255,255,255,0.03)" }}>
+                        {gift.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white">{gift.name}</p>
-                        <p className="text-xs text-white/50">剩余 {userGift.quantity} 个</p>
+                        <p className="text-xs text-ink-400 mt-0.5">剩余 {userGift.quantity} 个</p>
                       </div>
                       <button
                         onClick={() => {
@@ -1230,15 +1229,20 @@ export default function LoverPage() {
                             live2dRef.current?.setExpression(getExpressionForMood("happy", currentCharacter.model));
                           }
                         }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
-                        style={{ background: "linear-gradient(135deg, #ec4899, #f472b6)" }}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-white btn-primary"
                       >
                         赠送
                       </button>
                     </div>
                   ))}
                   {(!agent?.getUserGifts() || agent.getUserGifts().length === 0) && (
-                    <p className="text-center text-white/30 text-sm py-8">背包空空如也，去商店逛逛吧～</p>
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-3 opacity-60" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.05))" }}>
+                        🎒
+                      </div>
+                      <p className="text-ink-500 text-sm">背包空空如也</p>
+                      <p className="text-ink-600 text-xs mt-1">去商店逛逛吧～</p>
+                    </div>
                   )}
                 </>
               )}
@@ -1246,31 +1250,52 @@ export default function LoverPage() {
               {giftTab === "wishlist" && (
                 <>
                   {agent?.getWishList().map(({ gift, wish }: any) => (
-                    <div key={wish.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
-                      <span className="text-3xl">{gift.icon}</span>
-                      <div className="flex-1">
+                    <div key={wish.id} className="flex items-center gap-3 p-3 rounded-xl card">
+                      <div className="w-11 h-11 rounded-lg flex items-center justify-center text-2xl flex-shrink-0" style={{ background: "rgba(255,255,255,0.03)" }}>
+                        {gift.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white">{gift.name}</p>
-                        <p className="text-xs text-white/50">优先级: {wish.priority}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-xs text-ink-400">优先级</span>
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <div key={i} className="w-1 h-1 rounded-full" style={{ background: i < wish.priority ? "#ec4899" : "rgba(255,255,255,0.1)" }} />
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
-                  <p className="text-center text-white/30 text-xs mt-2">告诉 TA 你想要什么礼物，TA 会记在心愿单里 💫</p>
+                  {(!agent?.getWishList() || agent.getWishList().length === 0) && (
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-3 opacity-60" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.05))" }}>
+                        💫
+                      </div>
+                      <p className="text-ink-500 text-sm">心愿单还空着</p>
+                      <p className="text-ink-600 text-xs mt-1">告诉 TA 你想要什么</p>
+                    </div>
+                  )}
                 </>
               )}
 
               {giftTab === "requests" && (
                 <>
                   {(agent?.getPendingGiftRequests() || []).map((request: GiftRequest) => (
-                    <div key={request.id} className="p-4 rounded-xl" style={{ backgroundColor: request.urgency === "high" ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)" }}>
-                      <p className="text-sm text-white mb-2">💭 {request.message}</p>
+                    <div key={request.id} className="p-3.5 rounded-xl" style={{
+                      background: request.urgency === "high"
+                        ? "linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))"
+                        : "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(236,72,153,0.04))",
+                      border: `1px solid ${request.urgency === "high" ? "rgba(239,68,68,0.25)" : "rgba(139,92,246,0.2)"}`,
+                    }}>
+                      <p className="text-sm text-white mb-3">💭 {request.message}</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
                             agent?.fulfillGiftRequest(request.id);
                             setCoinBalance(agent?.getCoinBalance() || 0);
                           }}
-                          className="flex-1 py-2 rounded-lg text-xs font-medium text-white"
-                          style={{ background: "linear-gradient(135deg, #ec4899, #f472b6)" }}
+                          className="flex-1 py-2 rounded-lg text-xs font-medium text-white btn-primary"
                         >
                           💝 送礼物
                         </button>
@@ -1278,8 +1303,7 @@ export default function LoverPage() {
                           onClick={() => {
                             agent?.getGiftSystem().rejectGiftRequest(request.id);
                           }}
-                          className="px-4 py-2 rounded-lg text-xs text-white/60"
-                          style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                          className="px-4 py-2 rounded-lg text-xs text-ink-400 hover:text-white btn-secondary"
                         >
                           拒绝
                         </button>
@@ -1287,7 +1311,12 @@ export default function LoverPage() {
                     </div>
                   ))}
                   {(!agent?.getPendingGiftRequests() || agent.getPendingGiftRequests().length === 0) && (
-                    <p className="text-center text-white/30 text-sm py-8">暂无礼物索取请求</p>
+                    <div className="flex flex-col items-center justify-center py-10">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-3 opacity-60" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.05))" }}>
+                        📩
+                      </div>
+                      <p className="text-ink-500 text-sm">暂无礼物索取请求</p>
+                    </div>
                   )}
                 </>
               )}
