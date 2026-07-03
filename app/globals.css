@@ -6,6 +6,12 @@
   --bg: #0a0a0f;
   --border: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.15);
+  --brand-glow: rgba(139, 92, 246, 0.3);
+  --accent-glow: rgba(236, 72, 153, 0.25);
+  --glass-bg: rgba(23, 23, 31, 0.72);
+  --glass-border: rgba(139, 92, 246, 0.15);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -21,21 +27,68 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 @layer utilities {
+  /* 玻璃态基础 */
   .glass {
-    background: rgba(23, 23, 31, 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
     border: 1px solid var(--border);
   }
 
   .glass-strong {
-    background: rgba(17, 17, 24, 0.95);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: rgba(17, 17, 24, 0.92);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
     border: 1px solid var(--border);
+  }
+
+  /* 紫色高级玻璃效果 */
+  .glass-purple {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(236, 72, 153, 0.08) 100%);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-purple-strong {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.12) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    box-shadow: 0 8px 40px rgba(139, 92, 246, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* 紫色发光边框 */
+  .glow-border {
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .glow-border-accent {
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.12);
+  }
+
+  /* 渐变文字 */
+  .text-gradient {
+    background: linear-gradient(135deg, #c4b5fd 0%, #f9a8d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 闪光效果 */
+  .shimmer-bg {
+    background: linear-gradient(110deg, transparent 25%, rgba(139, 92, 246, 0.08) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2.5s linear infinite;
   }
 
   .card {
@@ -50,7 +103,7 @@ body {
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
     color: white;
     border: none;
     border-radius: 0.5rem;
@@ -59,9 +112,8 @@ body {
   }
 
   .btn-primary:hover {
-    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.35);
   }
 
   .btn-secondary {
@@ -122,6 +174,35 @@ body {
     height: 1px;
     background: var(--border);
   }
+
+  /* 移动端安全区 */
+  .safe-area-top {
+    padding-top: var(--safe-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .safe-area-inset {
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+  }
+
+  /* 触摸优化 */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .touch-feedback {
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+
+  .touch-feedback:active {
+    transform: scale(0.94);
+    opacity: 0.85;
+  }
 }
 
 @keyframes twinkle {
@@ -134,6 +215,11 @@ body {
   50% { opacity: 0.5; }
 }
 
+@keyframes shimmer {
+  0% { backgroundPosition: -200% 0; }
+  100% { backgroundPosition: 200% 0; }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -144,12 +230,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(139, 92, 246, 0.2);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(139, 92, 246, 0.35);
 }
 
 ::selection {

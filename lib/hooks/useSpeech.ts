@@ -9,7 +9,9 @@ export function useSpeech() {
   const [partialTranscript, setPartialTranscript] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [enabled, setEnabled] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const pipelineRef = useRef<SpeechPipeline | null>(null);
+  const hasInteractedRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -66,9 +68,36 @@ export function useSpeech() {
     };
   }, []);
 
+  /**
+   * 用户首次交互时调用，初始化语音引擎以满足浏览器自动播放策略。
+   * 在用户点击发送按钮、语音按钮等交互行为时触发。
+   */
+  const handleFirstInteraction = useCallback(() => {
+    if (hasInteractedRef.current) return;
+    hasInteractedRef.current = true;
+    setHasInteracted(true);
+
+    // 通过空语句初始化 speechSynthesis，解除浏览器自动播放限制
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      try {
+        const dummy = new SpeechSynthesisUtterance("");
+        dummy.volume = 0;
+        window.speechSynthesis.speak(dummy);
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        // 忽略初始化错误
+      }
+    }
+  }, []);
+
   const speak = useCallback(
     async (text: string, options?: any) => {
       if (!pipelineRef.current) return;
+      // 浏览器自动播放策略：未交互前不播放 TTS
+      if (!hasInteractedRef.current) {
+        console.warn("[Speech] Skipping TTS: waiting for user interaction");
+        return;
+      }
       try {
         await pipelineRef.current.speak(text, options);
       } catch (err) {
@@ -83,10 +112,12 @@ export function useSpeech() {
   }, []);
 
   const startListening = useCallback((options?: any) => {
+    // 语音识别也需要用户交互
+    handleFirstInteraction();
     setTranscript("");
     setPartialTranscript("");
     pipelineRef.current?.startListening(options);
-  }, []);
+  }, [handleFirstInteraction]);
 
   const stopListening = useCallback(() => {
     pipelineRef.current?.stopListening();
@@ -99,9 +130,11 @@ export function useSpeech() {
     transcript,
     partialTranscript,
     voices,
+    hasInteracted,
     speak,
     stopSpeaking,
     startListening,
     stopListening,
+    handleFirstInteraction,
   };
 }

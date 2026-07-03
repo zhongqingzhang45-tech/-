@@ -44,10 +44,10 @@ function getModeColor(mode?: string): string {
 
 export default function LoverPage() {
   const { messages, streamingMessage, mood, isTyping, sendMessage, profile, lifeState, agent, generateDiary, handleInteraction } = useCharacterAgent();
-  const { isListening, startListening, stopListening, speak, isSpeaking } = useSpeech();
+  const { isListening, startListening, stopListening, speak, isSpeaking, handleFirstInteraction } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"profile" | "llm" | "voice" | "data" | "shop" | "about">("profile");
+  const [settingsTab, setSettingsTab] = useState<"profile" | "character" | "voice" | "data" | "shop" | "about">("profile");
   const [showSkills, setShowSkills] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [input, setInput] = useState("");
@@ -78,6 +78,8 @@ export default function LoverPage() {
   
   // 角色模型状态
   const [selectedModel, setSelectedModel] = useState("HaruGreeter");
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string>("xiaochun");
+  const [showModelSelector, setShowModelSelector] = useState(false);
   
   // 声音设置状态
   const [ttsEnabled, setTtsEnabled] = useState(true);
@@ -109,16 +111,21 @@ export default function LoverPage() {
 
   const EMOJI_LIST = ["😊", "😂", "🥰", "😢", "😡", "🤔", "😴", "😏", "👍", "❤️", "🌹", "✨", "😭", "🥺", "😜", "🤩"];
 
+  const ALL_CHARACTERS = [...FEMALE_CHARACTERS, ...MALE_CHARACTERS];
+  const selectedCharProfile = ALL_CHARACTERS.find(c => c.id === selectedCharacterId);
+  const activeModelName = selectedModel || selectedCharProfile?.live2dModel || profile?.live2dModel || "HaruGreeter";
+  const modelConfig = getModelConfig(activeModelName);
+
   const currentCharacter = {
-    id: selectedModel || profile?.live2dModel || "HaruGreeter",
-    name: profile?.name || "小春",
-    path: getModelConfig(selectedModel || profile?.live2dModel || "HaruGreeter")?.path || "/live2d-models",
-    model: selectedModel || profile?.live2dModel || "HaruGreeter",
-    avatar: profile?.gender === "male" ? "👨" : "👩",
-    scale: getModelConfig(selectedModel || profile?.live2dModel || "HaruGreeter")?.scale || 2,
-    positionY: getModelConfig(selectedModel || profile?.live2dModel || "HaruGreeter")?.positionY || 0.55,
+    id: activeModelName,
+    name: selectedCharProfile?.name || profile?.name || "小春",
+    path: modelConfig?.path || "/live2d-models",
+    model: activeModelName,
+    avatar: (selectedCharProfile?.gender || profile?.gender) === "male" ? "👨" : "👩",
+    scale: modelConfig?.scale || 2,
+    positionY: modelConfig?.positionY || 0.55,
     type: "cubism3" as const,
-    gender: profile?.gender || "female",
+    gender: selectedCharProfile?.gender || profile?.gender || "female",
   };
 
   useEffect(() => {
@@ -160,6 +167,11 @@ export default function LoverPage() {
       const savedModel = localStorage.getItem("lover_selected_model");
       if (savedModel) {
         setSelectedModel(savedModel);
+      }
+
+      const savedCharId = localStorage.getItem("lover_selected_character");
+      if (savedCharId) {
+        setSelectedCharacterId(savedCharId);
       }
       
       const savedVoice = localStorage.getItem("lover_voice_settings");
@@ -206,6 +218,36 @@ export default function LoverPage() {
       setSelectedModel(modelName);
     }
   }, []);
+
+  // 切换角色
+  const handleCharacterSwitch = useCallback((characterId: string) => {
+    if (typeof window === "undefined") return;
+    const allChars = [...FEMALE_CHARACTERS, ...MALE_CHARACTERS];
+    const char = allChars.find(c => c.id === characterId);
+    if (!char) return;
+
+    localStorage.setItem("lover_selected_character", characterId);
+    localStorage.setItem("lover_selected_model", char.live2dModel);
+    setSelectedCharacterId(characterId);
+    setSelectedModel(char.live2dModel);
+    setModelReady(false);
+
+    // 更新 agent 角色配置
+    if (agent) {
+      agent.updateProfile({
+        name: char.name,
+        nickname: char.nickname,
+        gender: char.gender,
+        persona: char.persona,
+        speakingStyle: char.speakingStyle,
+        catchphrases: char.catchphrases,
+        live2dModel: char.live2dModel,
+        voiceModel: char.voiceModel,
+        accentColor: char.accentColor,
+        secondaryColor: char.secondaryColor,
+      });
+    }
+  }, [agent]);
 
   // 自动时间同步
   useEffect(() => {
@@ -317,11 +359,12 @@ export default function LoverPage() {
 
   const handleSend = useCallback(() => {
     if (!input.trim() && !pendingImage) return;
+    handleFirstInteraction();
     sendMessage(input.trim() || "（发了一张图片）", pendingImage || undefined);
     setInput("");
     setPendingImage(null);
     setShowEmojiPicker(false);
-  }, [input, pendingImage, sendMessage]);
+  }, [input, pendingImage, sendMessage, handleFirstInteraction]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -356,12 +399,14 @@ export default function LoverPage() {
   };
 
   const handleSkillClick = (skillId: string, trigger: string) => {
+    handleFirstInteraction();
     sendMessage(trigger);
     setShowSkills(false);
   };
 
   // 语音通话功能
   const startCall = useCallback(() => {
+    handleFirstInteraction();
     setCallPhase("calling");
     setIsInCall(true);
     setCallDuration(0);
@@ -389,7 +434,7 @@ export default function LoverPage() {
       live2dRef.current?.setExpression(getExpressionForMood("happy", currentCharacter.model));
       live2dRef.current?.playMotion(getRandomMotionForMood("happy", currentCharacter.model));
     }, 1500);
-  }, [voiceEnabled, speak, sendMessage, currentCharacter.model]);
+  }, [voiceEnabled, speak, sendMessage, currentCharacter.model, handleFirstInteraction]);
 
   const endCall = useCallback(() => {
     callLoopRef.current = false;
@@ -430,7 +475,7 @@ export default function LoverPage() {
   // 模型点击互动 - 触发表情和动作
   const handleModelClick = useCallback(() => {
     if (!modelReady) return;
-
+    handleFirstInteraction();
     const interactions = [
       { mood: "happy" as MoodType, text: "呀～ 你碰我了呢～ 好开心！" },
       { mood: "shy" as MoodType, text: "讨、讨厌啦... 突然碰人家..." },
@@ -449,10 +494,11 @@ export default function LoverPage() {
     if (voiceEnabled && Math.random() > 0.5) {
       speak(interaction.text, { emotion: interaction.mood as any });
     }
-  }, [modelReady, currentCharacter.model, voiceEnabled, speak]);
+  }, [modelReady, currentCharacter.model, voiceEnabled, speak, handleFirstInteraction]);
 
   const handleTouch = useCallback((zone: string) => {
     if (!modelReady) return;
+    handleFirstInteraction();
     const result = handleInteraction(zone);
     if (!result) return;
 
@@ -469,7 +515,7 @@ export default function LoverPage() {
     if (voiceEnabled) {
       speak(result.reaction, { emotion: result.mood as any });
     }
-  }, [modelReady, handleInteraction, currentCharacter.model, voiceEnabled, speak]);
+  }, [modelReady, handleInteraction, currentCharacter.model, voiceEnabled, speak, handleFirstInteraction]);
 
   const formatCallDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -498,15 +544,15 @@ export default function LoverPage() {
         }}
       />
 
-      <header 
-        className="flex-shrink-0 h-14 flex items-center px-4 md:px-5 z-20 glass"
+      <header
+        className="flex-shrink-0 h-14 flex items-center px-4 md:px-5 z-20 glass safe-area-top"
       >
         <div className="flex items-center gap-3">
-          <div 
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-base"
-            style={{ 
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-base glow-border"
+            style={{
               background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-              boxShadow: "0 2px 8px rgba(139,92,246,0.25)",
+              boxShadow: "0 2px 12px rgba(139,92,246,0.35)",
             }}
           >
             {profile?.name?.[0] || "星"}
@@ -532,12 +578,12 @@ export default function LoverPage() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <button 
+          <button
             onClick={handlePhoneClick}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-white/5`}
-            style={{ 
-              backgroundColor: isInCall 
-                ? "rgba(239, 68, 68, 0.15)" 
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-white/5 touch-feedback`}
+            style={{
+              backgroundColor: isInCall
+                ? "rgba(239, 68, 68, 0.15)"
                 : "transparent",
             }}
             title={isInCall ? "挂断" : "语音通话"}
@@ -558,9 +604,9 @@ export default function LoverPage() {
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
             </svg>
           </button>
-          <button 
+          <button
             onClick={() => setShowSettings(!showSettings)}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-white/5 touch-feedback"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#8e8ea2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
@@ -642,7 +688,7 @@ export default function LoverPage() {
             <>
           <div className="flex-1 overflow-y-auto py-4 pr-1">
             <div className="mb-4 px-1">
-              <div className="rounded-2xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+              <div className="rounded-2xl p-4 glass-purple">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-base">{currentCharacter.avatar}</span>
@@ -864,13 +910,9 @@ export default function LoverPage() {
             </div>
           )}
 
-          <div className="py-3">
-            <div 
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-2xl"
-              style={{ 
-                backgroundColor: "rgba(30, 30, 40, 0.8)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
+          <div className="py-3 safe-area-bottom">
+            <div
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-2xl glass-purple"
             >
               <input
                 ref={fileInputRef}
@@ -964,12 +1006,13 @@ export default function LoverPage() {
 
                 <div className="w-px h-5 mx-0.5" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
 
-                <button 
+                <button
                   onClick={handleSend}
                   disabled={!input.trim() && !pendingImage}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                  style={{ 
-                    background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 touch-feedback"
+                  style={{
+                    background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+                    boxShadow: "0 2px 8px rgba(139,92,246,0.3)",
                   }}
                   title="发送"
                 >
@@ -1331,8 +1374,8 @@ export default function LoverPage() {
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowSettings(false)}
           />
-          <div 
-            className="fixed top-0 right-0 bottom-0 z-50 w-[90%] max-w-sm overflow-hidden flex flex-col glass-strong animate-slide-up"
+          <div
+            className="fixed top-0 right-0 bottom-0 z-50 w-[90%] max-w-sm overflow-hidden flex flex-col glass-strong safe-area-top animate-slide-up"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
@@ -1349,6 +1392,7 @@ export default function LoverPage() {
             <div className="flex border-b flex-shrink-0 overflow-x-auto px-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
               {[
                 { id: "profile", icon: "👤", label: "资料" },
+                { id: "character", icon: "🎭", label: "角色" },
                 { id: "voice", icon: "🔊", label: "声音" },
                 { id: "shop", icon: "🛍️", label: "商城" },
                 { id: "data", icon: "💾", label: "数据" },
@@ -1468,6 +1512,176 @@ export default function LoverPage() {
                 </div>
               )}
 
+
+              {/* ========== 角色选择 ========== */}
+              {settingsTab === "character" && (
+                <div className="space-y-5">
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    选择你的专属角色，每个角色拥有独特的性格和对话风格。
+                  </p>
+
+                  {/* 角色列表 */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs text-white/40 font-medium">👩 女角色</h3>
+                    {FEMALE_CHARACTERS.map((char) => (
+                      <button
+                        key={char.id}
+                        onClick={() => handleCharacterSwitch(char.id)}
+                        className={`w-full p-4 rounded-2xl text-left transition-all touch-feedback ${
+                          selectedCharacterId === char.id
+                            ? "glass-purple-strong"
+                            : "glass hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                            style={{
+                              background: `linear-gradient(135deg, ${char.accentColor}40, ${char.secondaryColor}30)`,
+                              border: `1px solid ${char.accentColor}40`,
+                            }}
+                          >
+                            👩
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-white">{char.name}</p>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white/60" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                                {char.mbti}
+                              </span>
+                              {selectedCharacterId === char.id && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium" style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }}>
+                                  当前
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/40 mt-0.5 truncate">{char.persona.slice(0, 40)}...</p>
+                            <div className="flex gap-1.5 mt-1.5">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded text-white/50" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                                傲娇 {Math.round(char.tsundereLevel * 100)}%
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded text-white/50" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                                {char.age}岁
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-xs text-white/40 font-medium">👨 男角色</h3>
+                    {MALE_CHARACTERS.map((char) => (
+                      <button
+                        key={char.id}
+                        onClick={() => handleCharacterSwitch(char.id)}
+                        className={`w-full p-4 rounded-2xl text-left transition-all touch-feedback ${
+                          selectedCharacterId === char.id
+                            ? "glass-purple-strong"
+                            : "glass hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                            style={{
+                              background: `linear-gradient(135deg, ${char.accentColor}40, ${char.secondaryColor}30)`,
+                              border: `1px solid ${char.accentColor}40`,
+                            }}
+                          >
+                            👨
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-white">{char.name}</p>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full text-white/60" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                                {char.mbti}
+                              </span>
+                              {selectedCharacterId === char.id && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium" style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }}>
+                                  当前
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/40 mt-0.5 truncate">{char.persona.slice(0, 40)}...</p>
+                            <div className="flex gap-1.5 mt-1.5">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded text-white/50" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                                傲娇 {Math.round(char.tsundereLevel * 100)}%
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded text-white/50" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                                {char.age}岁
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 模型选择 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs text-white/40 font-medium">🎨 Live2D 模型</h3>
+                      <button
+                        onClick={() => setShowModelSelector(!showModelSelector)}
+                        className="text-xs text-brand-400 hover:text-brand-300 transition-colors touch-feedback px-2 py-1"
+                      >
+                        {showModelSelector ? "收起" : "展开全部"}
+                      </button>
+                    </div>
+
+                    {showModelSelector && (
+                      <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                        {BUILTIN_MODELS.map((model) => (
+                          <button
+                            key={model.name}
+                            onClick={() => saveModelSelection(model.name)}
+                            className={`p-2.5 rounded-xl text-center transition-all touch-feedback ${
+                              activeModelName === model.name
+                                ? "glass-purple-strong"
+                                : "glass hover:bg-white/5"
+                            }`}
+                          >
+                            <div
+                              className="w-10 h-10 mx-auto rounded-lg flex items-center justify-center text-lg mb-1"
+                              style={{
+                                background: activeModelName === model.name
+                                  ? "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(236,72,153,0.2))"
+                                  : "rgba(255,255,255,0.05)",
+                              }}
+                            >
+                              {activeModelName === model.name ? "✨" : "🎭"}
+                            </div>
+                            <p className="text-[10px] text-white/70 truncate">{model.name}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {!showModelSelector && (
+                      <div
+                        className="p-3 rounded-xl flex items-center gap-3 glass cursor-pointer touch-feedback"
+                        onClick={() => setShowModelSelector(true)}
+                      >
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+                          style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(236,72,153,0.1))" }}
+                        >
+                          🎭
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-white/80">{activeModelName}</p>
+                          <p className="text-xs text-white/40">点击选择其他模型</p>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" opacity="0.3">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
 
               {/* ========== 声音设置 ========== */}
@@ -1678,9 +1892,9 @@ export default function LoverPage() {
         </>
       )}
 
-      <nav 
-        className="md:hidden flex-shrink-0 px-4 py-2"
-        style={{ 
+      <nav
+        className="md:hidden flex-shrink-0 px-4 py-2 safe-area-bottom"
+        style={{
           backgroundColor: "rgba(18,18,26,0.85)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
@@ -1692,7 +1906,7 @@ export default function LoverPage() {
             <button
               key={item.id}
               onClick={() => setActiveNav(item.id)}
-              className={`flex flex-col items-center gap-0.5 py-1 px-6 transition-colors ${activeNav === item.id ? "text-white" : "text-white/40"}`}
+              className={`flex flex-col items-center gap-0.5 py-1 px-6 transition-colors touch-feedback ${activeNav === item.id ? "text-white" : "text-white/40"}`}
             >
               <span className="text-xl">{item.icon}</span>
               <span className="text-[11px]">{item.label}</span>
