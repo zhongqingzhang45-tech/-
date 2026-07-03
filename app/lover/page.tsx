@@ -47,7 +47,7 @@ export default function LoverPage() {
   const { isListening, startListening, stopListening, speak, isSpeaking } = useSpeech();
   const [activeNav, setActiveNav] = useState("chat");
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"profile" | "llm" | "model" | "voice" | "data" | "shop" | "about">("profile");
+  const [settingsTab, setSettingsTab] = useState<"profile" | "llm" | "voice" | "data" | "shop" | "about">("profile");
   const [showSkills, setShowSkills] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [input, setInput] = useState("");
@@ -645,8 +645,8 @@ export default function LoverPage() {
           )}
         </div>
 
-        <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2 relative z-10">
-          <div className="h-64 md:hidden flex-shrink-0" />
+        <div className="flex-1 flex flex-col min-h-0 px-3 md:px-0 md:pr-16 lg:pr-24 md:pl-2 relative z-10">
+          <div className="h-56 md:hidden flex-shrink-0" />
 
           {activeNav === "chat" ? (
             <>
@@ -865,9 +865,9 @@ export default function LoverPage() {
             </div>
           )}
 
-          <div className="py-3">
+          <div className="py-2 md:py-3">
             <div 
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-full"
+              className="flex items-center gap-1 md:gap-2 px-2 md:px-2.5 py-1.5 rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
             >
               <input
@@ -880,31 +880,31 @@ export default function LoverPage() {
 
               <button 
                 onClick={() => setShowSkills(!showSkills)}
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
+                className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
                 style={{ backgroundColor: showSkills ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.08)" }}
                 title="技能"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
               </button>
 
               <button 
                 onClick={() => setShowGiftPanel(!showGiftPanel)}
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
+                className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
                 style={{ backgroundColor: showGiftPanel ? "rgba(236,72,153,0.3)" : "rgba(255,255,255,0.08)" }}
                 title="礼物"
               >
-                <span className="text-lg">🎁</span>
+                <span className="text-base md:text-lg">🎁</span>
               </button>
 
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
+                className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
                 style={{ backgroundColor: pendingImage ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.08)" }}
                 title="发送图片"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   <circle cx="8.5" cy="8.5" r="1.5" />
                   <polyline points="21 15 16 10 5 21" />
@@ -920,23 +920,23 @@ export default function LoverPage() {
                 className="flex-1 bg-transparent text-sm text-white placeholder-white/35 outline-none py-2 px-1"
               />
 
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
+                  className="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
                   style={{ backgroundColor: showEmojiPicker ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.08)" }}
                   title="表情"
                 >
-                  <span className="text-sm">😊</span>
+                  <span className="text-xs md:text-sm">😊</span>
                 </button>
 
                 <button 
                   onClick={() => setVoiceEnabled(!voiceEnabled)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
+                  className="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
                   style={{ backgroundColor: voiceEnabled ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)" }}
                   title={voiceEnabled ? "语音已开启" : "语音已关闭"}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                  <svg className="w-3 h-3 md:w-3.5 md:h-3.5" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
                   </svg>
@@ -1291,8 +1291,6 @@ export default function LoverPage() {
             <div className="flex border-b flex-shrink-0 overflow-x-auto" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
               {[
                 { id: "profile", icon: "👤", label: "资料" },
-                { id: "llm", icon: "🤖", label: "AI模型" },
-                { id: "model", icon: "🎭", label: "形象" },
                 { id: "voice", icon: "🔊", label: "声音" },
                 { id: "shop", icon: "🛍️", label: "商城" },
                 { id: "data", icon: "💾", label: "数据" },
@@ -1408,180 +1406,7 @@ export default function LoverPage() {
                 </div>
               )}
 
-              {/* ========== LLM 配置 ========== */}
-              {settingsTab === "llm" && (
-                <div className="space-y-4">
-                  <p className="text-xs text-white/50 leading-relaxed">
-                    配置 AI 大模型以获得更智能、更自然的对话体验。支持 OpenAI、Anthropic、DeepSeek、通义千问、智谱AI 等。
-                  </p>
 
-                  {/* 提供商选择 */}
-                  <div className="space-y-2">
-                    <h3 className="text-xs text-white/40 font-medium">选择提供商</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: "mock", name: "模拟模式", desc: "无需配置" },
-                        { id: "openai", name: "OpenAI", desc: "GPT-4/3.5" },
-                        { id: "anthropic", name: "Anthropic", desc: "Claude" },
-                        { id: "deepseek", name: "DeepSeek", desc: "深度求索" },
-                        { id: "qwen", name: "通义千问", desc: "阿里云" },
-                        { id: "glm", name: "智谱AI", desc: "GLM" },
-                      ].map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => setLlmProvider(p.id as any)}
-                          className={`p-3 rounded-xl text-left transition-all ${
-                            llmProvider === p.id 
-                              ? "ring-2 ring-purple-500" 
-                              : "hover:bg-white/5"
-                          }`}
-                          style={{ 
-                            backgroundColor: llmProvider === p.id ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.03)",
-                          }}
-                        >
-                          <p className="text-sm font-medium text-white">{p.name}</p>
-                          <p className="text-xs text-white/40">{p.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* API Key 输入 */}
-                  {llmProvider !== "mock" && (
-                    <div className="space-y-2">
-                      <h3 className="text-xs text-white/40 font-medium">API Key</h3>
-                      <input
-                        type="password"
-                        value={llmApiKey}
-                        onChange={(e) => setLlmApiKey(e.target.value)}
-                        placeholder="输入你的 API Key"
-                        className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/30 outline-none"
-                        style={{ 
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* 模型选择 */}
-                  {llmProvider !== "mock" && (
-                    <div className="space-y-2">
-                      <h3 className="text-xs text-white/40 font-medium">模型</h3>
-                      <select
-                        value={llmModel}
-                        onChange={(e) => setLlmModel(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
-                        style={{ 
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                        }}
-                      >
-                        {llmProvider === "openai" && (
-                          <>
-                            <option value="gpt-4">GPT-4</option>
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                          </>
-                        )}
-                        {llmProvider === "anthropic" && (
-                          <>
-                            <option value="claude-3-opus">Claude 3 Opus</option>
-                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                            <option value="claude-3-haiku">Claude 3 Haiku</option>
-                          </>
-                        )}
-                        {llmProvider === "deepseek" && (
-                          <>
-                            <option value="deepseek-chat">DeepSeek Chat</option>
-                            <option value="deepseek-coder">DeepSeek Coder</option>
-                          </>
-                        )}
-                        {llmProvider === "qwen" && (
-                          <>
-                            <option value="qwen-turbo">通义千问 Turbo</option>
-                            <option value="qwen-plus">通义千问 Plus</option>
-                            <option value="qwen-max">通义千问 Max</option>
-                          </>
-                        )}
-                        {llmProvider === "glm" && (
-                          <>
-                            <option value="glm-4">GLM-4</option>
-                            <option value="glm-4-flash">GLM-4 Flash</option>
-                            <option value="glm-3-turbo">GLM-3 Turbo</option>
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* 保存按钮 */}
-                  <button
-                    onClick={saveLlmConfig}
-                    className="w-full py-3 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
-                    style={{ background: llmSaved ? "#22c55e" : "linear-gradient(135deg, #8b5cf6, #ec4899)" }}
-                  >
-                    {llmSaved ? "✅ 配置已保存" : "保存配置"}
-                  </button>
-
-                  {llmProvider === "mock" && (
-                    <p className="text-xs text-white/40 text-center">
-                      💡 当前使用模拟模式，无需 API Key。配置真实 API 可获得更好的体验。
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* ========== 模型选择 ========== */}
-              {settingsTab === "model" && (
-                <div className="space-y-4">
-                  <p className="text-xs text-white/50 leading-relaxed">
-                    选择不同的虚拟形象，每个形象都有独特的性格和互动风格。
-                  </p>
-
-                  <div className="space-y-3">
-                    {BUILTIN_MODELS.map((model) => (
-                      <button
-                        key={model.name}
-                        onClick={() => saveModelSelection(model.name)}
-                        className={`w-full p-4 rounded-xl text-left transition-all ${
-                          selectedModel === model.name 
-                            ? "ring-2 ring-purple-500" 
-                            : "hover:bg-white/5"
-                        }`}
-                        style={{ 
-                          backgroundColor: selectedModel === model.name ? "rgba(139, 92, 246, 0.15)" : "rgba(255,255,255,0.03)",
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                            🎭
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-white">{model.name}</p>
-                            <p className="text-xs text-white/40 mt-0.5">
-                              {model.name === "HaruGreeter" ? "活泼可爱的小姐姐，8种表情 + 27种动作" : "其他角色"}
-                            </p>
-                          </div>
-                          {selectedModel === model.name && (
-                            <span className="text-purple-400">✓</span>
-                          )}
-                        </div>
-                        {selectedModel === model.name && (
-                          <div className="mt-3 flex flex-wrap gap-1">
-                            <span className="px-2 py-0.5 rounded text-[10px]" style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#fff" }}>
-                              {model.expressions?.length || 0} 表情
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[10px]" style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#fff" }}>
-                              {model.motions?.length || 0} 动作
-                            </span>
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* ========== 声音设置 ========== */}
               {settingsTab === "voice" && (

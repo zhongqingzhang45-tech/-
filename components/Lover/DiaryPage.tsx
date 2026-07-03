@@ -24,6 +24,15 @@ interface GeneratedDiary {
   weekday: string;
 }
 
+function formatDate(date: Date): { dateStr: string; weekday: string } {
+  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+  const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+  return {
+    dateStr: `${months[date.getMonth()]}${date.getDate()}日`,
+    weekday: weekdays[date.getDay()],
+  };
+}
+
 export default function DiaryPage({
   characterName,
   onGenerateDiary,
@@ -37,7 +46,6 @@ export default function DiaryPage({
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
 
-  // 初始静态日记数据
   const staticEntries: DiaryEntry[] = [
     {
       id: "static-1",
@@ -75,7 +83,6 @@ export default function DiaryPage({
   ];
 
   useEffect(() => {
-    // 加载保存的日记
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("lover_diary_entries");
       if (saved) {
@@ -90,6 +97,62 @@ export default function DiaryPage({
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!onGenerateDiary || isGenerating) return;
+
+    const checkAndGenerate = async () => {
+      const today = new Date();
+      const { dateStr: todayDateStr } = formatDate(today);
+
+      const hasTodayEntry = entries.some(e => e.date === todayDateStr);
+      if (hasTodayEntry) return;
+
+      const lastGen = localStorage.getItem("lover_diary_last_generated");
+      if (lastGen) {
+        const lastDate = new Date(lastGen);
+        const isSameDay = lastDate.toDateString() === today.toDateString();
+        if (isSameDay) return;
+      }
+
+      setIsGenerating(true);
+      try {
+        const diary = await onGenerateDiary();
+        if (diary) {
+          const newEntry: DiaryEntry = {
+            id: `ai_${Date.now()}`,
+            date: diary.date,
+            weekday: diary.weekday,
+            mood: diary.mood,
+            moodEmoji: diary.moodEmoji,
+            title: diary.title,
+            content: diary.content,
+            tags: diary.tags,
+            isAIGenerated: true,
+          };
+
+          const aiEntries = entries.filter(e => e.isAIGenerated);
+          const otherEntries = entries.filter(e => !e.isAIGenerated);
+          const updatedAiEntries = [newEntry, ...aiEntries];
+
+          setEntries([...otherEntries, ...updatedAiEntries]);
+          setSelectedEntry(newEntry);
+          setLastGenerated(new Date().toISOString());
+
+          if (typeof window !== "undefined") {
+            localStorage.setItem("lover_diary_entries", JSON.stringify(updatedAiEntries));
+            localStorage.setItem("lover_diary_last_generated", new Date().toISOString());
+          }
+        }
+      } catch (error) {
+        console.error("Auto-generate diary failed:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    checkAndGenerate();
+  }, [onGenerateDiary, entries]);
 
   const handleGenerateDiary = useCallback(async () => {
     if (!onGenerateDiary || isGenerating) return;

@@ -44,6 +44,7 @@ export class SpeechPipeline {
   private isListening: boolean = false;
   private utteranceQueue: string[] = [];
   private isProcessing: boolean = false;
+  private voicesLoadedPromise: Promise<void> | null = null;
 
   constructor(config?: Partial<SpeechPipelineConfig>) {
     this.config = {
@@ -55,6 +56,40 @@ export class SpeechPipeline {
     if (typeof window !== "undefined") {
       this.synthesis = window.speechSynthesis ?? null;
       this.initASR();
+      this.initVoicesLoaded();
+    }
+  }
+
+  private initVoicesLoaded(): void {
+    if (!this.synthesis) return;
+
+    this.voicesLoadedPromise = new Promise((resolve) => {
+      const voices = this.synthesis!.getVoices();
+      if (voices.length > 0) {
+        resolve();
+        return;
+      }
+
+      const onVoicesChanged = () => {
+        const voices = this.synthesis!.getVoices();
+        if (voices.length > 0) {
+          this.synthesis!.removeEventListener("voiceschanged", onVoicesChanged);
+          resolve();
+        }
+      };
+
+      this.synthesis!.addEventListener("voiceschanged", onVoicesChanged);
+
+      setTimeout(() => {
+        this.synthesis!.removeEventListener("voiceschanged", onVoicesChanged);
+        resolve();
+      }, 3000);
+    });
+  }
+
+  private async waitForVoices(): Promise<void> {
+    if (this.voicesLoadedPromise) {
+      await this.voicesLoadedPromise;
     }
   }
 
@@ -140,22 +175,26 @@ export class SpeechPipeline {
   }
 
   private speakSingle(text: string, options?: Partial<TTSOptions>): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       if (!this.synthesis) {
         reject(new Error("Speech synthesis not available"));
         return;
       }
 
+      await this.waitForVoices();
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.config.asrLang ?? "zh-CN";
       utterance.volume = 1;
+      utterance.rate = options?.rate ?? this.config.ttsRate ?? 0.95;
+      utterance.pitch = options?.pitch ?? this.config.ttsPitch ?? 1.05;
 
       const emotion = options?.emotion ?? "neutral";
       const isSinging = options?.isSinging ?? false;
-      const { rate, pitch } = this.getVoiceParams(emotion, isSinging);
+      const { rate: emotionRate, pitch: emotionPitch } = this.getVoiceParams(emotion, isSinging);
       
-      utterance.rate = options?.rate ?? rate;
-      utterance.pitch = options?.pitch ?? pitch;
+      utterance.rate = options?.rate ?? emotionRate;
+      utterance.pitch = options?.pitch ?? emotionPitch;
 
       const voices = this.synthesis.getVoices();
       
@@ -171,6 +210,8 @@ export class SpeechPipeline {
           : this.findBestChineseFemaleVoice(voices);
         if (bestVoice) {
           utterance.voice = bestVoice;
+        } else if (voices.length > 0) {
+          utterance.voice = voices.find(v => v.lang.includes('zh')) || voices[0];
         }
       }
 

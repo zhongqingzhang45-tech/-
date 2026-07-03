@@ -104,6 +104,7 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
     const animationControllerRef = useRef<any>(null);
     const moodRef = useRef(currentMood);
     const onTouchedRef = useRef(onTouched);
+    const setupPromiseRef = useRef<Promise<void> | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -250,16 +251,22 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
       };
 
       const setup = async () => {
-        try {
-          await loadAllScripts();
+        if (setupPromiseRef.current) {
+          await setupPromiseRef.current;
+          return;
+        }
 
-          if (destroyedRef.current) return;
-          if (!checkLibs()) {
-            throw new Error("Live2D libraries failed to load");
-          }
+        const promise = (async () => {
+          try {
+            await loadAllScripts();
 
-          if (destroyedRef.current || !canvasContainerRef.current) return;
-          const container = canvasContainerRef.current;
+            if (destroyedRef.current) return;
+            if (!checkLibs()) {
+              throw new Error("Live2D libraries failed to load");
+            }
+
+            if (destroyedRef.current || !canvasContainerRef.current) return;
+            const container = canvasContainerRef.current;
 
           while (container.firstChild) {
             container.removeChild(container.firstChild);
@@ -826,11 +833,18 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
           setIsLoading(false);
           isLoadingRef.current = false;
         }
+      })();
+
+        setupPromiseRef.current = promise;
+        await promise;
       };
 
       setup();
 
-      return cleanup;
+      return () => {
+        setupPromiseRef.current = null;
+        cleanup();
+      };
     }, [modelPath, modelName, scale, positionY, webglSupported, onModelLoaded, onError]);
 
     return (

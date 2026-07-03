@@ -1535,28 +1535,37 @@ export class DigitalLifeAgent {
         { role: "system", content: systemPrompt },
       ];
 
-      const recentChats = this.recentMessages.slice(-10);
+      const recentChats = this.recentMessages.slice(-18);
+      let lastIsUser = false;
+      
       for (const msg of recentChats) {
-        llmMessages.push({
-          role: msg.sender === "user" ? "user" : "assistant",
-          content: msg.content,
-        });
+        const role = msg.sender === "user" ? "user" : "assistant";
+        if (role === "user" && lastIsUser) {
+          continue;
+        }
+        if (role === "assistant" && !lastIsUser) {
+          continue;
+        }
+        llmMessages.push({ role, content: msg.content });
+        lastIsUser = role === "user";
       }
 
-      if (llmMessages[llmMessages.length - 1].role !== "user") {
+      if (llmMessages.length === 1 || llmMessages[llmMessages.length - 1].role !== "user") {
+        llmMessages.push({ role: "user", content: userInput });
+      } else if (llmMessages[llmMessages.length - 1].content !== userInput) {
         llmMessages.push({ role: "user", content: userInput });
       }
 
       const response = await this.llmProvider.generate(llmMessages, {
-        temperature: 0.8 + this.lifeState.emotion.arousal * 0.2,
-        maxTokens: 500,
+        temperature: 0.7 + this.lifeState.emotion.arousal * 0.15,
+        maxTokens: 800,
       });
 
       let result = response.content.trim();
       result = result.replace(/^["']|["']$/g, "");
       result = result.replace(/\n{3,}/g, "\n\n");
 
-      if (!result) {
+      if (!result || result.length < 2) {
         return this.generateResponse(decision, { intent: "unknown", keywords: [] }, userInput);
       }
 
