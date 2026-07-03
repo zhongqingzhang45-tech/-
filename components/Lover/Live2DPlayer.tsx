@@ -306,14 +306,12 @@ const Live2DPlayer = forwardRef<Live2DPlayerRef, Live2DPlayerProps>(
             ? Math.min(window.devicePixelRatio || 1, 1.5)
             : Math.min(window.devicePixelRatio || 1, 2);
 
-          app = new PIXI.Application({
-            width,
-            height,
+          app = new PIXI.Application(width, height, {
             transparent: true,
             antialias: !isMobile,
             resolution,
             autoDensity: true,
-            backgroundAlpha: 0,
+            backgroundColor: 0x000000,
             preserveDrawingBuffer: false,
           });
           app.view.style.display = "block";
