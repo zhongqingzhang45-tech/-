@@ -7,6 +7,9 @@ import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType, FEMALE_CHARACTERS, MALE_CHARACTERS, Gender, PERSONA_MODE_LABELS, PersonaMode, Gift, GiftRequest } from "@/lib/core/digital-life";
 import { getExpressionForMood, getRandomMotionForMood, getModelConfig, BUILTIN_MODELS } from "@/lib/core/live2d-manager";
 import type { Live2DPlayerRef, Live2DPlayerProps } from "@/components/Lover/Live2DPlayer";
+import { SceneBackground, LightingOverlay, ParticleCanvas } from "@/components/Lover/SceneEffects";
+import { ScenePanel, CostumePanel, SceneControlBar } from "@/components/Lover/ScenePanel";
+import { SCENE_CONFIGS, LIGHTING_CONFIGS, getTimeOfDayFromDate, getSceneConfig, SceneId, TimeOfDay, COSTUME_CONFIGS } from "@/lib/core/scene-system";
 import DiaryPage from "@/components/Lover/DiaryPage";
 
 const Live2DPlayerDynamic = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
@@ -74,6 +77,14 @@ export default function LoverPage() {
   
   // 数据管理状态
   const [showDataConfirm, setShowDataConfirm] = useState<string | null>(null);
+
+  // 场景与服装状态
+  const [currentScene, setCurrentScene] = useState<SceneId>("bedroom");
+  const [currentTimeOfDay, setCurrentTimeOfDay] = useState<TimeOfDay>(getTimeOfDayFromDate());
+  const [autoTimeMode, setAutoTimeMode] = useState(true);
+  const [showScenePanel, setShowScenePanel] = useState(false);
+  const [currentCostume, setCurrentCostume] = useState("default");
+
   // 语音通话状态
   const [isInCall, setIsInCall] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -185,6 +196,18 @@ export default function LoverPage() {
       setSelectedModel(modelName);
     }
   }, []);
+
+  // 自动时间同步
+  useEffect(() => {
+    if (!autoTimeMode) return;
+    const updateTime = () => setCurrentTimeOfDay(getTimeOfDayFromDate());
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, [autoTimeMode]);
+
+  const sceneConfig = getSceneConfig(currentScene);
+  const lightingConfig = LIGHTING_CONFIGS[currentTimeOfDay];
 
   // 保存声音设置
   const saveVoiceSettings = useCallback(() => {
@@ -529,10 +552,12 @@ export default function LoverPage() {
 
       <div className="flex-1 flex min-h-0 relative">
         <div 
-          className="absolute inset-0 z-0 md:relative md:flex md:w-[38%] lg:w-[35%] md:items-end md:justify-start cursor-pointer"
+          className="absolute inset-0 z-0 md:relative md:flex md:w-[38%] lg:w-[35%] md:items-end md:justify-start cursor-pointer overflow-hidden"
           onClick={handleModelClick}
+          style={{ borderRadius: isMobile ? 0 : "16px" }}
         >
-          <div className="absolute top-0 left-0 w-full h-64 md:relative md:w-full md:h-full">
+          <SceneBackground scene={sceneConfig} />
+          <div className="absolute top-0 left-0 w-full h-64 md:relative md:w-full md:h-full z-10">
             <Live2DPlayer
               key={currentCharacter.id}
               ref={live2dRef}
@@ -548,13 +573,46 @@ export default function LoverPage() {
               }}
             />
           </div>
+          <LightingOverlay lighting={lightingConfig} />
+          <ParticleCanvas particleType={sceneConfig.particleType || "none"} mood={mood} />
           <div 
-            className="hidden md:block absolute bottom-0 left-0 w-full pointer-events-none"
+            className="hidden md:block absolute bottom-0 left-0 w-full pointer-events-none z-20"
             style={{ 
               height: "140px",
               background: "radial-gradient(ellipse at 30% 100%, rgba(147,112,219,0.12) 0%, transparent 65%)",
             }}
           />
+          <div className="absolute top-3 left-3 z-30">
+            <SceneControlBar
+              scene={currentScene}
+              timeOfDay={currentTimeOfDay}
+              onOpenPanel={() => setShowScenePanel(!showScenePanel)}
+            />
+          </div>
+          {showScenePanel && (
+            <div
+              className="absolute top-14 left-3 z-40 w-72 max-h-[70vh] overflow-y-auto rounded-2xl p-4 backdrop-blur-xl"
+              style={{ backgroundColor: "rgba(20,20,35,0.85)", border: "1px solid rgba(255,255,255,0.1)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ScenePanel
+                currentScene={currentScene}
+                onSceneChange={setCurrentScene}
+                currentTimeOfDay={currentTimeOfDay}
+                onTimeChange={setCurrentTimeOfDay}
+                autoTimeMode={autoTimeMode}
+                onAutoTimeToggle={setAutoTimeMode}
+              />
+              <div className="mt-4 pt-3 border-t border-white/10">
+                <CostumePanel
+                  currentCostume={currentCostume}
+                  onCostumeChange={setCurrentCostume}
+                  userLevel={lifeState?.growth?.level || 1}
+                  ownedPremium={[]}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 px-4 md:px-0 md:pr-20 lg:pr-28 md:pl-2 relative z-10">
