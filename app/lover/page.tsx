@@ -730,41 +730,44 @@ export default function LoverPage() {
               </div>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {convertedMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex items-end gap-1.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex items-end gap-2 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.sender === "lover" && (
-                    <div className="flex items-end gap-1.5">
+                    <div className="flex items-end gap-2">
                       <div
-                        className="max-w-[62%] px-4 py-2.5 text-sm leading-relaxed"
+                        className="max-w-[70%] px-4 py-2.5 text-sm leading-relaxed"
                         style={{
-                          backgroundColor: "rgba(255,255,255,0.9)",
-                          color: "#1a1a2e",
-                          borderRadius: "18px 18px 18px 6px",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          backgroundColor: "rgba(255,255,255,0.92)",
+                          color: "#1a1a1f",
+                          borderRadius: "16px 16px 16px 4px",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
                         }}
                       >
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       </div>
-                      <button 
-                        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition-all hover:scale-110"
-                        style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5"
+                        style={{ 
+                          background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+                          fontSize: "14px"
+                        }}
                       >
-                        <span style={{ fontSize: "12px" }}>😊</span>
-                      </button>
+                        {profile?.name?.[0] || "星"}
+                      </div>
                     </div>
                   )}
                   {msg.sender === "user" && (
                     <div
-                      className="max-w-[62%] px-4 py-2.5 text-sm leading-relaxed"
+                      className="max-w-[70%] px-4 py-2.5 text-sm leading-relaxed"
                       style={{
-                        background: "linear-gradient(135deg, #6c63ff 0%, #8b7cf8 100%)",
+                        background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
                         color: "#ffffff",
-                        borderRadius: "18px 18px 6px 18px",
-                        boxShadow: "0 2px 10px rgba(108,99,255,0.25)",
+                        borderRadius: "16px 16px 4px 16px",
+                        boxShadow: "0 1px 3px rgba(139, 92, 246, 0.2)",
                       }}
                     >
                       <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -773,54 +776,57 @@ export default function LoverPage() {
                 </div>
               ))}
 
-              {/* 流式消息 - 打字机效果 */}
               {streamingMessage && (
-                <div className="flex items-end gap-1.5 justify-start">
-                  <div className="flex items-end gap-1.5">
+                <div className="flex items-end gap-2 justify-start">
+                  <div className="flex items-end gap-2">
                     <div
-                      className="max-w-[62%] px-4 py-2.5 text-sm leading-relaxed"
+                      className="max-w-[70%] px-4 py-2.5 text-sm leading-relaxed"
                       style={{
-                        backgroundColor: "rgba(255,255,255,0.9)",
-                        color: "#1a1a2e",
-                        borderRadius: "18px 18px 18px 6px",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                        backgroundColor: "rgba(255,255,255,0.92)",
+                        color: "#1a1a1f",
+                        borderRadius: "16px 16px 16px 4px",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
                       }}
                     >
                       <p className="whitespace-pre-wrap">{streamingMessage.content}</p>
                       {!streamingMessage.done && (
-                        <span className="inline-block w-1.5 h-4 ml-0.5 bg-slate-400 animate-pulse rounded" />
+                        <span className="inline-block w-1.5 h-4 ml-0.5 bg-ink-500/60 animate-pulse rounded-sm" />
                       )}
                     </div>
-                    <button 
-                      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition-all hover:scale-110"
-                      style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5"
+                      style={{ 
+                        background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+                        fontSize: "14px"
+                      }}
                     >
-                      <span style={{ fontSize: "12px" }}>😊</span>
-                    </button>
+                      {profile?.name?.[0] || "星"}
+                    </div>
                   </div>
                 </div>
               )}
 
               {isTyping && !streamingMessage && (
-                <div className="flex items-end gap-1.5 justify-start">
+                <div className="flex items-end gap-2 justify-start">
                   <div
-                    className="px-5 py-3"
+                    className="px-4 py-3"
                     style={{
-                      backgroundColor: "rgba(255,255,255,0.9)",
-                      borderRadius: "18px 18px 18px 6px",
+                      backgroundColor: "rgba(255,255,255,0.92)",
+                      borderRadius: "16px 16px 16px 4px",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
                     }}
                   >
                     <div className="flex space-x-1.5 items-center h-3">
                       <span 
-                        className="w-2 h-2 rounded-full bg-slate-400/60 animate-bounce" 
+                        className="w-1.5 h-1.5 rounded-full bg-ink-400/50 animate-bounce" 
                         style={{ animationDuration: "1.4s" }} 
                       />
                       <span 
-                        className="w-2 h-2 rounded-full bg-slate-400/60 animate-bounce" 
+                        className="w-1.5 h-1.5 rounded-full bg-ink-400/50 animate-bounce" 
                         style={{ animationDelay: "200ms", animationDuration: "1.4s" }} 
                       />
                       <span 
-                        className="w-2 h-2 rounded-full bg-slate-400/60 animate-bounce" 
+                        className="w-1.5 h-1.5 rounded-full bg-ink-400/50 animate-bounce" 
                         style={{ animationDelay: "400ms", animationDuration: "1.4s" }} 
                       />
                     </div>
@@ -850,14 +856,17 @@ export default function LoverPage() {
 
           {showEmojiPicker && (
             <div 
-              className="mb-2 p-3 rounded-2xl grid grid-cols-8 gap-2"
-              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+              className="mb-3 p-3 rounded-xl grid grid-cols-8 gap-1"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 40, 0.9)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
             >
               {EMOJI_LIST.map((emoji, i) => (
                 <button
                   key={i}
                   onClick={() => handleEmojiClick(emoji)}
-                  className="w-8 h-8 flex items-center justify-center text-lg hover:bg-white/10 rounded-lg transition-all"
+                  className="w-8 h-8 flex items-center justify-center text-lg hover:bg-white/10 rounded-md transition-all"
                 >
                   {emoji}
                 </button>
@@ -865,10 +874,13 @@ export default function LoverPage() {
             </div>
           )}
 
-          <div className="py-2 md:py-3">
+          <div className="py-3">
             <div 
-              className="flex items-center gap-1 md:gap-2 px-2 md:px-2.5 py-1.5 rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-2xl"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 40, 0.8)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
             >
               <input
                 ref={fileInputRef}
@@ -880,36 +892,38 @@ export default function LoverPage() {
 
               <button 
                 onClick={() => setShowSkills(!showSkills)}
-                className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
-                style={{ backgroundColor: showSkills ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.08)" }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
+                style={{ backgroundColor: showSkills ? "rgba(139,92,246,0.2)" : "transparent" }}
                 title="技能"
               >
-                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#8e8ea2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
               </button>
 
               <button 
                 onClick={() => setShowGiftPanel(!showGiftPanel)}
-                className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
-                style={{ backgroundColor: showGiftPanel ? "rgba(236,72,153,0.3)" : "rgba(255,255,255,0.08)" }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
+                style={{ backgroundColor: showGiftPanel ? "rgba(236,72,153,0.2)" : "transparent" }}
                 title="礼物"
               >
-                <span className="text-base md:text-lg">🎁</span>
+                <span className="text-base">🎁</span>
               </button>
 
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105"
-                style={{ backgroundColor: pendingImage ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.08)" }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
+                style={{ backgroundColor: pendingImage ? "rgba(59,130,246,0.2)" : "transparent" }}
                 title="发送图片"
               >
-                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#8e8ea2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   <circle cx="8.5" cy="8.5" r="1.5" />
                   <polyline points="21 15 16 10 5 21" />
                 </svg>
               </button>
+
+              <div className="w-px h-5 mx-0.5" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
 
               <input
                 type="text"
@@ -917,26 +931,26 @@ export default function LoverPage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="输入消息..."
-                className="flex-1 bg-transparent text-sm text-white placeholder-white/35 outline-none py-2 px-1"
+                className="flex-1 bg-transparent text-sm text-white/90 placeholder-ink-500 outline-none py-2 px-1"
               />
 
-              <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
-                  style={{ backgroundColor: showEmojiPicker ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.08)" }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:bg-white/10"
+                  style={{ backgroundColor: showEmojiPicker ? "rgba(251,191,36,0.2)" : "transparent" }}
                   title="表情"
                 >
-                  <span className="text-xs md:text-sm">😊</span>
+                  <span className="text-sm">😊</span>
                 </button>
 
                 <button 
                   onClick={() => setVoiceEnabled(!voiceEnabled)}
-                  className="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
-                  style={{ backgroundColor: voiceEnabled ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)" }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:bg-white/10"
+                  style={{ backgroundColor: voiceEnabled ? "rgba(34,197,94,0.2)" : "transparent" }}
                   title={voiceEnabled ? "语音已开启" : "语音已关闭"}
                 >
-                  <svg className="w-3 h-3 md:w-3.5 md:h-3.5" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke={voiceEnabled ? "#22c55e" : "#8e8ea2"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
                   </svg>
@@ -944,17 +958,34 @@ export default function LoverPage() {
 
                 <button 
                   onClick={handleMicToggle}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:bg-white/10"
                   style={{ 
-                    backgroundColor: micActive ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)",
+                    backgroundColor: micActive ? "rgba(239,68,68,0.2)" : "transparent",
                   }}
                   title="语音输入"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke={micActive ? "#ef4444" : "#8e8ea2"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                     <line x1="12" y1="19" x2="12" y2="23" />
                     <line x1="8" y1="23" x2="16" y2="23" />
+                  </svg>
+                </button>
+
+                <div className="w-px h-5 mx-0.5" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
+
+                <button 
+                  onClick={handleSend}
+                  disabled={!input.trim() && !pendingImage}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                  style={{ 
+                    background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                  }}
+                  title="发送"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>
                 </button>
               </div>
@@ -1268,27 +1299,25 @@ export default function LoverPage() {
       {showSettings && (
         <>
           <div 
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowSettings(false)}
           />
           <div 
-            className="fixed top-0 right-0 bottom-0 z-50 w-[90%] max-w-sm shadow-2xl overflow-hidden flex flex-col"
-            style={{ backgroundColor: "#1a1a28" }}
+            className="fixed top-0 right-0 bottom-0 z-50 w-[90%] max-w-sm overflow-hidden flex flex-col glass-strong animate-slide-up"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
               <h2 className="text-base font-semibold text-white">设置</h2>
               <button 
                 onClick={() => setShowSettings(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white/90"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex border-b flex-shrink-0 overflow-x-auto" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+            <div className="flex border-b flex-shrink-0 overflow-x-auto px-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
               {[
                 { id: "profile", icon: "👤", label: "资料" },
                 { id: "voice", icon: "🔊", label: "声音" },
@@ -1299,13 +1328,15 @@ export default function LoverPage() {
                 <button
                   key={tab.id}
                   onClick={() => setSettingsTab(tab.id as any)}
-                  className={`flex-1 min-w-[60px] py-3 text-xs font-medium transition-all flex flex-col items-center gap-1 ${
-                    settingsTab === tab.id ? "text-white border-b-2" : "text-white/40"
+                  className={`flex-1 min-w-[60px] py-3 text-xs font-medium transition-all flex flex-col items-center gap-1 relative ${
+                    settingsTab === tab.id ? "text-white" : "text-ink-400"
                   }`}
-                  style={{ borderColor: settingsTab === tab.id ? "#8b5cf6" : "transparent" }}
                 >
                   <span className="text-sm">{tab.icon}</span>
                   {tab.label}
+                  {settingsTab === tab.id && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }} />
+                  )}
                 </button>
               ))}
             </div>
@@ -1315,62 +1346,64 @@ export default function LoverPage() {
               
               {/* ========== 个人资料 ========== */}
               {settingsTab === "profile" && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* 角色信息卡片 */}
-                  <div className="p-4 rounded-2xl" style={{ background: "linear-gradient(135deg, #818cf8 0%, #f472b6 100%)" }}>
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl">
+                  <div className="relative overflow-hidden rounded-xl p-5" style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)" }}>
+                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20 -mr-10 -mt-10" style={{ background: "radial-gradient(circle, #fff 0%, transparent 70%)" }} />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full opacity-10 -ml-8 -mb-8" style={{ background: "radial-gradient(circle, #fff 0%, transparent 70%)" }} />
+                    <div className="relative flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl border border-white/20">
                         {profile?.gender === "male" ? "👨" : "👩"}
                       </div>
                       <div className="flex-1">
                         <p className="text-white font-semibold text-lg">{profile?.name || "星野"}</p>
-                        <p className="text-white/70 text-sm">Lv.{lifeState?.growth?.level || 1} · {profile?.nickname || "小可爱"}</p>
+                        <p className="text-white/70 text-xs mt-0.5">Lv.{lifeState?.growth?.level || 1} · {profile?.nickname || "小可爱"}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* 属性进度 */}
                   <div className="space-y-3">
-                    <h3 className="text-xs text-white/40 font-medium">关系状态</h3>
+                    <h3 className="text-xs text-ink-400 font-medium px-1">关系状态</h3>
                     
-                    <div className="space-y-2.5">
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-pink-400">❤️ 好感度</span>
-                          <span className="text-white/50">{Math.round(lifeState?.persona?.affection || 50)}/100</span>
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-ink-300">好感度</span>
+                          <span className="text-ink-400">{Math.round(lifeState?.persona?.affection || 50)}/100</span>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                          <div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-rose-500" style={{ width: `${lifeState?.persona?.affection || 50}%` }} />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-orange-400">💢 怨念值</span>
-                          <span className="text-white/50">{Math.round(lifeState?.persona?.resentment || 0)}/100</span>
-                        </div>
-                        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                          <div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-red-500" style={{ width: `${lifeState?.persona?.resentment || 0}%` }} />
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lifeState?.persona?.affection || 50}%`, background: "linear-gradient(90deg, #ec4899, #f472b6)" }} />
                         </div>
                       </div>
                       
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-blue-400">🤝 亲密度</span>
-                          <span className="text-white/50">{Math.round(lifeState?.relationship?.intimacy || 30)}/100</span>
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-ink-300">怨念值</span>
+                          <span className="text-ink-400">{Math.round(lifeState?.persona?.resentment || 0)}/100</span>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                          <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500" style={{ width: `${lifeState?.relationship?.intimacy || 30}%` }} />
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lifeState?.persona?.resentment || 0}%`, background: "linear-gradient(90deg, #f97316, #ef4444)" }} />
                         </div>
                       </div>
                       
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-green-400">⭐ 信任度</span>
-                          <span className="text-white/50">{Math.round(lifeState?.relationship?.trust || 30)}/100</span>
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-ink-300">亲密度</span>
+                          <span className="text-ink-400">{Math.round(lifeState?.relationship?.intimacy || 30)}/100</span>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                          <div className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-500" style={{ width: `${lifeState?.relationship?.trust || 30}%` }} />
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lifeState?.relationship?.intimacy || 30}%`, background: "linear-gradient(90deg, #3b82f6, #22d3ee)" }} />
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-ink-300">信任度</span>
+                          <span className="text-ink-400">{Math.round(lifeState?.relationship?.trust || 30)}/100</span>
+                        </div>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lifeState?.relationship?.trust || 30}%`, background: "linear-gradient(90deg, #22c55e, #10b981)" }} />
                         </div>
                       </div>
                     </div>
