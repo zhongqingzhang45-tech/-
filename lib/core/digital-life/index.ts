@@ -20,6 +20,27 @@ export type { CausalEvent, CausalChain } from './causal-system';
 export { AutonomousDecisionEngine } from './autonomous-decision-engine';
 export type { DecisionContext, AutonomousDecision } from './autonomous-decision-engine';
 
+export {
+  TimeSystem,
+  EventSystem,
+  GoalSystem,
+  StorySystem,
+  InterestSystem,
+  EnhancedAutonomousEngine,
+} from './enhanced-systems';
+
+export type {
+  WorldTime,
+  TimeOfDay,
+  LifeEvent,
+  Goal,
+  StoryArc,
+  StoryChapter,
+  StoryChoice,
+  Interest,
+  AutonomousAction,
+} from './enhanced-systems';
+
 export { GrowthEvolutionEngine } from './growth-engine';
 export type {
   PersonalityVector,

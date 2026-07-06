@@ -11,6 +11,9 @@ import { ScenePanel, CostumePanel, SceneControlBar } from "@/components/Lover/Sc
 import { SCENE_CONFIGS, LIGHTING_CONFIGS, getTimeOfDayFromDate, getSceneConfig, SceneId, TimeOfDay, COSTUME_CONFIGS } from "@/lib/core/scene-system";
 import { getCommerceEngine, CommerceState, SHOP_ITEMS } from "@/lib/core/commerce-system";
 import DiaryPage from "@/components/Lover/DiaryPage";
+import { PostCard } from "@/components/Social/PostCard";
+import { aiSocialEngine } from "@/lib/core/social/ai-social-engine";
+import { MOCK_AI_USERS, TRENDING_TAGS } from "@/lib/core/social/types";
 
 const Live2DPlayerDynamic = dynamic(() => import("@/components/Lover/Live2DPlayer"), {
   ssr: false,
@@ -25,6 +28,7 @@ Live2DPlayer.displayName = "Live2DPlayer";
 const NAV_ITEMS = [
   { id: "chat", label: "聊天", icon: "💬" },
   { id: "diary", label: "日记", icon: "📔" },
+  { id: "social", label: "社区", icon: "🌐" },
 ];
 
 function getModeColor(mode?: string): string {
@@ -89,9 +93,51 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
   const [callDuration, setCallDuration] = useState(0);
   const [callPhase, setCallPhase] = useState<"idle" | "calling" | "connected" | "ended">("idle");
 
+  const [socialPosts, setSocialPosts] = useState<any[]>([]);
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [composeContent, setComposeContent] = useState("");
+  const [socialFeedTab, setSocialFeedTab] = useState<"foryou" | "following" | "trending">("foryou");
+
 
 
   const EMOJI_LIST = ["😊", "😂", "🥰", "😢", "😡", "🤔", "😴", "😏", "👍", "❤️", "🌹", "✨", "😭", "🥺", "😜", "🤩"];
+
+  const handleSocialLike = (postId: string) => {
+    aiSocialEngine.likePost(postId, "user");
+    setSocialPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            isLiked: !p.isLiked,
+            likes: p.isLiked ? p.likes - 1 : p.likes + 1,
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleSocialComment = (postId: string, content: string) => {
+    aiSocialEngine.addComment(postId, "user", content);
+    setSocialPosts((prev) =>
+      prev.map((p) => {
+        if (p.id === postId) {
+          return { ...p, comments: p.comments + 1 };
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleSubmitPost = () => {
+    if (!composeContent.trim()) return;
+    const tags = composeContent.match(/#(\S+)/g)?.map((t) => t.slice(1)) || [];
+    aiSocialEngine.createPost("user", composeContent, tags);
+    setComposeContent("");
+    setShowComposeModal(false);
+    setSocialPosts(aiSocialEngine.getPosts());
+  };
 
   const currentMood = (mood?.mood ?? "happy") as MoodType;
 
@@ -117,6 +163,13 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    if (activeNav !== "social") return;
+    const posts = aiSocialEngine.getPosts();
+    setSocialPosts(posts);
+  }, [isMounted, activeNav, socialFeedTab]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -640,6 +693,71 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
             onGenerateDiary={generateDiary}
           />
         )}
+
+        {activeNav === "social" && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="max-w-2xl mx-auto">
+              <div className="sticky top-0 z-20 glass border-b border-white/5 px-4 py-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-white font-bold text-lg">🌐 社区</h2>
+                  <button
+                    onClick={() => setShowComposeModal(true)}
+                    className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95"
+                    style={{
+                      background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                    }}
+                  >
+                    发动态
+                  </button>
+                </div>
+                <div className="flex gap-1">
+                  {[
+                    { id: "foryou", label: "推荐" },
+                    { id: "following", label: "关注" },
+                    { id: "trending", label: "热门" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSocialFeedTab(tab.id as any)}
+                      className={`flex-1 py-2 text-sm font-medium rounded-lg relative transition-colors ${
+                        socialFeedTab === tab.id
+                          ? "text-white"
+                          : "text-ink-400 hover:text-white"
+                      }`}
+                      style={{
+                        background:
+                          socialFeedTab === tab.id
+                            ? "rgba(139, 92, 246, 0.15)"
+                            : "transparent",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                {socialPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onLike={handleSocialLike}
+                    onComment={handleSocialComment}
+                  />
+                ))}
+              </div>
+
+              {socialPosts.length === 0 && (
+                <div className="py-16 text-center">
+                  <div className="text-4xl mb-3">📝</div>
+                  <p className="text-ink-400 text-sm">还没有动态</p>
+                  <p className="text-ink-600 text-xs mt-1">成为第一个发动态的人吧～</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* 移动端底部导航 */}
@@ -715,6 +833,84 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
             >
               🎤
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 发布动态弹窗 */}
+      {showComposeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20"
+          onClick={() => setShowComposeModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-lg mx-4 glass-strong rounded-2xl overflow-hidden animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+              <h3 className="text-white font-semibold">发动态</h3>
+              <button
+                onClick={() => setShowComposeModal(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="flex gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white text-sm font-bold"
+                  style={{
+                    background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                  }}
+                >
+                  我
+                </div>
+                <div className="flex-1">
+                  <textarea
+                    value={composeContent}
+                    onChange={(e) => setComposeContent(e.target.value)}
+                    placeholder="分享你的想法..."
+                    rows={6}
+                    className="w-full bg-transparent text-white text-base placeholder:text-ink-500 outline-none resize-none"
+                    maxLength={500}
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
+              <div className="flex items-center gap-1">
+                <button className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all">
+                  🖼️
+                </button>
+                <button className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all">
+                  😊
+                </button>
+                <button className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all">
+                  📍
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-ink-500 text-xs">
+                  {composeContent.length}/500
+                </span>
+                <button
+                  onClick={handleSubmitPost}
+                  disabled={!composeContent.trim()}
+                  className="px-5 py-2 rounded-xl text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                  }}
+                >
+                  发布
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
