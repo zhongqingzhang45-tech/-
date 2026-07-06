@@ -15,6 +15,9 @@ const nextConfig = {
         "**/lib/core/digital-life/_experimental/**",
         "**/lib/live2d/**",
         "**/external/**",
+        "**/airi/**",
+        "**/awesome-design-md/**",
+        "**/agency-agents/**",
       ],
     };
     return config;

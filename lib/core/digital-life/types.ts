@@ -78,6 +78,10 @@ export interface EmotionState {
   valence: number;
   arousal: number;
   dominance: number;
+  happiness?: number;
+  affection?: number;
+  intimacy?: number;
+  trust?: number;
 }
 
 export interface BodilyState {

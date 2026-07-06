@@ -37,6 +37,15 @@ model User {
   skillProgress SkillProgress[]
   causalRecords CausalRecord[]
   chatMessages  ChatMessage[]
+  
+  // 社区关系
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  reposts       Repost[]
+  followers     Follow[]  @relation("Follower")
+  following     Follow[]  @relation("Following")
+  aiInteractions AICommunityInteraction[]
 }
 
 model Session {
@@ -272,4 +281,119 @@ model UserSettings {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ========== 社区系统 ==========
+
+model Post {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey  String?    // AI角色发布时关联的角色
+  content       String
+  imageUrl      String?
+  isAI          Boolean    @default(false)
+  aiPersonaMode String?
+
+  likes         Like[]
+  comments      Comment[]
+  reposts       Repost[]
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([isAI])
+  @@index([createdAt])
+}
+
+model Comment {
+  id          String     @id @default(cuid())
+  postId      String
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey String?
+  content     String
+  isAI        Boolean    @default(false)
+
+  likes       Like[]
+  replies     Comment[]  @relation("CommentReply")
+  parentId    String?
+  parent      Comment?   @relation("CommentReply", fields: [parentId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([postId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Like {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        Post?      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId   String?
+  comment     Comment?   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  isAI        Boolean    @default(false)
+  characterKey String?
+
+  createdAt   DateTime   @default(now())
+
+  @@unique([userId, postId, commentId])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model Repost {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  isAI        Boolean    @default(false)
+  characterKey String?
+
+  createdAt   DateTime   @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Follow {
+  id          String     @id @default(cuid())
+  followerId  String
+  follower    User       @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User       @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime   @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model AICommunityInteraction {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterKey  String
+  actionType    String     // "post" | "like" | "comment" | "repost" | "chat_with_ai"
+  targetPostId  String?
+  targetCommentId String?
+  targetUserId  String?
+  content       String?
+  emotion       String?
+  moodBefore    String?
+  moodAfter     String?
+
+  createdAt     DateTime   @default(now())
+
+  @@index([userId, characterKey])
+  @@index([actionType])
+  @@index([createdAt])
 }

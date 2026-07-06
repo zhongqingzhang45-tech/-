@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType, Gender, PERSONA_MODE_LABELS, PersonaMode } from "@/lib/core/digital-life";
 import { getExpressionForMood, getRandomMotionForMood, getModelConfig } from "@/lib/core/live2d-manager";
@@ -25,6 +26,7 @@ Live2DPlayer.displayName = "Live2DPlayer";
 const NAV_ITEMS = [
   { id: "chat", label: "聊天", icon: "💬" },
   { id: "diary", label: "日记", icon: "📔" },
+  { id: "community", label: "社区", icon: "🌍" },
 ];
 
 function getModeColor(mode?: string): string {
@@ -53,6 +55,7 @@ interface LoverAppProps {
 }
 
 export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharacter }, ref) => {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const live2dRef = useRef<Live2DPlayerRef>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -350,7 +353,13 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => {
+                if (item.id === "community") {
+                  router.push("/community");
+                } else {
+                  setActiveNav(item.id);
+                }
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeNav === item.id
                   ? "text-white bg-white/10"
@@ -647,7 +656,13 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
-            onClick={() => setActiveNav(item.id)}
+            onClick={() => {
+              if (item.id === "community") {
+                router.push("/community");
+              } else {
+                setActiveNav(item.id);
+              }
+            }}
             className={`flex flex-col items-center gap-0.5 px-6 py-1.5 rounded-lg transition-all ${
               activeNav === item.id
                 ? "text-brand-400"
