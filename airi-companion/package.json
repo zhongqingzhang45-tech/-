@@ -1,0 +1,21 @@
+{
+  "name": "airi-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "二次元虚拟伴侣 — an anime-style virtual companion inspired by Project AIRI",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vue-tsc": "^2.2.0"
+  }
+}
