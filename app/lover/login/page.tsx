@@ -1,45 +1,167 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type LoginMode = "email" | "phone";
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<LoginMode>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [smsCode, setSmsCode] = useState("");
+  const [codeCooldown, setCodeCooldown] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const router = useRouter();
+  const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    };
+  }, []);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem("lover_logged_in", "true");
-      localStorage.setItem("lover_email", email);
-      router.push("/lover");
+  const startCooldown = () => {
+    setCodeCooldown(60);
+    cooldownTimer.current = setInterval(() => {
+      setCodeCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
   };
 
+  const handleSendCode = async () => {
+    setError("");
+    setInfo("");
+    if (!phone) {
+      setError("请输入手机号");
+      return;
+    }
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setError("手机号格式不正确");
+      return;
+    }
+    if (codeCooldown > 0) return;
+
+    setIsSendingCode(true);
+    try {
+      const res = await fetch("/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, purpose: "login" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "验证码发送失败");
+        return;
+      }
+      startCooldown();
+      if (data.devCode) {
+        setInfo(`开发环境验证码：${data.devCode}（生产环境将真实发送短信）`);
+      } else {
+        setInfo("验证码已发送，请查收短信");
+      }
+    } catch (e) {
+      setError("网络错误，请重试");
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "登录失败");
+        setIsLoading(false);
+        return;
+      }
+      // 持久化 session
+      if (data.sessionId) {
+        localStorage.setItem("lover_session_id", data.sessionId);
+        document.cookie = `lover_session=${data.sessionId}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+      }
+      localStorage.setItem("lover_logged_in", "true");
+      localStorage.setItem("lover_email", email);
+      if (data.user?.nickname) localStorage.setItem("lover_nickname", data.user.nickname);
+      router.push("/lover");
+    } catch (e) {
+      setError("网络错误，请重试");
+      setIsLoading(false);
+    }
+  };
+
+  const handlePhoneLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+    if (!phone || !smsCode) {
+      setError("请填写手机号和验证码");
+      return;
+    }
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/sms/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, code: smsCode, purpose: "login" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "登录失败");
+        setIsLoading(false);
+        return;
+      }
+      if (data.sessionId) {
+        localStorage.setItem("lover_session_id", data.sessionId);
+        document.cookie = `lover_session=${data.sessionId}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+      }
+      localStorage.setItem("lover_logged_in", "true");
+      if (data.user?.phone) localStorage.setItem("lover_phone", data.user.phone);
+      if (data.user?.nickname) localStorage.setItem("lover_nickname", data.user.nickname);
+      router.push("/lover");
+    } catch (e) {
+      setError("网络错误，请重试");
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div 
+    <div
       className="min-h-screen w-full flex items-center justify-center px-4"
-      style={{ 
+      style={{
         background: "radial-gradient(ellipse at 50% 80%, #1e1a2e 0%, #14111e 50%, #0a0a0f 100%)",
       }}
     >
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div 
+        <div
           className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full opacity-20"
           style={{
             background: "radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%)",
             filter: "blur(60px)",
           }}
         />
-        <div 
+        <div
           className="absolute bottom-1/4 right-1/4 w-56 h-56 rounded-full opacity-15"
           style={{
             background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
@@ -51,7 +173,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div 
+            <div
               className="w-11 h-11 rounded-2xl flex items-center justify-center"
               style={{
                 background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
@@ -67,67 +189,174 @@ export default function LoginPage() {
         </div>
 
         <div className="glass rounded-xl p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-ink-300 mb-2">
-                邮箱地址
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
-                required
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-ink-300">
-                  密码
-                </label>
-                <Link href="#" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
-                  忘记密码？
-                </Link>
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
-                required
-              />
-            </div>
-
-            {error && (
-              <div className="p-3 rounded-lg text-sm text-center" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#fca5a5", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
-                {error}
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "#8b5cf6" }} />
-              <span className="text-xs text-ink-400">记住我</span>
-            </div>
-
+          {/* 登录方式切换 Tab */}
+          <div className="flex gap-1 p-1 mb-5 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.04)" }}>
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+              type="button"
+              onClick={() => { setMode("email"); setError(""); setInfo(""); }}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                mode === "email" ? "text-white" : "text-ink-400 hover:text-ink-300"
+              }`}
+              style={mode === "email" ? { background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)" } : {}}
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  登录中...
-                </span>
-              ) : "登录"}
+              邮箱登录
             </button>
-          </form>
+            <button
+              type="button"
+              onClick={() => { setMode("phone"); setError(""); setInfo(""); }}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                mode === "phone" ? "text-white" : "text-ink-400 hover:text-ink-300"
+              }`}
+              style={mode === "phone" ? { background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)" } : {}}
+            >
+              手机号登录
+            </button>
+          </div>
+
+          {mode === "email" ? (
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-ink-300 mb-2">
+                  邮箱地址
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
+                  required
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-ink-300">
+                    密码
+                  </label>
+                  <Link href="/lover/forgot-password" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+                    忘记密码？
+                  </Link>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 rounded-lg text-sm text-center" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#fca5a5", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                  {error}
+                </div>
+              )}
+
+              {info && (
+                <div className="p-3 rounded-lg text-sm text-center" style={{ backgroundColor: "rgba(59, 130, 246, 0.1)", color: "#93c5fd", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                  {info}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "#8b5cf6" }} />
+                <span className="text-xs text-ink-400">记住我</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    登录中...
+                  </span>
+                ) : "登录"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handlePhoneLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-ink-300 mb-2">
+                  手机号
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                  placeholder="请输入手机号"
+                  className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-ink-300 mb-2">
+                  短信验证码
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={smsCode}
+                    onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="6位验证码"
+                    className="flex-1 px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendCode}
+                    disabled={isSendingCode || codeCooldown > 0 || !phone}
+                    className="px-4 py-3 rounded-lg text-sm font-medium text-white whitespace-nowrap transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed btn-secondary"
+                    style={{ minWidth: "110px" }}
+                  >
+                    {isSendingCode ? "发送中..." : codeCooldown > 0 ? `${codeCooldown}s 后重试` : "获取验证码"}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 rounded-lg text-sm text-center" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#fca5a5", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                  {error}
+                </div>
+              )}
+
+              {info && (
+                <div className="p-3 rounded-lg text-sm text-center" style={{ backgroundColor: "rgba(59, 130, 246, 0.1)", color: "#93c5fd", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                  {info}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    登录中...
+                  </span>
+                ) : "登录"}
+              </button>
+
+              <p className="text-center text-xs text-ink-500">
+                未注册手机号将无法登录，请先
+                <Link href="/lover/register" className="text-brand-400 hover:text-brand-300 ml-1">注册账户</Link>
+              </p>
+            </form>
+          )}
 
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">

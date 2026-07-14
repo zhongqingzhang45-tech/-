@@ -11,6 +11,7 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
+  phone         String?   @unique // 手机号（支持手机号登录）
   passwordHash  String
   salt          String
   nickname      String
@@ -21,6 +22,13 @@ model User {
   theme         String    @default("dark")
   language      String    @default("zh-CN")
   notifications Boolean   @default(true)
+
+  // 会员信息
+  membershipTier String   @default("free") // "free" | "pro" | "pro_plus"
+  membershipExpiry DateTime?
+
+  // 金币
+  coins         Int       @default(0)
 
   // 时间戳
   createdAt     DateTime  @default(now())
@@ -37,6 +45,10 @@ model User {
   skillProgress SkillProgress[]
   causalRecords CausalRecord[]
   chatMessages  ChatMessage[]
+  orders        Order[]
+  llmConfig     LLMConfig?
+  settings      UserSettings?
+  smsCodes      SmsCode[]
 }
 
 model Session {
@@ -248,6 +260,7 @@ model ChatMessage {
 model LLMConfig {
   id        String  @id @default(cuid())
   userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider  String  // "openai" | "anthropic" | "deepseek" | "qwen" | "glm" | "mock"
   apiKey    String?
   model     String?
@@ -264,6 +277,7 @@ model LLMConfig {
 model UserSettings {
   id          String  @id @default(cuid())
   userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   ttsEnabled  Boolean @default(false)
   asrEnabled  Boolean @default(false)
   voiceVolume Float   @default(0.8)
@@ -272,4 +286,46 @@ model UserSettings {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ========== 订单/支付系统 ==========
+
+model Order {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderNo       String   @unique // 业务订单号
+  type          String   // "membership" | "coins" | "shop_item"
+  itemId        String?  // 商品ID（shop_item时使用）
+  itemName      String   // 商品名称
+  amount        Float    // 支付金额（元）
+  paymentMethod String   // "wechat" | "alipay"
+  status        String   @default("pending") // "pending" | "paid" | "failed" | "refunded"
+  tradeNo       String?  // 第三方支付流水号
+  paidAt        DateTime?
+  metadata      Json?    // 附加信息（会员等级、金币数量等）
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderNo])
+}
+
+// ========== 短信验证码 ==========
+
+model SmsCode {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String   // 手机号
+  code      String   // 验证码
+  purpose   String   // "register" | "login" | "reset_password"
+  consumed  Boolean  @default(false)
+  expiresAt DateTime // 过期时间
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([phone, purpose])
 }
