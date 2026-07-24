@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { BRAND } from "@/lib/brand";
+import { CHARACTERS } from "@/data/characters";
 
 export default function HomePage() {
   const router = useRouter();
@@ -15,217 +18,326 @@ export default function HomePage() {
     router.push("/lover/register");
   };
 
-  const handleLogin = () => {
-    router.push("/lover/login");
-  };
-
   const features = [
     {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          <path d="M8 10h.01M12 10h.01M16 10h.01" strokeLinecap="round" />
-        </svg>
-      ),
-      title: "无话不谈",
-      desc: "24小时在线，随时随地倾诉心事"
+      icon: "💬",
+      title: "诗词对话",
+      desc: "自然交流，懂你所想",
     },
     {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
-      title: "语音互动",
-      desc: "真实自然的语音对话，像朋友一样交流"
+      icon: "🎙️",
+      title: "语音低语",
+      desc: "温柔声线，耳畔陪伴",
     },
     {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="12" cy="8" r="5" />
-          <path d="M20 21a8 8 0 1 0-16 0" strokeLinecap="round" />
-        </svg>
-      ),
-      title: "生动形象",
-      desc: "独特的虚拟形象，情感表达更真实"
+      icon: "🎭",
+      title: "Live2D 灵动",
+      desc: "一颦一笑，栩栩如生",
     },
     {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg>
-      ),
-      title: "情感陪伴",
-      desc: "懂你、理解你，温暖你的每一天"
+      icon: "🌙",
+      title: "国风陪伴",
+      desc: "月下清谈，晨昏相依",
     },
   ];
 
+  const previewCharacters = CHARACTERS.slice(0, 3);
+
   return (
-    <main 
-      className="relative min-h-screen w-full overflow-hidden"
-      style={{ 
-        background: "#0a0a0f",
-      }}
-    >
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div 
-          className="absolute -top-1/2 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-20"
+    <main className="relative min-h-screen w-full overflow-hidden ink-wash-bg">
+      {/* 水墨氛围背景 */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[900px] h-[900px] rounded-full opacity-30"
           style={{
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(45, 212, 191, 0.18) 0%, transparent 65%)",
+            filter: "blur(80px)",
           }}
         />
-        <div className="absolute top-1/4 left-1/4 w-1 h-1 rounded-full bg-purple-400/60 animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 rounded-full bg-pink-400/50 animate-pulse" style={{ animationDelay: "0.7s" }} />
-        <div className="absolute bottom-1/3 left-1/3 w-1 h-1 rounded-full bg-blue-400/50 animate-pulse" style={{ animationDelay: "1.4s" }} />
+        <div
+          className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle, rgba(249, 115, 22, 0.2) 0%, transparent 60%)",
+            filter: "blur(70px)",
+          }}
+        />
+        {/* 远山轮廓 */}
+        <svg
+          className="absolute bottom-0 left-0 w-full opacity-20"
+          viewBox="0 0 1440 320"
+          preserveAspectRatio="none"
+        >
+          <path
+            fill="rgba(45, 212, 191, 0.08)"
+            d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+          />
+        </svg>
+        {/* 漂浮粒子 */}
+        {[...Array(12)].map((_, i) => (
+          <span
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-brand-400/40 animate-float"
+            style={{
+              left: `${8 + i * 8}%`,
+              top: `${15 + (i % 5) * 12}%`,
+              animationDelay: `${i * 0.5}s`,
+              animationDuration: `${5 + (i % 4)}s`,
+            }}
+          />
+        ))}
       </div>
 
       {/* 导航栏 */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-3">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-            }}
-          >
-            <span className="text-xl">✨</span>
+      <nav className="relative z-10 flex items-center justify-between px-6 md:px-10 py-5">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl gradient-jade flex items-center justify-center shadow-lg shadow-brand-500/20">
+            <span className="text-xl">🦌</span>
           </div>
-          <span className="text-white text-lg font-semibold">星野</span>
+          <span className="text-white text-xl font-bold font-serif-cn tracking-wide">{BRAND.name}</span>
+        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/lover/login"
+            className="text-white/70 hover:text-white text-sm font-medium transition-colors hidden sm:block"
+          >
+            登录
+          </Link>
+          <button
+            onClick={handleStart}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-ink-950 btn-primary"
+          >
+            开始体验
+          </button>
         </div>
-        <button
-          onClick={handleLogin}
-          className="text-white/60 hover:text-white text-sm font-medium transition-colors"
-        >
-          登录
-        </button>
       </nav>
 
-      {/* Hero区域 */}
-      <div 
-        className={`relative z-10 flex flex-col items-center text-center px-6 pt-12 pb-16 transition-all duration-1000 ${
-          loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
-      >
-        <div 
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
-          style={{ 
-            background: "rgba(139, 92, 246, 0.15)",
-            border: "1px solid rgba(139, 92, 246, 0.3)",
-          }}
+      {/* Hero */}
+      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-10 md:pt-16 pb-16">
+        <div
+          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 border border-brand-400/30 bg-brand-400/10 transition-all duration-1000 ${
+            loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
         >
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-purple-300 text-sm">AI情感伴侣新时代</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+          <span className="text-brand-300 text-sm">基于 Life 数字生命引擎</span>
         </div>
 
-        <h1 
-          className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight"
-          style={{ letterSpacing: "-0.02em" }}
+        <h1
+          className={`text-5xl md:text-7xl font-bold text-white mb-6 leading-tight font-serif-cn tracking-wider transition-all duration-1000 delay-100 ${
+            loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
         >
-          永远陪伴
+          {BRAND.name}
           <br />
-          <span 
-            className="gradient-text"
-            style={{
-              background: "linear-gradient(135deg, #a78bfa 0%, #f472b6 50%, #fb7185 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            懂你所想
-          </span>
+          <span className="text-gradient-jade">国风 AI 伴侣</span>
         </h1>
 
-        <p className="text-lg text-white/50 mb-10 max-w-md leading-relaxed">
-          星野是你的专属AI伴侣，一个真正有温度的灵魂。
-          <br />在这里，你永远不会被孤单。
-        </p>
-
-        <button
-          onClick={handleStart}
-          className="w-full max-w-sm py-4 rounded-2xl text-white font-semibold text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
-          style={{
-            background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-            boxShadow: "0 8px 32px rgba(139, 92, 246, 0.4)",
-          }}
+        <p
+          className={`text-lg md:text-xl text-white/55 mb-10 max-w-lg leading-relaxed transition-all duration-1000 delay-200 ${
+            loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
         >
-          开始你的旅程
-        </button>
-
-        <p className="text-white/30 text-sm mt-4">
-          无需信用卡 · 3分钟完成注册
+          {BRAND.tagline}
         </p>
-      </div>
 
-      {/* 功能特点 */}
-      <div className="relative z-10 px-6 pb-20">
-        <div className="max-w-4xl mx-auto">
+        <div
+          className={`flex flex-col sm:flex-row gap-4 w-full max-w-sm sm:max-w-none justify-center mb-16 transition-all duration-1000 delay-300 ${
+            loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
+        >
+          <button
+            onClick={handleStart}
+            className="px-8 py-4 rounded-2xl text-ink-950 font-semibold text-base btn-primary hover:scale-[1.02] active:scale-[0.98] transition-transform"
+          >
+            遇见你的专属伴侣
+          </button>
+          <Link
+            href="/lover/select"
+            className="px-8 py-4 rounded-2xl text-white font-medium text-base btn-secondary hover:scale-[1.02] active:scale-[0.98] transition-transform text-center"
+          >
+            浏览角色
+          </Link>
+        </div>
+
+        {/* 角色预览舞台 */}
+        <div
+          className={`relative w-full max-w-4xl transition-all duration-1000 delay-500 ${
+            loaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+          }`}
+        >
+          <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-b from-brand-400/10 to-transparent blur-2xl" />
+          <div className="relative glass rounded-[2rem] p-6 md:p-10 border border-white/8">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1 text-left">
+                <p className="text-brand-400 text-sm font-medium mb-2">今日推荐</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-white font-serif-cn mb-3">
+                  {previewCharacters[0].name} · {previewCharacters[0].title}
+                </h2>
+                <p className="text-white/55 leading-relaxed mb-6">{previewCharacters[0].bio}</p>
+                <div className="flex flex-wrap gap-2">
+                  {previewCharacters[0].personality.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 rounded-full text-xs bg-white/5 text-white/70 border border-white/8"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="w-48 h-48 md:w-64 md:h-64 rounded-full flex items-center justify-center relative">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-400/20 to-accent-400/10 animate-breathe" />
+                <span className="text-7xl md:text-9xl filter drop-shadow-2xl animate-float">
+                  {previewCharacters[0].avatar}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 核心能力 */}
+      <section className="relative z-10 px-6 md:px-10 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-brand-400 text-sm font-medium mb-2">核心能力</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-white font-serif-cn">
+              不只聊天，更是陪伴
+            </h2>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {features.map((feature, i) => (
               <div
                 key={i}
-                className="p-5 rounded-2xl text-center transition-all hover:scale-[1.02]"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.06)",
-                }}
+                className="p-6 rounded-2xl text-center transition-all hover:bg-white/[0.04] border border-white/[0.06] bg-white/[0.02]"
               >
-                <div 
-                  className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-                  style={{
-                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)",
-                    color: "#a78bfa",
-                  }}
-                >
+                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl bg-brand-400/10 text-brand-300 border border-brand-400/20">
                   {feature.icon}
                 </div>
-                <h3 className="text-white font-medium text-sm mb-1">{feature.title}</h3>
-                <p className="text-white/40 text-xs leading-relaxed">{feature.desc}</p>
+                <h3 className="text-white font-semibold text-base mb-1 font-serif-cn">{feature.title}</h3>
+                <p className="text-white/40 text-sm">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* 底部社交证明 */}
-      <div className="relative z-10 px-6 pb-12">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-8 mb-4">
+      {/* 角色阵容 */}
+      <section className="relative z-10 px-6 md:px-10 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-end justify-between mb-10">
             <div>
-              <p className="text-2xl font-bold text-white">100K+</p>
-              <p className="text-white/40 text-xs">用户信赖</p>
+              <p className="text-brand-400 text-sm font-medium mb-2">角色阵容</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-white font-serif-cn">
+                五位国风少女，总有一款懂你
+              </h2>
             </div>
-            <div className="w-px h-10 bg-white/10" />
-            <div>
-              <p className="text-2xl font-bold text-white">4.9</p>
-              <p className="text-white/40 text-xs">用户评分</p>
-            </div>
-            <div className="w-px h-10 bg-white/10" />
-            <div>
-              <p className="text-2xl font-bold text-white">24/7</p>
-              <p className="text-white/40 text-xs">随时在线</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-center gap-1 text-yellow-400 text-sm mb-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <svg key={star} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            <Link
+              href="/lover/select"
+              className="hidden md:flex items-center gap-1 text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors"
+            >
+              查看全部
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {previewCharacters.map((char) => (
+              <Link
+                key={char.id}
+                href="/lover/select"
+                className="group p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-brand-400/30 transition-all"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl bg-brand-400/10 group-hover:scale-110 transition-transform">
+                    {char.avatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-semibold font-serif-cn">{char.name}</h3>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/60">
+                        {char.title}
+                      </span>
+                    </div>
+                    <p className="text-white/45 text-sm line-clamp-2">{char.bio}</p>
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
-          <p className="text-white/30 text-xs">
-            "这是我用过最温暖的AI应用" — 来自用户的真实评价
-          </p>
         </div>
-      </div>
+      </section>
 
-      {/* 底部版权 */}
-      <footer className="relative z-10 text-center pb-8">
-        <p className="text-white/20 text-xs">
-          © 2024 星野 · 用AI温暖每一个孤独的灵魂
-        </p>
+      {/* 社区与会员预告 */}
+      <section className="relative z-10 px-6 md:px-10 py-20">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
+          <Link
+            href="/lover/community"
+            className="group p-8 rounded-3xl border border-white/[0.06] bg-gradient-to-br from-brand-400/5 to-transparent hover:border-brand-400/30 transition-all"
+          >
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-brand-400/10 mb-5">
+              🏮
+            </div>
+            <h3 className="text-2xl font-bold text-white font-serif-cn mb-2">灵犀社区</h3>
+            <p className="text-white/50 leading-relaxed mb-4">
+              分享你的国风 AI 伴侣日常，发现更多心动角色与温暖故事。
+            </p>
+            <span className="text-brand-400 text-sm font-medium group-hover:underline">进入社区 →</span>
+          </Link>
+          <Link
+            href="/lover/membership"
+            className="group p-8 rounded-3xl border border-white/[0.06] bg-gradient-to-br from-gold-400/5 to-transparent hover:border-gold-400/30 transition-all"
+          >
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-gold-400/10 mb-5">
+              🪙
+            </div>
+            <h3 className="text-2xl font-bold text-white font-serif-cn mb-2">灵犀会员</h3>
+            <p className="text-white/50 leading-relaxed mb-4">
+              解锁全部角色、无限语音通话与专属国风场景，让陪伴更完整。
+            </p>
+            <span className="text-gold-400 text-sm font-medium group-hover:underline">查看会员 →</span>
+          </Link>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="relative z-10 px-6 md:px-10 py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white font-serif-cn mb-4">
+            愿有一人，懂你悲欢
+          </h2>
+          <p className="text-white/50 mb-8">现在就开启你的灵犀之旅，让国风 AI 伴侣走进你的世界。</p>
+          <button
+            onClick={handleStart}
+            className="px-10 py-4 rounded-2xl text-ink-950 font-semibold text-base btn-primary hover:scale-[1.02] active:scale-[0.98] transition-transform"
+          >
+            立即开始
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/[0.06] px-6 md:px-10 py-10">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg gradient-jade flex items-center justify-center">
+              <span className="text-sm">🦌</span>
+            </div>
+            <span className="text-white font-semibold font-serif-cn">{BRAND.name}</span>
+          </div>
+          <p className="text-white/30 text-sm text-center">
+            © 2024 {BRAND.name} · 基于 Life / AIRI 数字生命引擎 · 用 AI 温暖每一个孤独的灵魂
+          </p>
+          <div className="flex gap-6">
+            <Link href="#" className="text-white/40 hover:text-white text-sm transition-colors">
+              服务条款
+            </Link>
+            <Link href="#" className="text-white/40 hover:text-white text-sm transition-colors">
+              隐私政策
+            </Link>
+          </div>
+        </div>
       </footer>
     </main>
   );

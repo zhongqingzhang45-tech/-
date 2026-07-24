@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCharacterAgent, useSpeech } from "@/lib/hooks";
 import { MoodType, Gender, PERSONA_MODE_LABELS, PersonaMode } from "@/lib/core/digital-life";
 import { getExpressionForMood, getRandomMotionForMood, getModelConfig } from "@/lib/core/live2d-manager";
@@ -25,18 +26,20 @@ Live2DPlayer.displayName = "Live2DPlayer";
 const NAV_ITEMS = [
   { id: "chat", label: "聊天", icon: "💬" },
   { id: "diary", label: "日记", icon: "📔" },
+  { id: "community", label: "社区", icon: "🏮", href: "/lover/community" },
+  { id: "profile", label: "我的", icon: "👤", href: "/lover/profile" },
 ];
 
 function getModeColor(mode?: string): string {
   switch (mode) {
     case "affectionate": return "#ec4899";
-    case "tsundere": return "#f87171";
+    case "tsundere": return "#f97316";
     case "cold": return "#64748b";
     case "aggressive": return "#ef4444";
     case "silent_treatment": return "#475569";
     case "pua": return "#8b5cf6";
-    case "reconciliation": return "#10b981";
-    default: return "#6366f1";
+    case "reconciliation": return "#2dd4bf";
+    default: return "#2dd4bf";
   }
 }
 
@@ -313,14 +316,8 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
     return (
       <div className="h-screen w-screen flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0f" }}>
         <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-14 h-14 rounded-2xl animate-pulse"
-            style={{
-              background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-              boxShadow: "0 0 40px rgba(139, 92, 246, 0.4)",
-            }}
-          />
-          <div className="text-ink-400 text-sm">加载中...</div>
+          <div className="w-14 h-14 rounded-2xl animate-pulse gradient-jade shadow-lg shadow-brand-500/20" />
+          <div className="text-ink-400 text-sm">灵犀正在醒来...</div>
         </div>
       </div>
     );
@@ -331,15 +328,12 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
       {/* 顶部导航栏 */}
       <header className="flex-shrink-0 h-14 flex items-center justify-between px-4 relative z-20 glass border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold cursor-pointer transition-transform hover:scale-105"
-            style={{
-              background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-              boxShadow: "0 2px 8px rgba(139, 92, 246, 0.3)",
-            }}
+          <Link
+            href="/lover/profile"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold cursor-pointer transition-transform hover:scale-105 gradient-jade shadow-md shadow-brand-500/15"
           >
-            {currentCharacter.name?.charAt(0) || "星"}
-          </div>
+            {currentCharacter.name?.charAt(0) || "灵"}
+          </Link>
           <div className="hidden md:block">
             <div className="text-white text-sm font-semibold">{currentCharacter.name}</div>
             <div className="text-ink-500 text-xs">Lv.{lifeState?.growth?.level || 1}</div>
@@ -347,20 +341,31 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
         </div>
 
         <nav className="flex items-center gap-1">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveNav(item.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeNav === item.id
-                  ? "text-white bg-white/10"
-                  : "text-ink-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span className="mr-1">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.href ? (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-ink-400 hover:text-white hover:bg-white/5"
+              >
+                <span className="mr-1">{item.icon}</span>
+                {item.label}
+              </Link>
+            ) : (
+              <button
+                key={item.id}
+                onClick={() => setActiveNav(item.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  activeNav === item.id
+                    ? "text-ink-950 bg-gradient-to-r from-brand-400 to-brand-500"
+                    : "text-ink-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span className="mr-1">{item.icon}</span>
+                {item.label}
+              </button>
+            )
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -371,7 +376,13 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
           >
             📞
           </button>
-          {/* 设置按钮已移除 —— LLM 配置完全由后端环境变量控制 */}
+          <Link
+            href="/lover/profile"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-400 hover:text-white hover:bg-white/5 transition-all"
+            title="个人中心"
+          >
+            👤
+          </Link>
         </div>
       </header>
 
@@ -435,7 +446,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
                         className="h-full rounded-full transition-all duration-500"
                         style={{
                           width: `${lifeState?.persona?.affection || 0}%`,
-                          background: "linear-gradient(90deg, #ec4899, #f472b6)",
+                          background: "linear-gradient(90deg, #f97316, #fbbf24)",
                         }}
                       />
                     </div>
@@ -489,7 +500,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
                         }`}
                         style={
                           isUser
-                            ? { background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)" }
+                            ? { background: "linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)" }
                             : {}
                         }
                       >
@@ -605,7 +616,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
                       onClick={handleSend}
                       disabled={!input.trim() && !pendingImage}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)" }}
+                      style={{ background: "linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)" }}
                       title="发送"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -644,43 +655,50 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
 
       {/* 移动端底部导航 */}
       <nav className="md:hidden flex-shrink-0 h-14 flex items-center justify-around border-t border-white/5 glass">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveNav(item.id)}
-            className={`flex flex-col items-center gap-0.5 px-6 py-1.5 rounded-lg transition-all ${
-              activeNav === item.id
-                ? "text-brand-400"
-                : "text-ink-500"
-            }`}
-          >
-            <span className="text-lg">{item.icon}</span>
-            <span className="text-xs">{item.label}</span>
-          </button>
-        ))}
+        {NAV_ITEMS.map((item) =>
+          item.href ? (
+            <Link
+              key={item.id}
+              href={item.href}
+              className="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-all text-ink-500"
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-xs">{item.label}</span>
+            </Link>
+          ) : (
+            <button
+              key={item.id}
+              onClick={() => setActiveNav(item.id)}
+              className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-all ${
+                activeNav === item.id
+                  ? "text-brand-400"
+                  : "text-ink-500"
+              }`}
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-xs">{item.label}</span>
+            </button>
+          )
+        )}
       </nav>
 
       {/* 语音通话界面 */}
       {isInCall && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: "rgba(10, 10, 15, 0.95)", backdropFilter: "blur(20px)" }}>
           <div
-            className="w-28 h-28 rounded-3xl flex items-center justify-center text-5xl mb-6 relative"
-            style={{
-              background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-              boxShadow: "0 0 60px rgba(139, 92, 246, 0.5)",
-            }}
+            className="w-28 h-28 rounded-3xl flex items-center justify-center text-5xl mb-6 relative gradient-jade shadow-2xl shadow-brand-500/25"
           >
             {currentCharacter.avatar}
             {callPhase === "connected" && (
               <>
-                <span className="absolute inset-0 rounded-3xl animate-ping opacity-30" style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)" }} />
-                <span className="absolute -inset-2 rounded-[3rem] animate-ping opacity-20" style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)", animationDelay: "500ms" }} />
+                <span className="absolute inset-0 rounded-3xl animate-ping opacity-30 gradient-jade" />
+                <span className="absolute -inset-2 rounded-[3rem] animate-ping opacity-20 gradient-jade" style={{ animationDelay: "500ms" }} />
               </>
             )}
           </div>
-          <h2 className="text-white text-xl font-bold mb-2">{currentCharacter.name}</h2>
+          <h2 className="text-white text-xl font-bold mb-2 font-serif-cn">{currentCharacter.name}</h2>
           <p className="text-ink-400 text-sm mb-8">
-            {callPhase === "calling" && "正在呼叫..."}
+            {callPhase === "calling" && "正在接通..."}
             {callPhase === "connected" && formatCallDuration(callDuration)}
             {callPhase === "ended" && "通话已结束"}
           </p>
@@ -689,7 +707,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
               onClick={() => setVoiceEnabled(!voiceEnabled)}
               className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all ${
                 voiceEnabled
-                  ? "text-green-400 bg-green-500/20 border border-green-500/30"
+                  ? "text-brand-400 bg-brand-500/20 border border-brand-500/30"
                   : "text-ink-400 bg-white/5"
               }`}
             >
@@ -760,10 +778,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
           >
             <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5">
               <div className="flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                  style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }}
-                >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm gradient-jade">
                   🎁
                 </div>
                 <h3 className="text-white font-semibold text-base">礼物商城</h3>
@@ -798,7 +813,7 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
                   {giftTab === tab && (
                     <span
                       className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full"
-                      style={{ background: "linear-gradient(90deg, #8b5cf6, #ec4899)" }}
+                      style={{ background: "linear-gradient(90deg, #2dd4bf, #14b8a6)" }}
                     />
                   )}
                 </button>
@@ -813,8 +828,8 @@ export const LoverApp = forwardRef<LoverAppRef, LoverAppProps>(({ initialCharact
                       key={item.id}
                       className="card p-3 rounded-xl text-left hover:bg-white/5 transition-all"
                       style={{
-                        background: "linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)",
-                        border: "1px solid rgba(139, 92, 246, 0.2)",
+                        background: "linear-gradient(135deg, rgba(45, 212, 191, 0.08) 0%, rgba(251, 191, 36, 0.06) 100%)",
+                        border: "1px solid rgba(45, 212, 191, 0.18)",
                       }}
                     >
                       <div

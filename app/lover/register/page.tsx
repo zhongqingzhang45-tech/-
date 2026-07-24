@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Gender } from "@/lib/core/digital-life";
+import { BRAND } from "@/lib/brand";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
@@ -67,31 +68,31 @@ export default function RegisterPage() {
   ];
 
   const stepDescriptions = [
-    "开始你的AI陪伴之旅",
+    "开始你的灵犀之旅",
     "我们将为你匹配最合适的伴侣",
     "我们会记住你的每一个生日",
-    "这将是你的专属虚拟伴侣",
+    "这将是你的专属国风伴侣",
   ];
 
   return (
     <div
       className="min-h-screen w-full flex items-center justify-center px-4 py-8"
       style={{
-        background: "radial-gradient(ellipse at 50% 80%, #1e1a2e 0%, #14111e 50%, #0a0a0f 100%)",
+        background: "radial-gradient(ellipse at 50% 80%, rgba(45, 212, 191, 0.08) 0%, rgba(19, 19, 26, 0.8) 50%, #0c0c12 100%)",
       }}
     >
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full opacity-20"
           style={{
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(45, 212, 191, 0.3) 0%, transparent 70%)",
             filter: "blur(60px)",
           }}
         />
         <div
           className="absolute bottom-1/4 right-1/4 w-56 h-56 rounded-full opacity-15"
           style={{
-            background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, transparent 70%)",
             filter: "blur(50px)",
           }}
         />
@@ -100,18 +101,12 @@ export default function RegisterPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-                boxShadow: "0 4px 16px rgba(139,92,246,0.3)",
-              }}
-            >
-              <span className="text-xl">✨</span>
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center gradient-jade shadow-lg shadow-brand-500/20">
+              <span className="text-xl">🦌</span>
             </div>
-            <span className="text-white text-xl font-bold">星野</span>
+            <span className="text-white text-xl font-bold font-serif-cn tracking-wide">{BRAND.name}</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white mb-1.5">
+          <h1 className="text-2xl font-bold text-white mb-1.5 font-serif-cn">
             {stepTitles[step - 1]}
           </h1>
           <p className="text-ink-400 text-sm">
@@ -128,7 +123,7 @@ export default function RegisterPage() {
               style={{
                 width: i + 1 === step ? "32px" : "20px",
                 background: i + 1 <= step
-                  ? "linear-gradient(90deg, #8b5cf6, #ec4899)"
+                  ? "linear-gradient(90deg, #2dd4bf, #14b8a6)"
                   : "rgba(255,255,255,0.08)",
               }}
             />
@@ -169,7 +164,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="flex items-start gap-2">
-                <input type="checkbox" className="w-4 h-4 rounded mt-0.5" style={{ accentColor: "#8b5cf6" }} required />
+                <input type="checkbox" className="w-4 h-4 rounded mt-0.5" style={{ accentColor: "#2dd4bf" }} required />
                 <span className="text-xs text-ink-400 leading-relaxed">
                   我已阅读并同意{" "}
                   <Link href="#" className="text-brand-400 hover:text-brand-300 transition-colors">
@@ -185,7 +180,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={!canProceed()}
-                className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+                className="w-full py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
               >
                 下一步
               </button>
@@ -195,7 +190,7 @@ export default function RegisterPage() {
           {step === 2 && (
             <div className="space-y-5">
               <p className="text-center text-ink-400 text-sm">
-                选择你的性别，我们将为你匹配最合适的AI伴侣
+                选择你的性别，我们将为你匹配最合适的国风伴侣
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -205,11 +200,11 @@ export default function RegisterPage() {
                   className="p-5 rounded-xl transition-all active:scale-[0.98] text-center"
                   style={{
                     background: userGender === "male"
-                      ? "linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))"
+                      ? "linear-gradient(135deg, rgba(45, 212, 191, 0.15), rgba(45, 212, 191, 0.05))"
                       : "rgba(30,30,40,0.6)",
                     border: `1px solid ${
                       userGender === "male"
-                        ? "rgba(139,92,246,0.4)"
+                        ? "rgba(45, 212, 191, 0.4)"
                         : "rgba(255,255,255,0.06)"
                     }`,
                   }}
@@ -225,11 +220,11 @@ export default function RegisterPage() {
                   className="p-5 rounded-xl transition-all active:scale-[0.98] text-center"
                   style={{
                     background: userGender === "female"
-                      ? "linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05))"
+                      ? "linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05))"
                       : "rgba(30,30,40,0.6)",
                     border: `1px solid ${
                       userGender === "female"
-                        ? "rgba(236,72,153,0.4)"
+                        ? "rgba(249, 115, 22, 0.4)"
                         : "rgba(255,255,255,0.06)"
                     }`,
                   }}
@@ -252,7 +247,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleNext}
                   disabled={!canProceed()}
-                  className="flex-1 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+                  className="flex-1 py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
                 >
                   下一步
                 </button>
@@ -289,7 +284,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleNext}
                   disabled={!canProceed()}
-                  className="flex-1 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+                  className="flex-1 py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
                 >
                   下一步
                 </button>
@@ -314,7 +309,7 @@ export default function RegisterPage() {
                   value={characterName}
                   onChange={(e) => setCharacterName(e.target.value)}
                   placeholder="给TA起个名字吧"
-                  className="w-full px-4 py-4 rounded-lg text-white outline-none transition-all input-base text-center text-xl font-medium"
+                  className="w-full px-4 py-4 rounded-lg text-white outline-none transition-all input-base text-center text-xl font-medium font-serif-cn"
                   required
                   maxLength={20}
                 />
@@ -329,14 +324,14 @@ export default function RegisterPage() {
                     className="px-3.5 py-1.5 rounded-lg text-xs transition-all active:scale-95"
                     style={{
                       background: characterName === name
-                        ? "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(236,72,153,0.15))"
+                        ? "linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(20, 184, 166, 0.15))"
                         : "rgba(30,30,40,0.6)",
                       border: `1px solid ${
                         characterName === name
-                          ? "rgba(139,92,246,0.4)"
+                          ? "rgba(45, 212, 191, 0.4)"
                           : "rgba(255,255,255,0.06)"
                       }`,
-                      color: characterName === name ? "#c4b5fd" : "#8e8ea2",
+                      color: characterName === name ? "#5eead4" : "#8e8ea2",
                     }}
                   >
                     {name}
@@ -355,7 +350,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={isLoading || !canProceed()}
-                  className="flex-1 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
+                  className="flex-1 py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed btn-primary"
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center gap-2">

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 
 type LoginMode = "email" | "phone";
 
@@ -150,21 +151,21 @@ export default function LoginPage() {
     <div
       className="min-h-screen w-full flex items-center justify-center px-4"
       style={{
-        background: "radial-gradient(ellipse at 50% 80%, #1e1a2e 0%, #14111e 50%, #0a0a0f 100%)",
+        background: "radial-gradient(ellipse at 50% 80%, rgba(45, 212, 191, 0.08) 0%, rgba(19, 19, 26, 0.8) 50%, #0c0c12 100%)",
       }}
     >
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full opacity-20"
           style={{
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(45, 212, 191, 0.3) 0%, transparent 70%)",
             filter: "blur(60px)",
           }}
         />
         <div
           className="absolute bottom-1/4 right-1/4 w-56 h-56 rounded-full opacity-15"
           style={{
-            background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, transparent 70%)",
             filter: "blur(50px)",
           }}
         />
@@ -173,19 +174,13 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-                boxShadow: "0 4px 16px rgba(139,92,246,0.3)",
-              }}
-            >
-              <span className="text-xl">✨</span>
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center gradient-jade shadow-lg shadow-brand-500/20">
+              <span className="text-xl">🦌</span>
             </div>
-            <span className="text-white text-xl font-bold">星野</span>
+            <span className="text-white text-xl font-bold font-serif-cn tracking-wide">{BRAND.name}</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white mb-1.5">欢迎回来</h1>
-          <p className="text-ink-400 text-sm">登录账户，继续陪伴之旅</p>
+          <h1 className="text-2xl font-bold text-white mb-1.5 font-serif-cn">欢迎回来</h1>
+          <p className="text-ink-400 text-sm">登录账户，继续灵犀之旅</p>
         </div>
 
         <div className="glass rounded-xl p-6">
@@ -197,7 +192,7 @@ export default function LoginPage() {
               className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === "email" ? "text-white" : "text-ink-400 hover:text-ink-300"
               }`}
-              style={mode === "email" ? { background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)" } : {}}
+              style={mode === "email" ? { background: "linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)", color: "#0c0c12" } : {}}
             >
               邮箱登录
             </button>
@@ -207,7 +202,7 @@ export default function LoginPage() {
               className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === "phone" ? "text-white" : "text-ink-400 hover:text-ink-300"
               }`}
-              style={mode === "phone" ? { background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)" } : {}}
+              style={mode === "phone" ? { background: "linear-gradient(135deg, #f97316 0%, #fbbf24 100%)", color: "#0c0c12" } : {}}
             >
               手机号登录
             </button>
@@ -261,7 +256,7 @@ export default function LoginPage() {
               )}
 
               <div className="flex items-center gap-2">
-                <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "#8b5cf6" }} />
+                <input type="checkbox" className="w-4 h-4 rounded" style={{ accentColor: "#2dd4bf" }} />
                 <span className="text-xs text-ink-400">记住我</span>
               </div>
 

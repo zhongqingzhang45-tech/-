@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState(1);
@@ -29,7 +30,6 @@ export default function ForgotPasswordPage() {
           setIsLoading(false);
           return;
         }
-        // 调用发送短信验证码 API
         const res = await fetch("/api/sms/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -46,7 +46,6 @@ export default function ForgotPasswordPage() {
           setIsLoading(false);
           return;
         }
-        // 模拟发送重置邮件
         setSentTo(`邮箱 ${email}`);
       }
       setStep(2);
@@ -73,7 +72,6 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      // 通过短信验证码重置密码（邮箱方式暂不支持，需手机号）
       if (!usePhone) {
         setError("邮箱重置暂未开放，请使用手机号验证");
         setIsLoading(false);
@@ -107,21 +105,21 @@ export default function ForgotPasswordPage() {
     <div
       className="min-h-screen w-full flex items-center justify-center px-4"
       style={{
-        background: "radial-gradient(ellipse at 50% 80%, #1e1a2e 0%, #14111e 50%, #0a0a0f 100%)",
+        background: "radial-gradient(ellipse at 50% 80%, rgba(45, 212, 191, 0.08) 0%, rgba(19, 19, 26, 0.8) 50%, #0c0c12 100%)",
       }}
     >
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full opacity-20"
           style={{
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(45, 212, 191, 0.3) 0%, transparent 70%)",
             filter: "blur(60px)",
           }}
         />
         <div
           className="absolute bottom-1/4 right-1/4 w-56 h-56 rounded-full opacity-15"
           style={{
-            background: "radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, transparent 70%)",
             filter: "blur(50px)",
           }}
         />
@@ -130,18 +128,12 @@ export default function ForgotPasswordPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-                boxShadow: "0 4px 16px rgba(139,92,246,0.3)",
-              }}
-            >
-              <span className="text-xl">✨</span>
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center gradient-jade shadow-lg shadow-brand-500/20">
+              <span className="text-xl">🦌</span>
             </div>
-            <span className="text-white text-xl font-bold">星野</span>
+            <span className="text-white text-xl font-bold font-serif-cn tracking-wide">{BRAND.name}</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white mb-1.5">
+          <h1 className="text-2xl font-bold text-white mb-1.5 font-serif-cn">
             {step === 1 && "找回密码"}
             {step === 2 && "设置新密码"}
             {step === 3 && "重置成功"}
@@ -157,14 +149,14 @@ export default function ForgotPasswordPage() {
           {step === 1 && (
             <form onSubmit={handleSendCode} className="space-y-4">
               {/* 切换验证方式 */}
-              <div className="flex gap-2 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <div className="flex gap-1 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)" }}>
                 <button
                   type="button"
                   onClick={() => setUsePhone(false)}
                   className="flex-1 py-2 rounded-md text-sm font-medium transition-all"
                   style={{
-                    background: !usePhone ? "linear-gradient(135deg, #8b5cf6, #ec4899)" : "transparent",
-                    color: !usePhone ? "#fff" : "#8e8ea2",
+                    background: !usePhone ? "linear-gradient(135deg, #2dd4bf, #14b8a6)" : "transparent",
+                    color: !usePhone ? "#0c0c12" : "#8e8ea2",
                   }}
                 >
                   邮箱验证
@@ -174,8 +166,8 @@ export default function ForgotPasswordPage() {
                   onClick={() => setUsePhone(true)}
                   className="flex-1 py-2 rounded-md text-sm font-medium transition-all"
                   style={{
-                    background: usePhone ? "linear-gradient(135deg, #8b5cf6, #ec4899)" : "transparent",
-                    color: usePhone ? "#fff" : "#8e8ea2",
+                    background: usePhone ? "linear-gradient(135deg, #f97316, #fbbf24)" : "transparent",
+                    color: usePhone ? "#0c0c12" : "#8e8ea2",
                   }}
                 >
                   手机验证
@@ -200,7 +192,7 @@ export default function ForgotPasswordPage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                     placeholder="请输入手机号"
                     className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base"
                     required
@@ -217,7 +209,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 btn-primary"
+                className="w-full py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 btn-primary"
               >
                 {isLoading ? "发送中..." : "发送验证码"}
               </button>
@@ -231,7 +223,7 @@ export default function ForgotPasswordPage() {
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="请输入6位验证码"
                   maxLength={6}
                   className="w-full px-4 py-3 rounded-lg text-white outline-none transition-all input-base text-center text-xl tracking-widest"
@@ -274,7 +266,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 btn-primary"
+                className="w-full py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 btn-primary"
               >
                 {isLoading ? "重置中..." : "重置密码"}
               </button>
@@ -291,8 +283,8 @@ export default function ForgotPasswordPage() {
 
           {step === 3 && (
             <div className="text-center py-4">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "rgba(34, 197, 94, 0.15)" }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "rgba(45, 212, 191, 0.15)" }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth="2">
                   <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
@@ -300,7 +292,7 @@ export default function ForgotPasswordPage() {
               <p className="text-ink-400 text-sm mb-6">请使用新密码登录你的账户</p>
               <button
                 onClick={() => router.push("/lover/login")}
-                className="w-full py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 btn-primary"
+                className="w-full py-3 rounded-lg font-medium text-ink-950 transition-all hover:opacity-90 btn-primary"
               >
                 前往登录
               </button>
