@@ -2,10 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 国风字体 —— 书法展示 + 雅致宋体 */
+@import url("https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=ZCOOL+QingKe+HuangYou&family=Noto+Serif+SC:wght@300;400;500;600;700;900&display=swap");
+
 :root {
-  --bg: #0a0a0f;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
+  /* 墨色基底 */
+  --bg: #100B08;
+  --bg-soft: #15100B;
+  --bg-card: #1C1610;
+  --border: rgba(201, 169, 97, 0.14);          /* 金线描边 */
+  --border-hover: rgba(201, 169, 97, 0.32);
+  --border-strong: rgba(201, 169, 97, 0.5);
+
+  /* 主色 */
+  --cinnabar: #C8453C;        /* 朱砂 */
+  --cinnabar-deep: #8E2820;
+  --rouge: #C75140;           /* 胭脂 */
+  --gold: #C9A961;            /* 金箔 */
+  --gold-soft: #dcb363;
+  --jade: #4A7C7E;            /* 青黛 */
+  --paper: #F4ECD8;           /* 宣纸 */
+  --paper-soft: #EDE3D0;
+  --ink-text: #E8DCC4;        /* 主文本 —— 暖宣纸色 */
+  --ink-muted: #AE9876;       /* 次级文本 */
+  --ink-faint: #6E5A42;       /* 弱化文本 */
 }
 
 * {
@@ -17,142 +37,253 @@ body {
   padding: 0;
   margin: 0;
   background: var(--bg);
-  color: #f1f1f5;
+  color: var(--ink-text);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  font-family: "Noto Serif SC", "Songti SC", "PingFang SC", "Microsoft YaHei", serif;
+}
+
+/* —— 国风背景纹理：水墨晕染 + 宣纸颗粒 —— */
+.gf-bg {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(200, 69, 60, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(74, 124, 126, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 10% 80%, rgba(201, 169, 97, 0.06) 0%, transparent 55%);
+}
+
+/* 宣纸噪点纹理（细颗粒） */
+.gf-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.78  0 0 0 0 0.66  0 0 0 0 0.38  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: overlay;
 }
 
 @layer utilities {
+  /* —— 玻璃/卷轴面 —— */
   .glass {
-    background: rgba(23, 23, 31, 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(28, 22, 16, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--border);
   }
 
   .glass-strong {
-    background: rgba(17, 17, 24, 0.95);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: rgba(21, 16, 11, 0.94);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
     border: 1px solid var(--border);
   }
 
+  /* 卷轴卡片 —— 带金线描边与暗角 */
+  .scroll-card {
+    background:
+      linear-gradient(180deg, rgba(46, 36, 24, 0.5) 0%, rgba(28, 22, 16, 0.7) 100%);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: inset 0 1px 0 rgba(201, 169, 97, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
   .card {
-    background: rgba(30, 30, 40, 0.6);
+    background: rgba(36, 28, 20, 0.6);
     border: 1px solid var(--border);
     border-radius: 0.75rem;
   }
 
+  .card-hover {
+    transition: all 0.25s ease;
+  }
   .card-hover:hover {
-    background: rgba(38, 38, 50, 0.7);
+    background: rgba(46, 36, 24, 0.75);
     border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   }
 
+  /* —— 按钮 —— */
   .btn-primary {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    color: white;
-    border: none;
+    background: linear-gradient(135deg, #C8453C 0%, #8E2820 100%);
+    color: #FBF6EC;
+    border: 1px solid rgba(201, 169, 97, 0.35);
     border-radius: 0.5rem;
     font-weight: 500;
     transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(200, 69, 60, 0.25);
   }
-
   .btn-primary:hover {
-    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, #dc6f59 0%, #C8453C 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 8px 24px rgba(200, 69, 60, 0.4);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-gold {
+    background: linear-gradient(135deg, #dcb363 0%, #B08F45 100%);
+    color: #1C1610;
+    border: 1px solid rgba(201, 169, 97, 0.5);
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 20px rgba(201, 169, 97, 0.25);
+  }
+  .btn-gold:hover {
+    background: linear-gradient(135deg, #ecd29b 0%, #dcb363 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 0 28px rgba(201, 169, 97, 0.45);
   }
 
   .btn-secondary {
-    background: rgba(255, 255, 255, 0.06);
-    color: #f1f1f5;
+    background: rgba(201, 169, 97, 0.06);
+    color: var(--ink-text);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
     font-weight: 500;
     transition: all 0.2s ease;
   }
-
   .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(201, 169, 97, 0.12);
     border-color: var(--border-hover);
+    color: #FBF6EC;
   }
 
   .btn-ghost {
     background: transparent;
-    color: #b4b4c4;
+    color: var(--ink-muted);
     border: none;
     border-radius: 0.5rem;
     transition: all 0.2s ease;
   }
-
   .btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: #f1f1f5;
+    background: rgba(201, 169, 97, 0.08);
+    color: var(--ink-text);
   }
 
+  /* —— 输入框 —— */
   .input-base {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(16, 11, 8, 0.6);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
-    color: #f1f1f5;
+    color: var(--ink-text);
     transition: all 0.2s ease;
   }
-
   .input-base:focus {
     outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
-    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--cinnabar);
+    box-shadow: 0 0 0 3px rgba(200, 69, 60, 0.16);
+    background: rgba(16, 11, 8, 0.8);
   }
-
   .input-base::placeholder {
-    color: rgba(180, 180, 196, 0.5);
+    color: rgba(174, 152, 118, 0.45);
   }
 
-  .text-muted {
-    color: #8e8ea2;
-  }
-
-  .text-subtle {
-    color: #6b6b7e;
-  }
+  .text-muted { color: var(--ink-muted); }
+  .text-subtle { color: var(--ink-faint); }
 
   .divider {
     height: 1px;
     background: var(--border);
   }
+
+  /* —— 国风装饰 —— */
+
+  /* 朱砂渐变文字 */
+  .text-cinnabar-gradient {
+    background: linear-gradient(135deg, #e07a68 0%, #C8453C 50%, #8E2820 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* 金箔渐变文字 */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #ecd29b 0%, #C9A961 50%, #B08F45 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* 印章 —— 朱砂方印 */
+  .seal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #C8453C 0%, #8E2820 100%);
+    color: #FBF6EC;
+    font-family: "Ma Shan Zheng", "ZCOOL XiaoWei", serif;
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 8px rgba(200, 69, 60, 0.4), inset 0 0 0 2px rgba(251, 246, 236, 0.18);
+    letter-spacing: 0.08em;
+  }
+
+  /* 回纹边框 —— 用渐变模拟连续回字纹 */
+  .gf-border-key {
+    border-image: repeating-linear-gradient(
+      90deg,
+      var(--gold) 0,
+      var(--gold) 6px,
+      transparent 6px,
+      transparent 12px
+    ) 1;
+  }
+
+  /* 祥云背景纹（SVG 平铺） */
+  .gf-clouds {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='90' viewBox='0 0 180 90'><g fill='none' stroke='%23C9A961' stroke-width='1' opacity='0.10'><path d='M20 60 Q10 60 10 50 Q10 40 22 42 Q26 32 38 36 Q44 28 56 34 Q66 30 70 42 Q82 40 82 52 Q82 62 70 60 Z'/><path d='M110 30 Q100 30 100 20 Q100 10 112 12 Q116 2 128 8 Q138 4 142 16 Q154 14 154 26 Q154 36 142 34 Z'/></g></svg>");
+    background-repeat: repeat;
+    background-size: 220px 110px;
+  }
+
+  /* 落花飞舞容器 */
+  .petal-layer {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* 竖排文字（用于诗词装饰） */
+  .vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 0.4em;
+  }
 }
 
+/* —— 动画 —— */
 @keyframes twinkle {
   0%, 100% { opacity: 0.3; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.1); }
 }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.02); }
 }
 
+/* —— 滚动条 —— */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(201, 169, 97, 0.18);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(201, 169, 97, 0.32);
+}
+::selection {
+  background: rgba(200, 69, 60, 0.35);
+  color: #FBF6EC;
 }
 
-::selection {
-  background: rgba(139, 92, 246, 0.3);
-  color: #fff;
+/* 日期选择器暗色适配 */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) sepia(0.3);
+  cursor: pointer;
 }

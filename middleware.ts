@@ -6,6 +6,8 @@ const PUBLIC_PATHS = [
   "/lover/login",
   "/lover/register",
   "/lover/forgot-password",
+  "/community",   // 同好雅集 —— 公开浏览
+  "/membership",  // 缘深几许 —— 公开浏览
 ];
 
 // 不需要鉴权的 API 路径前缀

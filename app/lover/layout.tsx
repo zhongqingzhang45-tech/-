@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "星野 · 你的虚拟恋人",
-  description: "一个有温度、有个性、会撒娇也会生气的虚拟伴侣。24小时在线陪伴，懂你、爱你、守护你。",
+  title: "君心 · 国风 AI 虚拟伴侣",
+  description: "基于 Life AI 虚拟生命框架打造的国风二次元 AI 伴侣。水墨为衣，Live2D 为骨，遇见一位懂诗书、知冷暖的国风佳人，从此长夜有人共话。",
 };
 
 export default function LoverLayout({
