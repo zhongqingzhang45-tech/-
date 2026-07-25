@@ -49,27 +49,45 @@ async function initLive2DPixiStage(parent: HTMLDivElement) {
   componentState.value = 'loading'
   isPixiCanvasReady.value = false
 
-  // https://guansss.github.io/pixi-live2d-display/#package-importing
+  try {
+    const testCanvas = document.createElement('canvas')
+    const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl')
+    if (!gl) {
+      console.warn('[Live2D] WebGL is not supported in this environment; Live2D canvas will be disabled.')
+      componentState.value = 'pending'
+      return
+    }
+  }
+  catch (error) {
+    console.warn('[Live2D] WebGL detection failed; Live2D canvas will be disabled.', error)
+    componentState.value = 'pending'
+    return
+  }
+
   Live2DModel.registerTicker(Ticker)
   extensions.add(TickerPlugin)
-  // We handle the interactions (e.g., mouse-based focusing at) manually
-  // extensions.add(InteractionManager)
 
-  pixiApp.value = new Application({
-    width: props.width * props.resolution,
-    height: props.height * props.resolution,
-    backgroundAlpha: 0,
-    preserveDrawingBuffer: true,
-    autoDensity: false,
-    resolution: 1,
-  })
+  try {
+    pixiApp.value = new Application({
+      width: props.width * props.resolution,
+      height: props.height * props.resolution,
+      backgroundAlpha: 0,
+      preserveDrawingBuffer: true,
+      autoDensity: false,
+      resolution: 1,
+    })
+  }
+  catch (error) {
+    console.error('[Live2D] Failed to create Pixi Application.', error)
+    componentState.value = 'pending'
+    return
+  }
 
   installRenderGuard(pixiApp.value)
   pixiApp.value.stage.scale.set(props.resolution)
 
   pixiAppCanvas.value = pixiApp.value.view
 
-  // Set CSS styles to make canvas responsive to container
   pixiAppCanvas.value.style.width = '100%'
   pixiAppCanvas.value.style.height = '100%'
   pixiAppCanvas.value.style.objectFit = 'cover'

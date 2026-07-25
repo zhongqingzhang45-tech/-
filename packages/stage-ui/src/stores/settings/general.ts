@@ -17,8 +17,7 @@ export const useSettingsGeneral = defineStore('settings-general', () => {
     let language = localStorage.getItem('settings/language')
 
     if (!language) {
-      // Fallback to browser language
-      language = navigator.language || 'en'
+      language = 'zh-Hans'
     }
 
     return resolveSupportedLocale(language, Object.keys(messages!))

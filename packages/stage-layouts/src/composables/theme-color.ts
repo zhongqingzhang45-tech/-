@@ -49,7 +49,10 @@ export function useThemeColor(colorFrom: () => string | Promise<string>) {
     if (!('window' in globalThis) || globalThis.window == null)
       return
 
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', new Color(await colorFrom()).to('srgb').toString({ format: 'hex' }))
+    const color = await colorFrom()
+    if (!color || color === 'transparent')
+      return
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', new Color(color).to('srgb').toString({ format: 'hex' }))
   }
 
   return {
