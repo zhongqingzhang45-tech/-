@@ -1,0 +1,9 @@
+import { t as Options } from "./types-D06-cUms.cjs";
+//#region src/astro.d.ts
+declare const _default: (options?: Options) => {
+  name: string;
+  hooks: {
+    'astro:config:setup': (astro: any) => Promise<void>;
+  };
+};
+export = _default;

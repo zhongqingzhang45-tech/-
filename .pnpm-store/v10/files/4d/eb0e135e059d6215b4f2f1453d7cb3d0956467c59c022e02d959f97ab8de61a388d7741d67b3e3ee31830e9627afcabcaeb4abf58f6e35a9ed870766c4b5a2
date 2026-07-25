@@ -1,0 +1,105 @@
+import { trampoline, responseJSON, InvalidResponseError } from '@xsai/shared';
+import { resolveStepOptions, chat, stepCountAtLeast, executeTool, shouldStop, determineStepType } from '@xsai/shared-chat';
+
+const rawGenerateText = async (options) => {
+  const messages = options.steps == null ? structuredClone(options.messages) : options.messages;
+  const steps = options.steps ?? [];
+  const stepOptions = await resolveStepOptions({
+    messages,
+    model: options.model,
+    prepareStep: options.prepareStep,
+    stepNumber: steps.length,
+    steps,
+    toolChoice: options.toolChoice
+  });
+  return chat({
+    ...options,
+    maxSteps: void 0,
+    messages: stepOptions.messages,
+    model: stepOptions.model,
+    steps: void 0,
+    stopWhen: void 0,
+    stream: false,
+    toolChoice: stepOptions.toolChoice
+  }).then(responseJSON).then(async (res) => {
+    const { choices, usage } = res;
+    if (!choices?.length) {
+      const responseBody = JSON.stringify(res);
+      throw new InvalidResponseError(`No choices returned, response body: ${responseBody}`, {
+        reason: "no_choices",
+        responseBody
+      });
+    }
+    const toolCalls = [];
+    const toolResults = [];
+    const { finish_reason: finishReason, message } = choices[0];
+    const msgToolCalls = message?.tool_calls ?? [];
+    const stopWhen = options.stopWhen ?? stepCountAtLeast(1);
+    messages.push(message);
+    if (msgToolCalls.length > 0) {
+      const results = await Promise.all(
+        msgToolCalls.map(async (toolCall) => executeTool({
+          abortSignal: options.abortSignal,
+          captureToolErrors: options.captureToolErrors,
+          messages,
+          onToolCallFinish: options.onToolCallFinish,
+          onToolCallStart: options.onToolCallStart,
+          repairToolCall: options.repairToolCall,
+          toolCall,
+          tools: options.tools
+        }))
+      );
+      for (const { completionToolCall, completionToolResult, message: message2 } of results) {
+        toolCalls.push(completionToolCall);
+        toolResults.push(completionToolResult);
+        messages.push(message2);
+      }
+    }
+    const stopStep = {
+      finishReason,
+      text: Array.isArray(message.content) ? message.content.filter((m) => m.type === "text").map((m) => m.text).join("\n") : message.content,
+      toolCalls,
+      toolResults,
+      usage
+    };
+    const stop = shouldStop(stopWhen, {
+      messages,
+      step: stopStep,
+      steps: [...steps, stopStep]
+    });
+    const willContinue = toolCalls.length > 0 && !stop;
+    const step = {
+      ...stopStep,
+      stepType: determineStepType({
+        finishReason,
+        stepsLength: steps.length,
+        toolCallsLength: toolCalls.length,
+        willContinue
+      })
+    };
+    steps.push(step);
+    if (options.onStepFinish)
+      await options.onStepFinish(step);
+    if (!willContinue) {
+      return {
+        finishReason: step.finishReason,
+        messages,
+        reasoningText: message.reasoning ?? message.reasoning_content,
+        steps,
+        text: step.text,
+        toolCalls: step.toolCalls,
+        toolResults: step.toolResults,
+        usage: step.usage
+      };
+    } else {
+      return async () => rawGenerateText({
+        ...options,
+        messages,
+        steps
+      });
+    }
+  });
+};
+const generateText = async (options) => trampoline(async () => rawGenerateText(options));
+
+export { generateText };

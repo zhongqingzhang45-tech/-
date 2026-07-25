@@ -1,0 +1,71 @@
+import { defineEventa, defineOutboundEventa, nanoid } from "./context-C35Qku9U.mjs";
+import { isExtendableInvokeResponseLike } from "./src-Bb-vxm5k.mjs";
+
+//#region src/adapters/webworkers/internal.ts
+function generateWorkerPayload(type, payload) {
+	return {
+		id: nanoid(),
+		type,
+		payload
+	};
+}
+function parseWorkerPayload(data) {
+	return data;
+}
+
+//#endregion
+//#region src/adapters/webworkers/shared.ts
+function defineWorkerEventa(id) {
+	return {
+		...defineEventa(id),
+		_workerTransfer: true
+	};
+}
+function defineOutboundWorkerEventa(id) {
+	return {
+		...defineOutboundEventa(id),
+		_workerTransfer: true
+	};
+}
+function isWorkerEventa(event) {
+	return typeof event === "object" && "_workerTransfer" in event && typeof event._workerTransfer === "boolean" && event._workerTransfer === true;
+}
+const workerErrorEvent = defineEventa();
+const workerMessageErrorEvent = defineEventa();
+function normalizeOnListenerParameters(event, options) {
+	let eventPayload = event.body;
+	let transfer;
+	if (isExtendableInvokeResponseLike(event)) {
+		if (event.body.content.invokeResponse?.transfer != null) {
+			transfer = event.body.content.invokeResponse.transfer;
+			delete event.body.content.invokeResponse;
+		}
+		eventPayload = {
+			...event.body,
+			content: event.body.content.response
+		};
+		delete eventPayload.content.response;
+	} else if (isWorkerEventa(event)) {
+		transfer = event.body?.transfer;
+		delete event.body?.transfer;
+		eventPayload = event.body?.message;
+		delete event.body?.message;
+	}
+	if (typeof options !== "undefined" && options != null && typeof options === "object" && "transfer" in options) {
+		if (Array.isArray(options.transfer)) transfer = options.transfer;
+	}
+	return {
+		body: eventPayload,
+		transfer
+	};
+}
+function withTransfer(body, transfer) {
+	return {
+		response: body,
+		invokeResponse: { transfer: transfer ?? [] }
+	};
+}
+
+//#endregion
+export { defineOutboundWorkerEventa, defineWorkerEventa, generateWorkerPayload, isWorkerEventa, normalizeOnListenerParameters, parseWorkerPayload, withTransfer, workerErrorEvent };
+//# sourceMappingURL=shared-DbO1rU2W.mjs.map

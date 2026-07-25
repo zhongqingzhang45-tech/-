@@ -1,0 +1,24 @@
+import { resetScenarioReady as n, markScenarioReady as t } from "@vishot/core";
+import { onMounted as i } from "vue";
+function s(r) {
+  i(async () => {
+    n();
+    try {
+      await Promise.all([
+        document.fonts.ready,
+        ...r.map((e) => c(e))
+      ]), t();
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+async function c(r) {
+  await new Promise((e, a) => {
+    const o = new Image();
+    o.addEventListener("load", () => e(), { once: !0 }), o.addEventListener("error", () => a(new Error(`Scenario image failed to load: ${r}`)), { once: !0 }), o.src = r;
+  });
+}
+export {
+  s as useSceneReady
+};

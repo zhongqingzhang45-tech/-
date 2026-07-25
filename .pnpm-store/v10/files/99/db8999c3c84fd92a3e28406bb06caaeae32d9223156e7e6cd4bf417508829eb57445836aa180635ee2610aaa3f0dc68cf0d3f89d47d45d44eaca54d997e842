@@ -1,0 +1,8 @@
+import { n as createPresetChromatic, t as VAR_HUE } from "./shared-B7iuKrQi.mjs";
+
+//#region src/index.ts
+const presetChromatic = createPresetChromatic();
+var src_default = presetChromatic;
+
+//#endregion
+export { VAR_HUE, src_default as default, presetChromatic };

@@ -1,0 +1,2048 @@
+// Constants
+const AWS_ALGORITHM = 'AWS4-HMAC-SHA256';
+const AWS_REQUEST_TYPE = 'aws4_request';
+const S3_SERVICE = 's3';
+const LIST_TYPE = '2';
+const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
+const DEFAULT_STREAM_CONTENT_TYPE = 'application/octet-stream';
+const XML_CONTENT_TYPE = 'application/xml';
+// List of keys that might contain sensitive information
+const SENSITIVE_KEYS_REDACTED = new Set(['accesskeyid', 'secretaccesskey', 'sessiontoken', 'password', 'token']);
+const IFHEADERS = new Set(['if-match', 'if-none-match', 'if-modified-since', 'if-unmodified-since']);
+const DEFAULT_REQUEST_SIZE_IN_BYTES = 8 * 1024 * 1024;
+const MIN_PART_SIZE = 8 * 1024 * 1024;
+// Headers
+const HEADER_AMZ_CONTENT_SHA256 = 'x-amz-content-sha256';
+const HEADER_AMZ_CHECKSUM_SHA256 = 'x-amz-checksum-sha256';
+const HEADER_AMZ_DATE = 'x-amz-date';
+const HEADER_HOST = 'host';
+const HEADER_AUTHORIZATION = 'authorization';
+const HEADER_CONTENT_TYPE = 'content-type';
+const HEADER_CONTENT_LENGTH = 'content-length';
+const HEADER_ETAG = 'etag';
+// Error messages
+const ERROR_PREFIX = '[s3mini] ';
+const ERROR_ACCESS_KEY_REQUIRED = `${ERROR_PREFIX}accessKeyId must be a non-empty string`;
+const ERROR_SECRET_KEY_REQUIRED = `${ERROR_PREFIX}secretAccessKey must be a non-empty string`;
+const ERROR_ENDPOINT_REQUIRED = `${ERROR_PREFIX}endpoint must be a non-empty string`;
+const ERROR_ENDPOINT_FORMAT = `${ERROR_PREFIX}endpoint must be a valid URL. Expected format: https://<host>[:port][/base-path]`;
+const ERROR_KEY_REQUIRED = `${ERROR_PREFIX}key must be a non-empty string`;
+const ERROR_UPLOAD_ID_REQUIRED = `${ERROR_PREFIX}uploadId must be a non-empty string`;
+const ERROR_PREFIX_TYPE = `${ERROR_PREFIX}prefix must be a string`;
+const ERROR_DELIMITER_REQUIRED = `${ERROR_PREFIX}delimiter must be a string`;
+
+const isBun = typeof navigator !== 'undefined' && navigator.userAgent === 'Bun';
+/** Strips the bucket name from a full endpoint URL, returning the base origin for Bun.S3Client. */
+const extractBaseEndpoint = (endpoint, bucket) => {
+    // Path-style (/bucket/…): just use the origin
+    if (endpoint.pathname.split('/').some(Boolean)) {
+        return endpoint.origin;
+    }
+    // Virtual-hosted (bucket.host…): strip the bucket subdomain
+    const prefix = bucket + '.';
+    if (endpoint.hostname.startsWith(prefix)) {
+        const base = endpoint.hostname.slice(prefix.length);
+        return `${endpoint.protocol}//${base}${endpoint.port ? ':' + endpoint.port : ''}`;
+    }
+    return endpoint.origin;
+};
+const ENCODR = new TextEncoder();
+const chunkSize = 0x8000; // 32KB chunks
+const HEX_CHARS = new Uint8Array([48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102]);
+const getByteSize = (data) => {
+    if (typeof data === 'string') {
+        return ENCODR.encode(data).byteLength;
+    }
+    if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+        return data.byteLength;
+    }
+    if (data instanceof Blob || data instanceof File) {
+        return data.size;
+    }
+    if (data instanceof ReadableStream) {
+        return Number.NaN; // size unknown
+    }
+    throw new Error('Unsupported data type');
+};
+const toUint8Array = (data) => {
+    if (typeof data === 'string') {
+        return ENCODR.encode(data);
+    }
+    if (data instanceof ArrayBuffer) {
+        return new Uint8Array(data);
+    }
+    if (data instanceof Uint8Array) {
+        return data;
+    }
+    // Node Buffer
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data)) {
+        return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    }
+    return null;
+};
+/**
+ * Turn a raw ArrayBuffer into its hexadecimal representation.
+ * @param {ArrayBuffer} buffer The raw bytes.
+ * @returns {string} Hexadecimal string
+ */
+const hexFromBuffer = (buffer) => {
+    const bytes = new Uint8Array(buffer);
+    const hex = new Uint8Array(bytes.length * 2);
+    for (let i = 0, j = 0; i < bytes.length; i++) {
+        hex[j++] = HEX_CHARS[bytes[i] >> 4];
+        hex[j++] = HEX_CHARS[bytes[i] & 0x0f];
+    }
+    return String.fromCodePoint(...hex);
+};
+/**
+ * Turn a raw ArrayBuffer into its base64 representation.
+ * @param {ArrayBuffer} buffer The raw bytes.
+ * @returns {string} Base64 string
+ */
+const base64FromBuffer = (buffer) => {
+    const bytes = new Uint8Array(buffer);
+    let result = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        result += btoa(String.fromCodePoint(...chunk));
+    }
+    return result;
+};
+/**
+ * Compute SHA-256 hash of arbitrary string data.
+ * @param {string} content The content to be hashed.
+ * @returns {ArrayBuffer} The raw hash
+ */
+const sha256 = async (content) => {
+    const data = ENCODR.encode(content);
+    return await globalThis.crypto.subtle.digest('SHA-256', data);
+};
+/**
+ * Compute HMAC-SHA-256 of arbitrary data.
+ * @param {string|ArrayBuffer} key The key used to sign the content.
+ * @param {string} content The content to be signed.
+ * @returns {ArrayBuffer} The raw signature
+ */
+const hmac = async (key, content) => {
+    const secret = await globalThis.crypto.subtle.importKey('raw', typeof key === 'string' ? ENCODR.encode(key) : key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const data = ENCODR.encode(content);
+    return await globalThis.crypto.subtle.sign('HMAC', secret, data);
+};
+/**
+ * Sanitize ETag value by removing quotes and XML entities
+ * @param etag ETag value to sanitize
+ * @returns Sanitized ETag
+ */
+const sanitizeETag = (etag) => {
+    const replaceChars = {
+        '"': '',
+        '&quot;': '',
+        '&#34;': '',
+    };
+    return etag.replaceAll(/(^("|&quot;|&#34;))|(("|&quot;|&#34;)$)/g, m => replaceChars[m] || '');
+};
+const entityMap = {
+    '&quot;': '"',
+    '&apos;': "'",
+    '&lt;': '<',
+    '&gt;': '>',
+    '&amp;': '&',
+};
+/**
+ * Escape special characters for XML
+ * @param value String to escape
+ * @returns XML-escaped string
+ */
+const escapeXml = (value) => {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&apos;');
+};
+const unescapeXml = (value) => value.replaceAll(/&(quot|apos|lt|gt|amp);/g, m => entityMap[m] ?? m);
+/**
+ * Parse a very small subset of XML into a JS structure.
+ *
+ * @param input raw XML string
+ * @returns string for leaf nodes, otherwise a map of children
+ */
+const parseXml = (input) => {
+    const xmlContent = input.replace(/<\?xml[^?]*\?>\s*/, '');
+    const RE_TAG = /<([A-Za-z_][\w\-.]*)[^>]*?>([\s\S]*?)<\/\1>/gm;
+    const result = {}; // strong type, no `any`
+    let match;
+    while ((match = RE_TAG.exec(xmlContent)) !== null) {
+        const tagName = match[1];
+        const innerContent = match[2];
+        const node = innerContent ? parseXml(innerContent) : unescapeXml(innerContent?.trim() || '');
+        if (!tagName) {
+            continue;
+        }
+        const current = result[tagName];
+        if (current === undefined) {
+            // First occurrence
+            result[tagName] = node;
+        }
+        else if (Array.isArray(current)) {
+            // Already an array
+            current.push(node);
+        }
+        else {
+            // Promote to array on the second occurrence
+            result[tagName] = [current, node];
+        }
+    }
+    // No child tags? — return the text, after entity decode
+    return Object.keys(result).length > 0 ? result : unescapeXml(xmlContent.trim());
+};
+/**
+ * Encode a character as a URI percent-encoded hex value
+ * @param c Character to encode
+ * @returns Percent-encoded character
+ */
+const encodeAsHex = (c) => `%${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`;
+/**
+ * Escape a URI string using percent encoding
+ * @param uriStr URI string to escape
+ * @returns Escaped URI string
+ */
+const uriEscape = (uriStr) => {
+    return encodeURIComponent(uriStr).replaceAll(/[!'()*]/g, encodeAsHex);
+};
+/**
+ * Escape a URI resource path while preserving forward slashes
+ * @param string URI path to escape
+ * @returns Escaped URI path
+ */
+const uriResourceEscape = (string) => {
+    return uriEscape(string).replaceAll('%2F', '/');
+};
+const extractErrCode = (e) => {
+    if (typeof e !== 'object' || e === null) {
+        return undefined;
+    }
+    const err = e;
+    if (typeof err.code === 'string') {
+        return err.code;
+    }
+    return typeof err.cause?.code === 'string' ? err.cause.code : undefined;
+};
+class S3Error extends Error {
+    code;
+    constructor(msg, code, cause) {
+        super(msg);
+        this.name = new.target.name; // keeps instanceof usable
+        this.code = code;
+        this.cause = cause;
+    }
+}
+class S3NetworkError extends S3Error {
+}
+class S3ServiceError extends S3Error {
+    status;
+    serviceCode;
+    body;
+    constructor(msg, status, serviceCode, body) {
+        super(msg, serviceCode);
+        this.status = status;
+        this.serviceCode = serviceCode;
+        this.body = body;
+    }
+}
+/**
+ * Run async-returning tasks in batches with an *optional* minimum
+ * spacing (minIntervalMs) between the *start* times of successive batches.
+ *
+ * @param {Iterable<() => Promise<unknonw>>} tasks       – functions returning Promises
+ * @param {number} [batchSize=30]                    – max concurrent requests
+ * @param {number} [minIntervalMs=0]                 – ≥0; 0 means “no pacing”
+ * @returns {Promise<Array<PromiseSettledResult<T>>>}
+ */
+const runInBatches = async (tasks, batchSize = 30, minIntervalMs = 0) => {
+    const allResults = [];
+    let batch = [];
+    for (const task of tasks) {
+        batch.push(task);
+        if (batch.length === batchSize) {
+            await executeBatch(batch);
+            batch = [];
+        }
+    }
+    if (batch.length) {
+        await executeBatch(batch);
+    }
+    return allResults;
+    // ───────── helpers ──────────
+    async function executeBatch(batchFns) {
+        const start = Date.now();
+        const settled = await Promise.allSettled(batchFns.map((fn) => fn()));
+        allResults.push(...settled);
+        if (minIntervalMs > 0) {
+            const wait = minIntervalMs - (Date.now() - start);
+            if (wait > 0) {
+                await new Promise((resolve) => setTimeout(resolve, wait));
+            }
+        }
+    }
+};
+const generateParts = async function* (data, partSize) {
+    const bytes = toUint8Array(data);
+    if (bytes) {
+        yield* generateBufferParts(bytes, partSize);
+    }
+    else if (data instanceof Blob) {
+        yield* generateBlobParts(data, partSize);
+    }
+    else if (data instanceof ReadableStream) {
+        yield* generateStreamParts(data, partSize);
+    }
+    else {
+        throw new TypeError(`${ERROR_PREFIX}Unsupported data type for multipart upload`);
+    }
+};
+function* generateBufferParts(bytes, partSize) {
+    for (let offset = 0; offset < bytes.byteLength; offset += partSize) {
+        yield bytes.subarray(offset, Math.min(offset + partSize, bytes.byteLength));
+    }
+}
+/**
+ * Zero-copy: yields Blob slices. Data is only read when fetch consumes it.
+ */
+const generateBlobParts = function* (blob, partSize) {
+    for (let offset = 0; offset < blob.size; offset += partSize) {
+        yield blob.slice(offset, Math.min(offset + partSize, blob.size));
+    }
+};
+const generateStreamParts = async function* (stream, partSize) {
+    const reader = stream.getReader();
+    const chunks = [];
+    let buffered = 0;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (value) {
+                chunks.push(value);
+                buffered += value.byteLength;
+                while (buffered >= partSize) {
+                    yield extractPart(chunks, partSize);
+                    buffered -= partSize;
+                }
+            }
+            if (done) {
+                break;
+            }
+        }
+        // Yield remaining
+        if (buffered > 0) {
+            yield extractPart(chunks, buffered);
+        }
+    }
+    finally {
+        reader.releaseLock();
+    }
+};
+const extractPart = (chunks, size) => {
+    const part = new Uint8Array(size);
+    let offset = 0;
+    while (offset < size && chunks.length > 0) {
+        const chunk = chunks[0];
+        const needed = size - offset;
+        if (chunk.byteLength <= needed) {
+            part.set(chunk, offset);
+            offset += chunk.byteLength;
+            chunks.shift();
+        }
+        else {
+            part.set(chunk.subarray(0, needed), offset);
+            chunks[0] = chunk.subarray(needed);
+            offset = size;
+        }
+    }
+    return part.buffer;
+};
+
+/**
+ * S3 class for interacting with S3-compatible object storage services.
+ * This class provides methods for common S3 operations such as uploading, downloading,
+ * and deleting objects, as well as multipart uploads.
+ *
+ * @class
+ * @example
+ * const s3 = new S3mini({
+ *   accessKeyId: 'your-access-key',
+ *   secretAccessKey: 'your-secret-key',
+ *   endpoint: 'https://your-s3-endpoint.com/bucket-name',
+ *   region: 'auto' // by default is auto
+ * });
+ *
+ * // Upload a file
+ * await s3.putObject('example.txt', 'Hello, World!');
+ *
+ * // Download a file
+ * const content = await s3.getObject('example.txt');
+ *
+ * // Delete a file
+ * await s3.deleteObject('example.txt');
+ */
+class S3mini {
+    /**
+     * Creates an instance of the S3 class.
+     *
+     * @constructor
+     * @param {Object} config - Configuration options for the S3 instance.
+     * @param {string} config.accessKeyId - The access key ID for authentication.
+     * @param {string} config.secretAccessKey - The secret access key for authentication.
+     * @param {string} config.endpoint - The endpoint URL of the S3-compatible service.
+     * @param {string} [config.region='auto'] - The region of the S3 service.
+     * @param {number} [config.requestSizeInBytes=8388608] - The request size of a single request in bytes (AWS S3 is 8MB).
+     * @param {number} [config.requestAbortTimeout=undefined] - The timeout in milliseconds after which a request should be aborted (careful on streamed requests).
+     * @param {Object} [config.logger=null] - A logger object with methods like info, warn, error.
+     * @param {typeof fetch} [config.fetch=globalThis.fetch] - Custom fetch implementation to use for HTTP requests.
+     * @param {number} [config.minPartSize=8388608] - The minimum part size for multipart uploads in bytes (default is 8MB).
+     * @throws {TypeError} Will throw an error if required parameters are missing or of incorrect type.
+     */
+    #accessKeyId;
+    #secretAccessKey;
+    endpoint;
+    region;
+    bucketName;
+    requestSizeInBytes;
+    requestAbortTimeout;
+    logger;
+    _fetch;
+    minPartSize;
+    _bun;
+    signingKeyDate;
+    signingKey;
+    constructor({ accessKeyId, secretAccessKey, endpoint, region = 'auto', requestSizeInBytes = DEFAULT_REQUEST_SIZE_IN_BYTES, requestAbortTimeout = undefined, logger = undefined, fetch = globalThis.fetch, minPartSize = MIN_PART_SIZE, }) {
+        this._validateConstructorParams(accessKeyId, secretAccessKey, endpoint);
+        this.#accessKeyId = accessKeyId;
+        this.#secretAccessKey = secretAccessKey;
+        this.endpoint = new URL(this._ensureValidUrl(endpoint));
+        this.region = region;
+        this.bucketName = this._extractBucketName();
+        this.requestSizeInBytes = requestSizeInBytes;
+        this.requestAbortTimeout = requestAbortTimeout;
+        this.logger = logger;
+        this._fetch = (input, init) => fetch(input, init);
+        this.minPartSize = minPartSize;
+        if (isBun) {
+            const { S3Client } = globalThis.Bun;
+            this._bun = new S3Client({
+                accessKeyId,
+                secretAccessKey,
+                endpoint: extractBaseEndpoint(this.endpoint, this.bucketName),
+                region: this.region,
+                bucket: this.bucketName,
+            });
+        }
+    }
+    _sanitize(obj) {
+        if (typeof obj !== 'object' || obj === null) {
+            return obj;
+        }
+        return Object.keys(obj).reduce((acc, key) => {
+            if (SENSITIVE_KEYS_REDACTED.has(key.toLowerCase())) {
+                acc[key] = '[REDACTED]';
+            }
+            else if (typeof obj[key] === 'object' &&
+                obj[key] !== null) {
+                acc[key] = this._sanitize(obj[key]);
+            }
+            else {
+                acc[key] = obj[key];
+            }
+            return acc;
+        }, Array.isArray(obj) ? [] : {});
+    }
+    _log(level, message, additionalData = {}) {
+        if (this.logger && typeof this.logger[level] === 'function') {
+            // Function to recursively sanitize an object
+            // Sanitize the additional data
+            const sanitizedData = this._sanitize(additionalData);
+            // Prepare the log entry
+            const logEntry = {
+                timestamp: new Date().toISOString(),
+                level,
+                message,
+                details: sanitizedData,
+                // Include some general context, but sanitize sensitive parts
+                context: this._sanitize({
+                    region: this.region,
+                    endpoint: this.endpoint.toString(),
+                    // Only include the first few characters of the access key, if it exists
+                    accessKeyId: this.#accessKeyId ? `${this.#accessKeyId.substring(0, 4)}...` : undefined,
+                }),
+            };
+            // Log the sanitized entry
+            this.logger[level](JSON.stringify(logEntry));
+        }
+    }
+    _validateConstructorParams(accessKeyId, secretAccessKey, endpoint) {
+        if (typeof accessKeyId !== 'string') {
+            throw new TypeError(ERROR_ACCESS_KEY_REQUIRED);
+        }
+        if (typeof secretAccessKey !== 'string') {
+            throw new TypeError(ERROR_SECRET_KEY_REQUIRED);
+        }
+        if (typeof endpoint !== 'string' || endpoint.trim().length === 0) {
+            throw new TypeError(ERROR_ENDPOINT_REQUIRED);
+        }
+    }
+    /**
+     * Check if credentials are configured (non-empty).
+     * @returns true if both accessKeyId and secretAccessKey are non-empty.
+     */
+    _hasCredentials() {
+        return this.#accessKeyId.trim().length > 0 && this.#secretAccessKey.trim().length > 0;
+    }
+    /** Run a read op via Bun-native S3, returning null on NoSuchKey. */
+    async _bunRead(key, op) {
+        try {
+            return await op(this._bun.file(key));
+        }
+        catch (e) {
+            if (e?.code === 'NoSuchKey') {
+                return null;
+            }
+            throw e;
+        }
+    }
+    _ensureValidUrl(raw) {
+        const candidate = /^(https?:)?\/\//i.test(raw) ? raw : `https://${raw}`;
+        try {
+            new URL(candidate);
+            // Find the last non-slash character
+            let endIndex = candidate.length;
+            while (endIndex > 0 && candidate[endIndex - 1] === '/') {
+                endIndex--;
+            }
+            return endIndex === candidate.length ? candidate : candidate.substring(0, endIndex);
+        }
+        catch {
+            const msg = `${ERROR_ENDPOINT_FORMAT} But provided: "${raw}"`;
+            this._log('error', msg);
+            throw new TypeError(msg);
+        }
+    }
+    _validateMethodIsGetOrHead(method) {
+        if (method !== 'GET' && method !== 'HEAD') {
+            this._log('error', `${ERROR_PREFIX}method must be either GET or HEAD`);
+            throw new Error(`${ERROR_PREFIX}method must be either GET or HEAD`);
+        }
+    }
+    _checkKey(key) {
+        if (typeof key !== 'string' || key.trim().length === 0) {
+            this._log('error', ERROR_KEY_REQUIRED);
+            throw new TypeError(ERROR_KEY_REQUIRED);
+        }
+    }
+    _checkDelimiter(delimiter) {
+        if (typeof delimiter !== 'string' || delimiter.trim().length === 0) {
+            this._log('error', ERROR_DELIMITER_REQUIRED);
+            throw new TypeError(ERROR_DELIMITER_REQUIRED);
+        }
+    }
+    _checkPrefix(prefix) {
+        if (typeof prefix !== 'string') {
+            this._log('error', ERROR_PREFIX_TYPE);
+            throw new TypeError(ERROR_PREFIX_TYPE);
+        }
+    }
+    // private _checkMaxKeys(maxKeys: number): void {
+    //   if (typeof maxKeys !== 'number' || maxKeys <= 0) {
+    //     this._log('error', C.ERROR_MAX_KEYS_TYPE);
+    //     throw new TypeError(C.ERROR_MAX_KEYS_TYPE);
+    //   }
+    // }
+    _checkOpts(opts) {
+        if (typeof opts !== 'object') {
+            this._log('error', `${ERROR_PREFIX}opts must be an object`);
+            throw new TypeError(`${ERROR_PREFIX}opts must be an object`);
+        }
+    }
+    _filterIfHeaders(opts) {
+        const filteredOpts = {};
+        const conditionalHeaders = {};
+        for (const [key, value] of Object.entries(opts)) {
+            if (IFHEADERS.has(key.toLowerCase())) {
+                conditionalHeaders[key] = value;
+            }
+            else {
+                filteredOpts[key] = value;
+            }
+        }
+        return { filteredOpts, conditionalHeaders };
+    }
+    // private _validateData(data: unknown): BodyInit {
+    //   if (data instanceof ArrayBuffer) {
+    //     return data;
+    //   }
+    //   if (data instanceof Uint8Array) {
+    //     return data as unknown as BodyInit;
+    //   }
+    //   if ((globalThis.Buffer && data instanceof globalThis.Buffer) || typeof data === 'string') {
+    //     return data as BodyInit;
+    //   }
+    //   this._log('error', C.ERROR_DATA_BUFFER_REQUIRED);
+    //   throw new TypeError(C.ERROR_DATA_BUFFER_REQUIRED);
+    // }
+    _validateUploadPartParams(key, uploadId, data, partNumber, opts) {
+        this._checkKey(key);
+        if (typeof uploadId !== 'string' || uploadId.trim().length === 0) {
+            this._log('error', ERROR_UPLOAD_ID_REQUIRED);
+            throw new TypeError(ERROR_UPLOAD_ID_REQUIRED);
+        }
+        if (!Number.isInteger(partNumber) || partNumber <= 0) {
+            this._log('error', `${ERROR_PREFIX}partNumber must be a positive integer`);
+            throw new TypeError(`${ERROR_PREFIX}partNumber must be a positive integer`);
+        }
+        this._checkOpts(opts);
+        return data;
+    }
+    async _sign(method, keyPath, query = {}, headers = {}) {
+        // Create URL without appending keyPath first
+        const url = new URL(this.endpoint);
+        // Properly format the pathname to avoid double slashes
+        if (keyPath && keyPath.length > 0) {
+            url.pathname =
+                url.pathname === '/' ? `/${keyPath.replace(/^\/+/, '')}` : `${url.pathname}/${keyPath.replace(/^\/+/, '')}`;
+        }
+        // If no credentials, return unsigned request (for public bucket access)
+        if (!this._hasCredentials()) {
+            headers[HEADER_HOST] = url.host;
+            return { url: url.toString(), headers };
+        }
+        const d = new Date();
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const shortDatetime = `${year}${month}${day}`;
+        const fullDatetime = `${shortDatetime}T${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
+        const credentialScope = `${shortDatetime}/${this.region}/${S3_SERVICE}/${AWS_REQUEST_TYPE}`;
+        headers[HEADER_AMZ_CONTENT_SHA256] = UNSIGNED_PAYLOAD;
+        headers[HEADER_AMZ_DATE] = fullDatetime;
+        headers[HEADER_HOST] = url.host;
+        const ignoredHeaders = new Set(['authorization', 'content-length', 'content-type', 'user-agent']);
+        let canonicalHeaders = '';
+        let signedHeaders = '';
+        for (const [key, value] of Object.entries(headers).sort(([a], [b]) => a.localeCompare(b))) {
+            const lowerKey = key.toLowerCase();
+            if (!ignoredHeaders.has(lowerKey)) {
+                if (canonicalHeaders) {
+                    canonicalHeaders += '\n';
+                    signedHeaders += ';';
+                }
+                canonicalHeaders += `${lowerKey}:${String(value).trim()}`;
+                signedHeaders += lowerKey;
+            }
+        }
+        const canonicalRequest = `${method}\n${url.pathname}\n${this._buildCanonicalQueryString(query)}\n${canonicalHeaders}\n\n${signedHeaders}\n${UNSIGNED_PAYLOAD}`;
+        const stringToSign = `${AWS_ALGORITHM}\n${fullDatetime}\n${credentialScope}\n${hexFromBuffer(await sha256(canonicalRequest))}`;
+        if (shortDatetime !== this.signingKeyDate || !this.signingKey) {
+            this.signingKeyDate = shortDatetime;
+            this.signingKey = await this._getSignatureKey(shortDatetime);
+        }
+        const signature = hexFromBuffer(await hmac(this.signingKey, stringToSign));
+        headers[HEADER_AUTHORIZATION] =
+            `${AWS_ALGORITHM} Credential=${this.#accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+        return { url: url.toString(), headers };
+    }
+    async _signedRequest(method, // 'GET' | 'HEAD' | 'PUT' | 'POST' | 'DELETE'
+    key, // ‘’ allowed for bucket‑level ops
+    { query = {}, // ?query=string
+    body = '', // BodyInit | undefined
+    headers = {}, // extra/override headers
+    tolerated = [], // [200, 404] etc.
+    withQuery = false, // append query string to signed URL
+     } = {}) {
+        // Basic validation
+        // if (!['GET', 'HEAD', 'PUT', 'POST', 'DELETE'].includes(method)) {
+        //   throw new Error(`${C.ERROR_PREFIX}Unsupported HTTP method ${method as string}`);
+        // }
+        const { filteredOpts, conditionalHeaders } = ['GET', 'HEAD'].includes(method)
+            ? this._filterIfHeaders(query)
+            : { filteredOpts: query, conditionalHeaders: {} };
+        const baseHeaders = {
+            [HEADER_AMZ_CONTENT_SHA256]: UNSIGNED_PAYLOAD,
+            // ...(['GET', 'HEAD'].includes(method) ? { [C.HEADER_CONTENT_TYPE]: C.JSON_CONTENT_TYPE } : {}),
+            ...headers,
+            ...conditionalHeaders,
+        };
+        const encodedKey = key ? uriResourceEscape(key) : '';
+        const { url, headers: signedHeaders } = await this._sign(method, encodedKey, filteredOpts, baseHeaders);
+        if (Object.keys(query).length > 0) {
+            withQuery = true; // append query string to signed URL
+        }
+        const finalUrl = withQuery && Object.keys(filteredOpts).length ? `${url}?${this._buildCanonicalQueryString(filteredOpts)}` : url;
+        const signedHeadersString = Object.fromEntries(Object.entries(signedHeaders).map(([k, v]) => [k, String(v)]));
+        return this._sendRequest(finalUrl, method, signedHeadersString, body, tolerated);
+    }
+    /**
+     * Sanitizes an ETag value by removing surrounding quotes and whitespace.
+     * Still returns RFC compliant ETag. https://www.rfc-editor.org/rfc/rfc9110#section-8.8.3
+     * @param {string} etag - The ETag value to sanitize.
+     * @returns {string} The sanitized ETag value.
+     * @example
+     * const cleanEtag = s3.sanitizeETag('"abc123"'); // Returns: 'abc123'
+     */
+    sanitizeETag(etag) {
+        return sanitizeETag(etag);
+    }
+    /**
+     * Creates a new bucket.
+     * This method sends a request to create a new bucket in the specified in endpoint.
+     * @returns A promise that resolves to true if the bucket was created successfully, false otherwise.
+     */
+    async createBucket() {
+        const xmlBody = `
+      <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+        <LocationConstraint>${this.region}</LocationConstraint>
+      </CreateBucketConfiguration>
+    `;
+        const headers = {
+            [HEADER_CONTENT_TYPE]: XML_CONTENT_TYPE,
+            [HEADER_CONTENT_LENGTH]: getByteSize(xmlBody),
+        };
+        const res = await this._signedRequest('PUT', '', {
+            body: xmlBody,
+            headers,
+            tolerated: [200, 404, 403, 409], // don’t throw on 404/403 // 409 = bucket already exists
+        });
+        return res.status === 200;
+    }
+    _extractBucketName() {
+        const url = this.endpoint;
+        // Path-style: bucket is the first non-empty path segment
+        const firstSegment = url.pathname.split('/').find(Boolean);
+        if (firstSegment) {
+            return firstSegment;
+        }
+        // Virtual-hosted style: bucket is the first subdomain label
+        const hostname = url.hostname;
+        // IP addresses (v4: digits+dots, v6: contains colons) can't carry a bucket subdomain
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname) || hostname.includes(':')) {
+            return '';
+        }
+        const labels = hostname.split('.');
+        // Need ≥3 labels for virtual-hosted (bucket.service.tld)
+        // Single-label (localhost) or two-label (example.com) have no room for a bucket subdomain
+        if (labels.length < 3) {
+            return '';
+        }
+        return labels[0];
+    }
+    /**
+     * Checks if a bucket exists.
+     * This method sends a request to check if the specified bucket exists in the S3-compatible service.
+     * @returns A promise that resolves to true if the bucket exists, false otherwise.
+     */
+    async bucketExists() {
+        const res = await this._signedRequest('HEAD', '', { tolerated: [200, 404, 403] });
+        return res.status === 200;
+    }
+    /**
+     * Lists objects in the bucket with optional filtering and no pagination.
+     * This method retrieves all objects matching the criteria (not paginated like listObjectsV2).
+     * @param {string} [delimiter='/'] - The delimiter to use for grouping objects.
+     * @param {string} [prefix=''] - The prefix to filter objects by.
+     * @param {number} [maxKeys] - The maximum number of keys to return. If not provided, all keys will be returned.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @returns {Promise<IT.ListObject[] | null>} A promise that resolves to an array of objects or null if the bucket is empty.
+     * @example
+     * // List all objects
+     * const objects = await s3.listObjects();
+     *
+     * // List objects with prefix
+     * const photos = await s3.listObjects('/', 'photos/', 100);
+     */
+    async listObjects(delimiter = '/', prefix = '', maxKeys, opts = {}) {
+        this._checkDelimiter(delimiter);
+        this._checkPrefix(prefix);
+        this._checkOpts(opts);
+        if (this._bun && delimiter === '/') {
+            const extraKeys = Object.keys(opts).filter(k => k !== 'delimiter');
+            if (extraKeys.length === 0) {
+                return this._bunListAll(prefix, maxKeys, opts.delimiter);
+            }
+        }
+        const keyPath = delimiter === '/' ? delimiter : uriEscape(delimiter);
+        const unlimited = !(maxKeys && maxKeys > 0);
+        let remaining = unlimited ? Infinity : maxKeys;
+        let token;
+        const all = [];
+        do {
+            const batchResult = await this._fetchObjectBatch(keyPath, prefix, remaining, token, opts);
+            if (batchResult === null) {
+                return null; // 404 - bucket not found
+            }
+            all.push(...batchResult.objects);
+            if (!unlimited) {
+                remaining -= batchResult.objects.length;
+            }
+            token = batchResult.continuationToken;
+        } while (token && remaining > 0);
+        return all;
+    }
+    /**
+     * Lists objects in the bucket with optional filtering and pagination using a continuation token.
+     * This method retrieves objects matching the criteria (paginated like listObjectsV2).
+     * @param {string} [delimiter='/'] - The delimiter to use for grouping objects.
+     * @param {string} [prefix=''] - The prefix to filter objects by.
+     * @param {number} [maxKeys] - The maximum number of keys to return. Uses a default value of 100.
+     * @param {string} [nextContinuationToken] - The nextContinuationToken to continue previous results. If not provided, starts from the beginning.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @returns {Promise<{objects: IT.ListObject[] | null; nextContinuationToken?: string } | undefined | null>} A promise that resolves to an array of objects or null if the bucket is empty, along with nextContinuationToken if there are more reccords.
+     * @example
+     * // List all objects
+     * const { objects, nextContinuationToken } = await s3.listObjectsPaged();
+     *
+     * // List 200 objects with prefix
+     * const photos = await s3.listObjectsPaged('/', 'photos/', 200, "token...");
+     */
+    async listObjectsPaged(delimiter = '/', prefix = '', maxKeys = 100, nextContinuationToken, opts = {}) {
+        this._checkDelimiter(delimiter);
+        this._checkPrefix(prefix);
+        this._checkOpts(opts);
+        const keyPath = delimiter === '/' ? delimiter : uriEscape(delimiter);
+        let token = nextContinuationToken;
+        let remaining = maxKeys;
+        const all = [];
+        do {
+            const batchResult = await this._fetchObjectBatch(keyPath, prefix, remaining, token, opts);
+            if (batchResult === null) {
+                return null; // 404 - bucket not found
+            }
+            all.push(...batchResult.objects);
+            remaining -= batchResult.objects.length;
+            token = batchResult.continuationToken;
+        } while (token && remaining > 0);
+        return { objects: all, nextContinuationToken: token };
+    }
+    async _fetchObjectBatch(keyPath, prefix, remaining, token, opts) {
+        const query = this._buildListObjectsQuery(prefix, remaining, token, opts);
+        const res = await this._signedRequest('GET', keyPath, {
+            query,
+            withQuery: true,
+            tolerated: [200, 404],
+        });
+        if (res.status === 404) {
+            void res.body?.cancel();
+            return null;
+        }
+        if (res.status !== 200) {
+            await this._handleListObjectsError(res);
+        }
+        const xmlText = await res.text();
+        return this._parseListObjectsResponse(xmlText);
+    }
+    _buildListObjectsQuery(prefix, remaining, token, opts) {
+        const batchSize = Math.min(remaining, 1000); // S3 ceiling
+        return {
+            'list-type': LIST_TYPE, // =2 for V2
+            'max-keys': String(batchSize),
+            ...(prefix ? { prefix } : {}),
+            ...(token ? { 'continuation-token': token } : {}),
+            ...opts,
+        };
+    }
+    async _handleListObjectsError(res) {
+        const errorBody = await res.text();
+        const parsedErrorBody = this._parseErrorXml(res.headers, errorBody);
+        const errorCode = res.headers.get('x-amz-error-code') ?? parsedErrorBody.svcCode ?? 'Unknown';
+        const errorMessage = res.headers.get('x-amz-error-message') ?? parsedErrorBody.errorMessage ?? res.statusText;
+        this._log('error', `${ERROR_PREFIX}Request failed with status ${res.status}: ${errorCode} - ${errorMessage}, err body: ${errorBody}`);
+        throw new Error(`${ERROR_PREFIX}Request failed with status ${res.status}: ${errorCode} - ${errorMessage}, err body: ${errorBody}`);
+    }
+    _parseListObjectsResponse(xmlText) {
+        const raw = parseXml(xmlText);
+        if (typeof raw !== 'object' || !raw || 'error' in raw) {
+            this._log('error', `${ERROR_PREFIX}Unexpected listObjects response shape: ${JSON.stringify(raw)}`);
+            throw new Error(`${ERROR_PREFIX}Unexpected listObjects response shape`);
+        }
+        const out = (raw.ListBucketResult || raw.listBucketResult || raw);
+        const objects = this._extractObjectsFromResponse(out);
+        const continuationToken = this._extractContinuationToken(out);
+        return { objects, continuationToken };
+    }
+    _extractObjectsFromResponse(response) {
+        const contents = response.Contents || response.contents; // S3 v2 vs v1
+        const commonPrefixes = response.CommonPrefixes || response.commonPrefixes;
+        const objects = [];
+        // Extract regular objects from Contents
+        if (contents) {
+            const raw = Array.isArray(contents) ? contents : [contents];
+            for (const item of raw) {
+                const o = item;
+                objects.push({
+                    Key: o.Key ?? o.key ?? '',
+                    Size: Number(o.Size ?? o.size ?? 0),
+                    LastModified: new Date(o.LastModified ?? o.lastModified ?? 0),
+                    ETag: o.ETag ?? o.etag ?? '',
+                    StorageClass: o.StorageClass ?? o.storageClass ?? '',
+                });
+            }
+        }
+        // Extract directory prefixes from CommonPrefixes
+        if (commonPrefixes) {
+            const prefixList = Array.isArray(commonPrefixes) ? commonPrefixes : [commonPrefixes];
+            for (const item of prefixList) {
+                const prefix = item.Prefix || item.prefix;
+                if (typeof prefix === 'string') {
+                    objects.push({
+                        Key: prefix,
+                        Size: 0,
+                        LastModified: new Date(0),
+                        ETag: '',
+                        StorageClass: '',
+                    });
+                }
+            }
+        }
+        return objects;
+    }
+    _extractContinuationToken(response) {
+        const truncated = response.IsTruncated === 'true' || response.isTruncated === 'true' || false;
+        if (!truncated) {
+            return undefined;
+        }
+        return (response.NextContinuationToken ||
+            response.nextContinuationToken ||
+            response.NextMarker ||
+            response.nextMarker);
+    }
+    async _bunListAll(prefix, maxKeys, delimiter) {
+        const unlimited = !(maxKeys && maxKeys > 0);
+        let remaining = unlimited ? Infinity : maxKeys;
+        let startAfter;
+        const all = [];
+        try {
+            do {
+                const batchSize = Math.min(remaining === Infinity ? 1000 : remaining, 1000);
+                const res = await this._bunFetchPage(prefix, delimiter, batchSize, startAfter);
+                const mapped = this._bunMapListResult(res);
+                all.push(...mapped);
+                if (!unlimited) {
+                    remaining -= mapped.length;
+                }
+                startAfter = this._bunNextCursor(res);
+            } while (startAfter && remaining > 0);
+        }
+        catch (e) {
+            if (e?.code === 'NoSuchBucket') {
+                return null;
+            }
+            throw e;
+        }
+        return all;
+    }
+    _bunFetchPage(prefix, delimiter, maxKeys, startAfter) {
+        return this._bun.list({
+            prefix: prefix || undefined,
+            delimiter: delimiter || '/',
+            maxKeys,
+            ...(startAfter ? { startAfter } : {}),
+        });
+    }
+    _bunNextCursor(res) {
+        if (!res.isTruncated) {
+            return undefined;
+        }
+        return res.contents?.length ? res.contents.at(-1).key : undefined;
+    }
+    _bunMapListResult(res) {
+        const objects = [];
+        if (res.contents) {
+            for (const item of res.contents) {
+                objects.push({
+                    Key: item.key,
+                    Size: item.size,
+                    LastModified: item.lastModified instanceof Date ? item.lastModified : new Date(item.lastModified),
+                    ETag: item.etag ?? '',
+                    StorageClass: item.storageClass ?? '',
+                });
+            }
+        }
+        if (res.commonPrefixes) {
+            for (const item of res.commonPrefixes) {
+                objects.push({
+                    Key: item.prefix,
+                    Size: 0,
+                    LastModified: new Date(0),
+                    ETag: '',
+                    StorageClass: '',
+                });
+            }
+        }
+        return objects;
+    }
+    /**
+     * Lists multipart uploads in the bucket.
+     * This method sends a request to list multipart uploads in the specified bucket.
+     * @param {string} [delimiter='/'] - The delimiter to use for grouping uploads.
+     * @param {string} [prefix=''] - The prefix to filter uploads by.
+     * @param {IT.HttpMethod} [method='GET'] - The HTTP method to use for the request (GET or HEAD).
+     * @param {Record<string, string | number | boolean | undefined>} [opts={}] - Additional options for the request.
+     * @returns A promise that resolves to a list of multipart uploads or an error.
+     */
+    async listMultipartUploads(delimiter = '/', prefix = '', method = 'GET', opts = {}) {
+        this._checkDelimiter(delimiter);
+        this._checkPrefix(prefix);
+        this._validateMethodIsGetOrHead(method);
+        this._checkOpts(opts);
+        const query = { uploads: '', ...opts };
+        const keyPath = delimiter === '/' ? delimiter : uriEscape(delimiter);
+        const res = await this._signedRequest(method, keyPath, {
+            query,
+            withQuery: true,
+        });
+        // doublecheck if this is needed
+        // if (method === 'HEAD') {
+        //   return {
+        //     size: +(res.headers.get(C.HEADER_CONTENT_LENGTH) ?? '0'),
+        //     mtime: res.headers.get(C.HEADER_LAST_MODIFIED) ? new Date(res.headers.get(C.HEADER_LAST_MODIFIED)!) : undefined,
+        //     etag: res.headers.get(C.HEADER_ETAG) ?? '',
+        //   };
+        // }
+        const raw = parseXml(await res.text());
+        if (typeof raw !== 'object' || raw === null) {
+            throw new Error(`${ERROR_PREFIX}Unexpected listMultipartUploads response shape`);
+        }
+        if ('listMultipartUploadsResult' in raw) {
+            return raw.listMultipartUploadsResult;
+        }
+        return raw;
+    }
+    /**
+     * Get an object from the S3-compatible service.
+     * This method sends a request to retrieve the specified object from the S3-compatible service.
+     * @param {string} key - The key of the object to retrieve.
+     * @param {Record<string, unknown>} [opts] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns A promise that resolves to the object data (string) or null if not found.
+     */
+    async getObject(key, opts = {}, ssecHeaders) {
+        if (this._bun && !ssecHeaders && !Object.keys(opts).length) {
+            return this._bunRead(key, f => f.text());
+        }
+        const res = await this._signedRequest('GET', key, {
+            query: opts, // use opts.query if it exists, otherwise use an empty object
+            tolerated: [200, 404, 412, 304],
+            headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+        });
+        const s = res.status;
+        if (s === 200) {
+            return res.text();
+        }
+        void res.body?.cancel();
+        return null;
+    }
+    /**
+     * Get an object response from the S3-compatible service.
+     * This method sends a request to retrieve the specified object and returns the full response.
+     * @param {string} key - The key of the object to retrieve.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns A promise that resolves to the Response object or null if not found.
+     */
+    async getObjectResponse(key, opts = {}, ssecHeaders) {
+        const res = await this._signedRequest('GET', key, {
+            query: opts,
+            tolerated: [200, 404, 412, 304],
+            headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+        });
+        if (res.status === 200) {
+            return res;
+        }
+        void res.body?.cancel();
+        return null;
+    }
+    /**
+     * Get an object as an ArrayBuffer from the S3-compatible service.
+     * This method sends a request to retrieve the specified object and returns it as an ArrayBuffer.
+     * @param {string} key - The key of the object to retrieve.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns A promise that resolves to the object data as an ArrayBuffer or null if not found.
+     */
+    async getObjectArrayBuffer(key, opts = {}, ssecHeaders) {
+        if (this._bun && !ssecHeaders && !Object.keys(opts).length) {
+            return this._bunRead(key, f => f.arrayBuffer());
+        }
+        const res = await this._signedRequest('GET', key, {
+            query: opts,
+            tolerated: [200, 404, 412, 304],
+            headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+        });
+        if (res.status === 200) {
+            return res.arrayBuffer();
+        }
+        void res.body?.cancel();
+        return null;
+    }
+    /**
+     * Get an object as JSON from the S3-compatible service.
+     * This method sends a request to retrieve the specified object and returns it as JSON.
+     * @param {string} key - The key of the object to retrieve.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns A promise that resolves to the object data as JSON or null if not found.
+     */
+    async getObjectJSON(key, opts = {}, ssecHeaders) {
+        if (this._bun && !ssecHeaders && !Object.keys(opts).length) {
+            return this._bunRead(key, f => f.json());
+        }
+        const res = await this._signedRequest('GET', key, {
+            query: opts,
+            tolerated: [200, 404, 412, 304],
+            headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+        });
+        if (res.status === 200) {
+            return res.json();
+        }
+        void res.body?.cancel();
+        return null;
+    }
+    /**
+     * Get an object with its ETag from the S3-compatible service.
+     * This method sends a request to retrieve the specified object and its ETag.
+     * @param {string} key - The key of the object to retrieve.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns A promise that resolves to an object containing the ETag and the object data as an ArrayBuffer or null if not found.
+     */
+    async getObjectWithETag(key, opts = {}, ssecHeaders) {
+        if (this._bun && !ssecHeaders && !Object.keys(opts).length) {
+            try {
+                const f = this._bun.file(key);
+                const [stat, data] = await Promise.all([f.stat(), f.arrayBuffer()]);
+                return { etag: sanitizeETag(stat.etag), data };
+            }
+            catch (e) {
+                if (e?.code === 'NoSuchKey') {
+                    return { etag: null, data: null };
+                }
+                throw e;
+            }
+        }
+        try {
+            const res = await this._signedRequest('GET', key, {
+                query: opts,
+                tolerated: [200, 404, 412, 304],
+                headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+            });
+            const s = res.status;
+            if (s === 404 || s === 412 || s === 304) {
+                void res.body?.cancel();
+                return { etag: null, data: null };
+            }
+            const etag = res.headers.get(HEADER_ETAG);
+            if (!etag) {
+                throw new Error(`${ERROR_PREFIX}ETag not found in response headers`);
+            }
+            return { etag: sanitizeETag(etag), data: await res.arrayBuffer() };
+        }
+        catch (err) {
+            this._log('error', `Error getting object ${key} with ETag: ${String(err)}`);
+            throw err;
+        }
+    }
+    /**
+     * Get an object as a raw response from the S3-compatible service.
+     * This method sends a request to retrieve the specified object and returns the raw response.
+     * @param {string} key - The key of the object to retrieve.
+     * @param {boolean} [wholeFile=true] - Whether to retrieve the whole file or a range.
+     * @param {number} [rangeFrom=0] - The starting byte for the range (if not whole file).
+     * @param {number} [rangeTo=this.requestSizeInBytes] - The ending byte for the range (if not whole file).
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns A promise that resolves to the Response object.
+     */
+    async getObjectRaw(key, wholeFile = true, rangeFrom = 0, rangeTo, opts = {}, ssecHeaders) {
+        if (this._bun && !ssecHeaders && !Object.keys(opts).length) {
+            const f = this._bun.file(key);
+            if (wholeFile) {
+                const buf = await f.arrayBuffer();
+                const stat = await f.stat();
+                return new Response(buf, {
+                    status: 200,
+                    headers: { 'content-length': String(stat.size), etag: stat.etag, 'content-type': stat.type },
+                });
+            }
+            const sliced = rangeTo === undefined ? f.slice(rangeFrom) : f.slice(rangeFrom, rangeTo);
+            const buf = await sliced.arrayBuffer();
+            const stat = await f.stat();
+            const endByte = rangeTo === undefined ? stat.size - 1 : rangeTo - 1;
+            return new Response(buf, {
+                status: 206,
+                headers: {
+                    'content-range': `bytes ${rangeFrom}-${endByte}/${stat.size}`,
+                    'content-length': String(buf.byteLength),
+                },
+            });
+        }
+        let rangeHdr = {};
+        if (!wholeFile) {
+            rangeHdr =
+                rangeTo === undefined ? { range: `bytes=${rangeFrom}-` } : { range: `bytes=${rangeFrom}-${rangeTo - 1}` };
+        }
+        return this._signedRequest('GET', key, {
+            query: { ...opts },
+            headers: { ...rangeHdr, ...ssecHeaders },
+            withQuery: true, // keep ?query=string behaviour
+        });
+    }
+    /**
+     * Get the content length of an object.
+     * This method sends a HEAD request to retrieve the content length of the specified object.
+     * @param {string} key - The key of the object to retrieve the content length for.
+     * @returns A promise that resolves to the content length of the object in bytes, or 0 if not found.
+     * @throws {Error} If the content length header is not found in the response.
+     */
+    async getContentLength(key, ssecHeaders) {
+        try {
+            if (this._bun && !ssecHeaders) {
+                return (await this._bun.file(key).stat()).size;
+            }
+            const res = await this._signedRequest('HEAD', key, {
+                headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+            });
+            const len = res.headers.get(HEADER_CONTENT_LENGTH);
+            return len ? +len : 0;
+        }
+        catch (err) {
+            this._log('error', `Error getting content length for object ${key}: ${String(err)}`);
+            throw new Error(`${ERROR_PREFIX}Error getting content length for object ${key}: ${String(err)}`, {
+                cause: err,
+            });
+        }
+    }
+    /**
+     * Checks if an object exists in the S3-compatible service.
+     * This method sends a HEAD request to check if the specified object exists.
+     * @param {string} key - The key of the object to check.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @returns A promise that resolves to true if the object exists, false if not found, or null if ETag mismatch.
+     */
+    async objectExists(key, opts = {}) {
+        if (this._bun && !Object.keys(opts).length) {
+            return this._bun.file(key).exists();
+        }
+        const res = await this._signedRequest('HEAD', key, {
+            query: opts,
+            tolerated: [200, 404, 412, 304],
+        });
+        if (res.status === 404) {
+            return false; // not found
+        }
+        if (res.status === 412 || res.status === 304) {
+            return null; // ETag mismatch
+        }
+        return true; // found (200)
+    }
+    /**
+     * Retrieves the ETag of an object without downloading its content.
+     * @param {string} key - The key of the object to retrieve the ETag for.
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns {Promise<string | null>} A promise that resolves to the ETag value or null if the object is not found.
+     * @throws {Error} If the ETag header is not found in the response.
+     * @example
+     * const etag = await s3.getEtag('path/to/file.txt');
+     * if (etag) {
+     *   console.log(`File ETag: ${etag}`);
+     * }
+     */
+    async getEtag(key, opts = {}, ssecHeaders) {
+        if (this._bun && !ssecHeaders && !Object.keys(opts).length) {
+            return this._bunRead(key, async (f) => {
+                const { etag } = await f.stat();
+                if (!etag) {
+                    throw new Error(`${ERROR_PREFIX}ETag not found in response headers`);
+                }
+                return sanitizeETag(etag);
+            });
+        }
+        const res = await this._signedRequest('HEAD', key, {
+            query: opts,
+            tolerated: [200, 304, 404, 412],
+            headers: ssecHeaders ? { ...ssecHeaders } : undefined,
+        });
+        if (res.status === 404) {
+            return null;
+        }
+        if (res.status === 412 || res.status === 304) {
+            return null; // ETag mismatch
+        }
+        const etag = res.headers.get(HEADER_ETAG);
+        if (!etag) {
+            throw new Error(`${ERROR_PREFIX}ETag not found in response headers`);
+        }
+        return sanitizeETag(etag);
+    }
+    /**
+     * Uploads an object to the S3-compatible service.
+     * @param {string} key - The key/path where the object will be stored.
+     * @param {string | IT.MaybeBuffer | ReadableStream | File | Blob} data - The data to upload (string or Buffer).
+     * @param {string} [fileType='application/octet-stream'] - The MIME type of the file.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @param {IT.AWSHeaders} [additionalHeaders] - Additional x-amz-* headers specific to this request, if any.
+     * @returns {Promise<Response>} A promise that resolves to the Response object from the upload request.
+     * @throws {TypeError} If data is not a string or Buffer.
+     * @example
+     * // Upload text file
+     * await s3.putObject('hello.txt', 'Hello, World!', 'text/plain');
+     *
+     * // Upload binary data
+     * const buffer = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+     * await s3.putObject('image.png', buffer, 'image/png');
+     */
+    async putObject(key, data, fileType = DEFAULT_STREAM_CONTENT_TYPE, ssecHeaders, additionalHeaders, contentLength) {
+        if (this._bun && !ssecHeaders && !additionalHeaders) {
+            const f = this._bun.file(key);
+            await f.write(data, { type: fileType });
+            const { etag } = await f.stat();
+            return new Response(null, { status: 200, headers: etag ? { etag } : {} });
+        }
+        const size = contentLength ?? getByteSize(data);
+        return this._signedRequest('PUT', key, {
+            body: data,
+            headers: {
+                ...(size && { [HEADER_CONTENT_LENGTH]: size }),
+                [HEADER_CONTENT_TYPE]: fileType,
+                ...additionalHeaders,
+                ...ssecHeaders,
+            },
+            tolerated: [200],
+        });
+    }
+    /**
+     * Put object that automatically chooses single PUT vs multipart.
+     * Same signature/shape as putObject so callers don't need to change.
+     * @param {string} key - The key/path where the object will be stored.
+     * @param {string | IT.MaybeBuffer | ReadableStream | File | Blob} data - The data to upload (string or Buffer).
+     * @param {string} [fileType='application/octet-stream'] - The MIME type of the file.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @param {IT.AWSHeaders} [additionalHeaders] - Additional x-amz-* headers specific to this request, if any.
+     * @param {number} [contentLength] - Optional known content length of data.
+     * @returns {Promise<Response | { ok: boolean; status: number; headers: Map<string, string> }>} A promise that resolves to the Response object from the upload request.
+     * @throws {TypeError} If data is not a string or Buffer.
+     * @example
+     * // Upload text file
+     * await s3.putAnyObject('hello.txt', 'Hello, World!', 'text/plain');
+     *
+     * // Upload binary data
+     * const buffer = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+     * await s3.putAnyObject('image.png', buffer, 'image/png');
+     */
+    async putAnyObject(key, data, fileType = DEFAULT_STREAM_CONTENT_TYPE, ssecHeaders, additionalHeaders, contentLength) {
+        // Bun handles multipart automatically for large files
+        if (this._bun && !ssecHeaders && !additionalHeaders) {
+            this._checkKey(key);
+            const f = this._bun.file(key);
+            await f.write(data, { type: fileType });
+            const { etag } = await f.stat();
+            return this._createSuccessResponse(etag || '');
+        }
+        const size = contentLength ?? getByteSize(data);
+        // Single PUT for small files
+        if (!Number.isNaN(size) && size <= this.minPartSize) {
+            return this.putObject(key, data, fileType, ssecHeaders, additionalHeaders, contentLength);
+        }
+        this._checkKey(key);
+        return this._multipartUpload(key, data, fileType, ssecHeaders, additionalHeaders);
+    }
+    async _multipartUpload(key, data, fileType, ssecHeaders, additionalHeaders) {
+        const uploadId = await this.getMultipartUploadId(key, fileType, ssecHeaders, additionalHeaders);
+        try {
+            const parts = await this._uploadPartsOptimized(key, uploadId, data, ssecHeaders, additionalHeaders);
+            parts.sort((a, b) => a.partNumber - b.partNumber);
+            const result = await this.completeMultipartUpload(key, uploadId, parts);
+            return this._createSuccessResponse(result.etag || '');
+        }
+        catch (err) {
+            await this._safeAbortUpload(key, uploadId);
+            throw err;
+        }
+    }
+    async _uploadKnownSizePartsParallel(key, uploadId, data, ssecHeaders, additionalHeaders, concurrency = 4, maxRetries = 3) {
+        const partSize = this.minPartSize;
+        const totalSize = data instanceof Blob ? data.size : data.byteLength;
+        const totalParts = Math.ceil(totalSize / partSize);
+        const results = new Array(totalParts);
+        let nextIndex = 0;
+        const worker = async () => {
+            while (true) {
+                const index = nextIndex++;
+                if (index >= totalParts) {
+                    return;
+                }
+                const start = index * partSize;
+                const end = Math.min(start + partSize, totalSize);
+                const part = data instanceof Blob
+                    ? await data.slice(start, end).arrayBuffer() // Must await - R2 needs actual bytes
+                    : data.subarray(start, end);
+                results[index] = await this._uploadPartWithRetry(key, uploadId, part, index + 1, ssecHeaders, additionalHeaders, maxRetries);
+            }
+        };
+        await Promise.all(Array.from({ length: Math.min(concurrency, totalParts) }, () => worker()));
+        return results;
+    }
+    async _uploadPartsOptimized(key, uploadId, data, ssecHeaders, additionalHeaders, concurrency = 4, maxRetries = 3) {
+        const bytes = toUint8Array(data);
+        if (bytes) {
+            return this._uploadKnownSizePartsParallel(key, uploadId, bytes, ssecHeaders, additionalHeaders, concurrency, maxRetries);
+        }
+        if (data instanceof Blob) {
+            return this._uploadKnownSizePartsParallel(key, uploadId, data, ssecHeaders, additionalHeaders, concurrency, maxRetries);
+        }
+        return this._uploadStreamingParts(key, uploadId, data, ssecHeaders, additionalHeaders, concurrency, maxRetries);
+    }
+    async _uploadStreamingParts(key, uploadId, stream, ssecHeaders, additionalHeaders, concurrency = 4, maxRetries = 3) {
+        const parts = [];
+        const active = new Set();
+        let partNumber = 0;
+        for await (const partData of generateParts(stream, this.minPartSize)) {
+            const currentPartNumber = ++partNumber;
+            while (active.size >= concurrency) {
+                await Promise.race(active);
+            }
+            const p = this._uploadPartWithRetry(key, uploadId, partData, currentPartNumber, ssecHeaders, additionalHeaders, maxRetries).then(part => {
+                parts.push(part);
+                active.delete(p);
+            });
+            active.add(p);
+        }
+        await Promise.all(active);
+        return parts;
+    }
+    async _uploadPartWithRetry(key, uploadId, data, partNumber, ssecHeaders, additionalHeaders, maxRetries = 3) {
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return await this.uploadPart(key, uploadId, data, partNumber, {}, ssecHeaders, additionalHeaders);
+            }
+            catch (err) {
+                if (attempt === maxRetries) {
+                    throw err;
+                }
+                await new Promise(r => setTimeout(r, Math.min(1000 * 2 ** attempt, 10000)));
+            }
+        }
+        throw new Error('Unreachable');
+    }
+    async _safeAbortUpload(key, uploadId) {
+        try {
+            await this.abortMultipartUpload(key, uploadId);
+        }
+        catch (err) {
+            this._log('warn', `Failed to abort multipart upload: ${String(err)}`);
+        }
+    }
+    _createSuccessResponse(etag) {
+        if (typeof Response !== 'undefined') {
+            const headers = new Headers();
+            if (etag) {
+                headers.set('ETag', etag);
+            }
+            return new Response('', { status: 200, headers });
+        }
+        return { ok: true, status: 200, headers: new Map([['ETag', etag]]) };
+    }
+    /**
+     * Initiates a multipart upload and returns the upload ID.
+     * @param {string} key - The key/path where the object will be stored.
+     * @param {string} [fileType='application/octet-stream'] - The MIME type of the file.
+     * @param {IT.SSECHeaders?} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns {Promise<string>} A promise that resolves to the upload ID for the multipart upload.
+     * @throws {TypeError} If key is invalid or fileType is not a string.
+     * @throws {Error} If the multipart upload fails to initialize.
+     * @example
+     * const uploadId = await s3.getMultipartUploadId('large-file.zip', 'application/zip');
+     * console.log(`Started multipart upload: ${uploadId}`);
+     */
+    async getMultipartUploadId(key, fileType = DEFAULT_STREAM_CONTENT_TYPE, ssecHeaders, additionalHeaders) {
+        this._checkKey(key);
+        if (typeof fileType !== 'string') {
+            throw new TypeError(`${ERROR_PREFIX}fileType must be a string`);
+        }
+        const query = { uploads: '' };
+        const headers = { [HEADER_CONTENT_TYPE]: fileType, ...ssecHeaders, ...additionalHeaders };
+        const res = await this._signedRequest('POST', key, {
+            query,
+            headers,
+            withQuery: true,
+        });
+        const parsed = parseXml(await res.text());
+        if (parsed && typeof parsed === 'object') {
+            // Check for both cases of InitiateMultipartUploadResult
+            const uploadResult = parsed.initiateMultipartUploadResult ||
+                parsed.InitiateMultipartUploadResult;
+            if (uploadResult && typeof uploadResult === 'object') {
+                // Check for both cases of uploadId
+                const uploadId = uploadResult.uploadId || uploadResult.UploadId;
+                if (uploadId && typeof uploadId === 'string') {
+                    return uploadId;
+                }
+            }
+        }
+        throw new Error(`${ERROR_PREFIX}Failed to create multipart upload: ${JSON.stringify(parsed)}`);
+    }
+    /**
+     * Uploads a part in a multipart upload.
+     * @param {string} key - The key of the object being uploaded.
+     * @param {string} uploadId - The upload ID from getMultipartUploadId.
+     * @param {string | IT.MaybeBuffer | ReadableStream | File | Blob} data - The data for this part.
+     * @param {number} partNumber - The part number (must be between 1 and 10,000).
+     * @param {Record<string, unknown>} [opts={}] - Additional options for the request.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns {Promise<IT.UploadPart>} A promise that resolves to an object containing the partNumber and etag.
+     * @throws {TypeError} If any parameter is invalid.
+     * @example
+     * const part = await s3.uploadPart(
+     *   'large-file.zip',
+     *   uploadId,
+     *   partData,
+     *   1
+     * );
+     * console.log(`Part ${part.partNumber} uploaded with ETag: ${part.etag}`);
+     */
+    async uploadPart(key, uploadId, data, partNumber, opts = {}, ssecHeaders, additionalHeaders) {
+        const body = this._validateUploadPartParams(key, uploadId, data, partNumber, opts);
+        const query = { uploadId, partNumber, ...opts };
+        const size = getByteSize(data);
+        const res = await this._signedRequest('PUT', key, {
+            query,
+            body,
+            headers: {
+                ...(size && !Number.isNaN(size) && { [HEADER_CONTENT_LENGTH]: size }),
+                ...ssecHeaders,
+                ...additionalHeaders,
+            },
+        });
+        return { partNumber, etag: sanitizeETag(res.headers.get('etag') || '') };
+    }
+    /**
+     * Completes a multipart upload by combining all uploaded parts.
+     * @param {string} key - The key of the object being uploaded.
+     * @param {string} uploadId - The upload ID from getMultipartUploadId.
+     * @param {Array<IT.UploadPart>} parts - Array of uploaded parts with partNumber and etag.
+     * @returns {Promise<IT.CompleteMultipartUploadResult>} A promise that resolves to the completion result containing the final ETag.
+     * @throws {Error} If the multipart upload fails to complete.
+     * @example
+     * const result = await s3.completeMultipartUpload(
+     *   'large-file.zip',
+     *   uploadId,
+     *   [
+     *     { partNumber: 1, etag: 'abc123' },
+     *     { partNumber: 2, etag: 'def456' }
+     *   ]
+     * );
+     * console.log(`Upload completed with ETag: ${result.etag}`);
+     */
+    async completeMultipartUpload(key, uploadId, parts) {
+        const query = { uploadId };
+        const xmlBody = this._buildCompleteMultipartUploadXml(parts);
+        const headers = {
+            [HEADER_CONTENT_TYPE]: XML_CONTENT_TYPE,
+            [HEADER_CONTENT_LENGTH]: getByteSize(xmlBody),
+        };
+        const res = await this._signedRequest('POST', key, {
+            query,
+            body: xmlBody,
+            headers,
+            withQuery: true,
+        });
+        const parsed = parseXml(await res.text());
+        if (parsed && typeof parsed === 'object') {
+            // Check for both cases
+            const result = parsed.completeMultipartUploadResult || parsed.CompleteMultipartUploadResult || parsed;
+            if (result && typeof result === 'object') {
+                const resultObj = result;
+                // Handle ETag in all its variations
+                const etag = resultObj.ETag || resultObj.eTag || resultObj.etag;
+                if (etag && typeof etag === 'string') {
+                    return {
+                        ...resultObj,
+                        etag: sanitizeETag(etag),
+                    };
+                }
+                return result;
+            }
+        }
+        throw new Error(`${ERROR_PREFIX}Failed to complete multipart upload: ${JSON.stringify(parsed)}`);
+    }
+    /**
+     * Aborts a multipart upload and removes all uploaded parts.
+     * @param {string} key - The key of the object being uploaded.
+     * @param {string} uploadId - The upload ID to abort.
+     * @param {IT.SSECHeaders} [ssecHeaders] - Server-Side Encryption headers, if any.
+     * @returns {Promise<object>} A promise that resolves to an object containing the abort status and details.
+     * @throws {TypeError} If key or uploadId is invalid.
+     * @throws {Error} If the abort operation fails.
+     * @example
+     * try {
+     *   const result = await s3.abortMultipartUpload('large-file.zip', uploadId);
+     *   console.log('Upload aborted:', result.status);
+     * } catch (error) {
+     *   console.error('Failed to abort upload:', error);
+     * }
+     */
+    async abortMultipartUpload(key, uploadId, ssecHeaders) {
+        this._checkKey(key);
+        if (!uploadId) {
+            throw new TypeError(ERROR_UPLOAD_ID_REQUIRED);
+        }
+        const query = { uploadId };
+        const headers = { [HEADER_CONTENT_TYPE]: XML_CONTENT_TYPE, ...(ssecHeaders ? { ...ssecHeaders } : {}) };
+        const res = await this._signedRequest('DELETE', key, {
+            query,
+            headers,
+            withQuery: true,
+        });
+        const parsed = parseXml(await res.text());
+        if (parsed &&
+            'error' in parsed &&
+            typeof parsed.error === 'object' &&
+            parsed.error !== null &&
+            'message' in parsed.error) {
+            this._log('error', `${ERROR_PREFIX}Failed to abort multipart upload: ${String(parsed.error.message)}`);
+            throw new Error(`${ERROR_PREFIX}Failed to abort multipart upload: ${String(parsed.error.message)}`);
+        }
+        return { status: 'Aborted', key, uploadId, response: parsed };
+    }
+    _buildCompleteMultipartUploadXml(parts) {
+        let xml = '<CompleteMultipartUpload>';
+        for (const part of parts) {
+            xml += `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>${part.etag}</ETag></Part>`;
+        }
+        xml += '</CompleteMultipartUpload>';
+        return xml;
+    }
+    /**
+     * Executes the copy operation for local copying (same bucket/endpoint).
+     * @private
+     */
+    async _executeCopyOperation(destinationKey, copySource, options) {
+        const { metadataDirective = 'COPY', metadata = {}, contentType, storageClass, taggingDirective, websiteRedirectLocation, sourceSSECHeaders = {}, destinationSSECHeaders = {}, additionalHeaders = {}, } = options;
+        const headers = {
+            'x-amz-copy-source': copySource,
+            'x-amz-metadata-directive': metadataDirective,
+            ...additionalHeaders,
+            ...(contentType && { [HEADER_CONTENT_TYPE]: contentType }),
+            ...(storageClass && { 'x-amz-storage-class': storageClass }),
+            ...(taggingDirective && { 'x-amz-tagging-directive': taggingDirective }),
+            ...(websiteRedirectLocation && { 'x-amz-website-redirect-location': websiteRedirectLocation }),
+            ...this._buildSSECHeaders(sourceSSECHeaders, destinationSSECHeaders),
+            ...(metadataDirective === 'REPLACE' ? this._buildMetadataHeaders(metadata) : {}),
+        };
+        try {
+            const res = await this._signedRequest('PUT', destinationKey, {
+                headers,
+                tolerated: [200],
+            });
+            return this._parseCopyObjectResponse(await res.text());
+        }
+        catch (err) {
+            this._log('error', `Error in copy operation to ${destinationKey}`, {
+                error: String(err),
+            });
+            throw err;
+        }
+    }
+    /**
+     * Copies an object within the same bucket.
+     *
+     * @param {string} sourceKey - The key of the source object to copy
+     * @param {string} destinationKey - The key where the object will be copied to
+     * @param {IT.CopyObjectOptions} [options={}] - Copy operation options
+     * @param {string} [options.metadataDirective='COPY'] - How to handle metadata ('COPY' | 'REPLACE')
+     * @param {Record<string,string>} [options.metadata={}] - New metadata (only used if metadataDirective='REPLACE')
+     * @param {string} [options.contentType] - New content type for the destination object
+     * @param {string} [options.storageClass] - Storage class for the destination object
+     * @param {string} [options.taggingDirective] - How to handle object tags ('COPY' | 'REPLACE')
+     * @param {string} [options.websiteRedirectLocation] - Website redirect location for the destination
+     * @param {IT.SSECHeaders} [options.sourceSSECHeaders={}] - Encryption headers for reading source (if encrypted)
+     * @param {IT.SSECHeaders} [options.destinationSSECHeaders={}] - Encryption headers for destination
+     * @param {IT.AWSHeaders} [options.additionalHeaders={}] - Extra x-amz-* headers
+     *
+     * @returns {Promise<IT.CopyObjectResult>} Copy result with etag and lastModified date
+     * @throws {TypeError} If sourceKey or destinationKey is invalid
+     * @throws {Error} If copy operation fails or S3 returns an error
+     *
+     * @example
+     * // Simple copy
+     * const result = await s3.copyObject('report-2024.pdf', 'archive/report-2024.pdf');
+     * console.log(`Copied with ETag: ${result.etag}`);
+     *
+     * @example
+     * // Copy with new metadata and content type
+     * const result = await s3.copyObject('data.csv', 'processed/data.csv', {
+     *   metadataDirective: 'REPLACE',
+     *   metadata: {
+     *     'processed-date': new Date().toISOString(),
+     *     'original-name': 'data.csv'
+     *   },
+     *   contentType: 'text/csv; charset=utf-8'
+     * });
+     *
+     * @example
+     * // Copy encrypted object (Cloudflare R2 SSE-C)
+     * const ssecKey = 'n1TKiTaVHlYLMX9n0zHXyooMr026vOiTEFfT+719Hho=';
+     * await s3.copyObject('sensitive.json', 'backup/sensitive.json', {
+     *   sourceSSECHeaders: {
+     *     'x-amz-copy-source-server-side-encryption-customer-algorithm': 'AES256',
+     *     'x-amz-copy-source-server-side-encryption-customer-key': ssecKey,
+     *     'x-amz-copy-source-server-side-encryption-customer-key-md5': 'gepZmzgR7Be/1+K1Aw+6ow=='
+     *   },
+     *   destinationSSECHeaders: {
+     *     'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+     *     'x-amz-server-side-encryption-customer-key': ssecKey,
+     *     'x-amz-server-side-encryption-customer-key-md5': 'gepZmzgR7Be/1+K1Aw+6ow=='
+     *   }
+     * });
+     */
+    copyObject(sourceKey, destinationKey, options = {}) {
+        // Validate parameters
+        this._checkKey(sourceKey);
+        this._checkKey(destinationKey);
+        const copySource = `/${this.bucketName}/${uriEscape(sourceKey)}`;
+        return this._executeCopyOperation(destinationKey, copySource, options);
+    }
+    _buildSSECHeaders(sourceHeaders, destHeaders) {
+        const headers = {};
+        for (const [k, v] of Object.entries({ ...sourceHeaders, ...destHeaders })) {
+            if (v !== undefined) {
+                headers[k] = v;
+            }
+        }
+        return headers;
+    }
+    /**
+     * Moves an object within the same bucket (copy + delete atomic-like operation).
+     *
+     * WARNING: Not truly atomic - if delete fails after successful copy, the object
+     * will exist in both locations. Consider your use case carefully.
+     *
+     * @param {string} sourceKey - The key of the source object to move
+     * @param {string} destinationKey - The key where the object will be moved to
+     * @param {IT.CopyObjectOptions} [options={}] - Options passed to the copy operation
+     *
+     * @returns {Promise<IT.CopyObjectResult>} Result from the copy operation
+     * @throws {TypeError} If sourceKey or destinationKey is invalid
+     * @throws {Error} If copy succeeds but delete fails (includes copy result in error)
+     *
+     * @example
+     * // Simple move
+     * await s3.moveObject('temp/upload.tmp', 'files/document.pdf');
+     *
+     * @example
+     * // Move with metadata update
+     * await s3.moveObject('unprocessed/image.jpg', 'processed/image.jpg', {
+     *   metadataDirective: 'REPLACE',
+     *   metadata: {
+     *     'status': 'processed',
+     *     'processed-at': Date.now().toString()
+     *   },
+     *   contentType: 'image/jpeg'
+     * });
+     *
+     * @example
+     * // Safe move with error handling
+     * try {
+     *   const result = await s3.moveObject('inbox/file.dat', 'archive/file.dat');
+     *   console.log(`Moved successfully: ${result.etag}`);
+     * } catch (error) {
+     *   // Check if copy succeeded but delete failed
+     *   if (error.message.includes('delete source object after successful copy')) {
+     *     console.warn('File copied but not deleted from source - manual cleanup needed');
+     *   }
+     * }
+     */
+    async moveObject(sourceKey, destinationKey, options = {}) {
+        try {
+            // First copy the object
+            const copyResult = await this.copyObject(sourceKey, destinationKey, options);
+            // Then delete the source
+            const deleteSuccess = await this.deleteObject(sourceKey);
+            if (!deleteSuccess) {
+                throw new Error(`${ERROR_PREFIX}Failed to delete source object after successful copy`);
+            }
+            return copyResult;
+        }
+        catch (err) {
+            this._log('error', `Error moving object from ${sourceKey} to ${destinationKey}`, {
+                error: String(err),
+            });
+            throw err;
+        }
+    }
+    _buildMetadataHeaders(metadata) {
+        const headers = {};
+        for (const [k, v] of Object.entries(metadata)) {
+            headers[k.startsWith('x-amz-meta-') ? k : `x-amz-meta-${k}`] = v;
+        }
+        return headers;
+    }
+    _parseCopyObjectResponse(xmlText) {
+        const parsed = parseXml(xmlText);
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error(`${ERROR_PREFIX}Unexpected copyObject response format`);
+        }
+        const result = (parsed.CopyObjectResult || parsed.copyObjectResult || parsed);
+        const etag = result.ETag || result.eTag || result.etag;
+        const lastModified = result.LastModified || result.lastModified;
+        if (!etag || typeof etag !== 'string') {
+            throw new Error(`${ERROR_PREFIX}ETag not found in copyObject response`);
+        }
+        return {
+            etag: sanitizeETag(etag),
+            lastModified: lastModified ? new Date(lastModified) : undefined,
+        };
+    }
+    /**
+     * Deletes an object from the bucket.
+     * This method sends a request to delete the specified object from the bucket.
+     * @param {string} key - The key of the object to delete.
+     * @returns A promise that resolves to true if the object was deleted successfully, false otherwise.
+     */
+    async deleteObject(key) {
+        if (this._bun) {
+            await this._bun.file(key).delete();
+            return true;
+        }
+        const res = await this._signedRequest('DELETE', key, { tolerated: [200, 204] });
+        return res.status === 200 || res.status === 204;
+    }
+    async _deleteObjectsProcess(keys) {
+        const out = await this._sendDeleteRequest(keys);
+        const resultMap = new Map(keys.map(k => [k, false]));
+        this._markDeletedKeys(out, resultMap);
+        this._logDeleteErrors(out, resultMap);
+        return keys.map(key => resultMap.get(key) || false);
+    }
+    async _sendDeleteRequest(keys) {
+        const objectsXml = keys.map(key => `<Object><Key>${escapeXml(key)}</Key></Object>`).join('');
+        const xmlBody = '<Delete>' + objectsXml + '</Delete>';
+        const sha256base64 = base64FromBuffer(await sha256(xmlBody));
+        const res = await this._signedRequest('POST', '', {
+            query: { delete: '' },
+            body: xmlBody,
+            headers: {
+                [HEADER_CONTENT_TYPE]: XML_CONTENT_TYPE,
+                [HEADER_CONTENT_LENGTH]: getByteSize(xmlBody),
+                [HEADER_AMZ_CHECKSUM_SHA256]: sha256base64,
+            },
+            withQuery: true,
+        });
+        const parsed = parseXml(await res.text());
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error(`${ERROR_PREFIX}Failed to delete objects: ${JSON.stringify(parsed)}`);
+        }
+        return (parsed.DeleteResult || parsed.deleteResult || parsed);
+    }
+    _markDeletedKeys(out, resultMap) {
+        const deleted = out.deleted || out.Deleted;
+        if (!deleted) {
+            return;
+        }
+        const items = Array.isArray(deleted) ? deleted : [deleted];
+        for (const item of items) {
+            if (item && typeof item === 'object') {
+                const key = item.key || item.Key;
+                if (key && typeof key === 'string') {
+                    resultMap.set(key, true);
+                }
+            }
+        }
+    }
+    _logDeleteErrors(out, resultMap) {
+        const errors = out.error || out.Error;
+        if (!errors) {
+            return;
+        }
+        const items = Array.isArray(errors) ? errors : [errors];
+        for (const item of items) {
+            if (item && typeof item === 'object') {
+                const obj = item;
+                const key = obj.key || obj.Key;
+                if (key && typeof key === 'string') {
+                    resultMap.set(key, false);
+                    this._log('warn', `Failed to delete object: ${key}`, {
+                        code: obj.code || obj.Code || 'Unknown',
+                        message: obj.message || obj.Message || 'Unknown error',
+                    });
+                }
+            }
+        }
+    }
+    /**
+     * Deletes multiple objects from the bucket.
+     * @param {string[]} keys - An array of object keys to delete.
+     * @returns A promise that resolves to an array of booleans indicating success for each key in order.
+     */
+    async deleteObjects(keys) {
+        if (!Array.isArray(keys) || keys.length === 0) {
+            return [];
+        }
+        const maxBatchSize = 1000; // S3 limit for delete batch size
+        if (keys.length > maxBatchSize) {
+            const allPromises = [];
+            for (let i = 0; i < keys.length; i += maxBatchSize) {
+                const batch = keys.slice(i, i + maxBatchSize);
+                allPromises.push(this._deleteObjectsProcess(batch));
+            }
+            const results = await Promise.all(allPromises);
+            // Flatten the results array
+            return results.flat();
+        }
+        else {
+            return await this._deleteObjectsProcess(keys);
+        }
+    }
+    async _sendRequest(url, method, headers, body, toleratedStatusCodes = []) {
+        this._log('info', `Sending ${method} request to ${url}`, `headers: ${JSON.stringify(headers)}`);
+        try {
+            const res = await this._fetch(url, {
+                method,
+                headers,
+                body: method === 'GET' || method === 'HEAD' ? undefined : body,
+                signal: this.requestAbortTimeout ? AbortSignal.timeout(this.requestAbortTimeout) : undefined,
+            });
+            this._log('info', `Response status: ${res.status}, tolerated: ${toleratedStatusCodes.join(',')}`);
+            if (res.ok || toleratedStatusCodes.includes(res.status)) {
+                return res;
+            }
+            await this._handleErrorResponse(res);
+            return res;
+        }
+        catch (err) {
+            const code = extractErrCode(err);
+            if (code && ['ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNREFUSED'].includes(code)) {
+                throw new S3NetworkError(`S3 network error: ${code}`, code, err);
+            }
+            throw err;
+        }
+    }
+    _parseErrorXml(headers, body) {
+        if (headers.get('content-type') !== 'application/xml') {
+            return {};
+        }
+        const parsedBody = parseXml(body);
+        if (!parsedBody ||
+            typeof parsedBody !== 'object' ||
+            !('Error' in parsedBody) ||
+            !parsedBody.Error ||
+            typeof parsedBody.Error !== 'object') {
+            return {};
+        }
+        const error = parsedBody.Error;
+        return {
+            svcCode: 'Code' in error && typeof error.Code === 'string' ? error.Code : undefined,
+            errorMessage: 'Message' in error && typeof error.Message === 'string' ? error.Message : undefined,
+        };
+    }
+    async _handleErrorResponse(res) {
+        const errorBody = await res.text();
+        const parsedErrorBody = this._parseErrorXml(res.headers, errorBody);
+        const svcCode = res.headers.get('x-amz-error-code') ?? parsedErrorBody.svcCode ?? 'Unknown';
+        const errorMessage = res.headers.get('x-amz-error-message') ?? parsedErrorBody.errorMessage ?? res.statusText;
+        this._log('error', `${ERROR_PREFIX}Request failed with status ${res.status}: ${svcCode} - ${errorMessage},err body: ${errorBody}`);
+        throw new S3ServiceError(`S3 returned ${res.status} – ${svcCode}`, res.status, svcCode, errorBody);
+    }
+    _buildCanonicalQueryString(queryParams) {
+        if (!queryParams || Object.keys(queryParams).length === 0) {
+            return '';
+        }
+        return Object.keys(queryParams)
+            .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`)
+            .sort((a, b) => a.localeCompare(b))
+            .join('&');
+    }
+    /**
+     * Generates a pre-signed URL for direct client access to an S3 object.
+     * The URL embeds authentication in query parameters instead of headers,
+     * allowing unauthenticated HTTP clients to perform the specified operation.
+     *
+     * @param {'GET' | 'PUT'} method - HTTP method ('GET' for download, 'PUT' for upload)
+     * @param {string} key - The object key/path
+     * @param {number} [expiresIn=3600] - URL expiration time in seconds (1–604800)
+     * @param {Record<string, string>} [queryParams={}] - Additional query parameters to include in the URL
+     * @param {Record<string, string>} [headers={}] - HTTP headers to sign. The consumer of the URL
+     *   MUST send these exact headers with matching values. The `host` header is always signed automatically.
+     * @returns {Promise<string>} Pre-signed URL string
+     * @throws {TypeError} If key is empty or expiresIn is out of range
+     * @example
+     * // Download URL valid for 1 hour
+     * const url = await s3.getPresignedUrl('GET', 'photos/vacation.jpg');
+     *
+     * // Upload URL valid for 5 minutes with signed Content-Type
+     * const url = await s3.getPresignedUrl('PUT', 'uploads/file.bin', 300, {}, {
+     *   'Content-Type': 'application/octet-stream',
+     * });
+     *
+     * // Client-side usage (must include signed headers)
+     * await fetch(url, { method: 'PUT', body: data, headers: { 'Content-Type': 'application/octet-stream' } });
+     */
+    async getPresignedUrl(method, key, expiresIn = 3600, queryParams = {}, headers = {}) {
+        this._checkKey(key);
+        if (!Number.isFinite(expiresIn) || expiresIn <= 0 || expiresIn > 604800) {
+            throw new TypeError(`${ERROR_PREFIX}expiresIn must be between 1 and 604800 seconds`);
+        }
+        if (this._bun && !Object.keys(queryParams).length && !Object.keys(headers).length) {
+            return this._bun.presign(key, { method, expiresIn: Math.floor(expiresIn) });
+        }
+        return this._presign(method, uriResourceEscape(key), Math.floor(expiresIn), queryParams, headers);
+    }
+    async _presign(method, keyPath, expiresIn, queryParams, headers) {
+        const url = new URL(this.endpoint);
+        if (keyPath.length > 0) {
+            url.pathname =
+                url.pathname === '/' ? `/${keyPath.replace(/^\/+/, '')}` : `${url.pathname}/${keyPath.replace(/^\/+/, '')}`;
+        }
+        const d = new Date();
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const shortDatetime = `${year}${month}${day}`;
+        const fullDatetime = `${shortDatetime}T${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
+        const credentialScope = `${shortDatetime}/${this.region}/${S3_SERVICE}/${AWS_REQUEST_TYPE}`;
+        const headerEntries = [['host', url.host]];
+        for (const [key, value] of Object.entries(headers)) {
+            const lowerKey = key.toLowerCase();
+            if (lowerKey !== 'host') {
+                headerEntries.push([lowerKey, String(value).trim()]);
+            }
+        }
+        headerEntries.sort(([a], [b]) => a.localeCompare(b));
+        const canonicalHeaders = headerEntries.map(([k, v]) => `${k}:${v}`).join('\n');
+        const signedHeaders = headerEntries.map(([k]) => k).join(';');
+        const allQueryParams = {
+            ...queryParams,
+            'X-Amz-Algorithm': AWS_ALGORITHM,
+            'X-Amz-Credential': `${this.#accessKeyId}/${credentialScope}`,
+            'X-Amz-Date': fullDatetime,
+            'X-Amz-Expires': String(expiresIn),
+            'X-Amz-SignedHeaders': signedHeaders,
+        };
+        const canonicalQueryString = this._buildCanonicalQueryString(allQueryParams);
+        const canonicalRequest = `${method}\n${url.pathname}\n${canonicalQueryString}\n${canonicalHeaders}\n\n${signedHeaders}\n${UNSIGNED_PAYLOAD}`;
+        const stringToSign = `${AWS_ALGORITHM}\n${fullDatetime}\n${credentialScope}\n${hexFromBuffer(await sha256(canonicalRequest))}`;
+        if (shortDatetime !== this.signingKeyDate || !this.signingKey) {
+            this.signingKeyDate = shortDatetime;
+            this.signingKey = await this._getSignatureKey(shortDatetime);
+        }
+        const signature = hexFromBuffer(await hmac(this.signingKey, stringToSign));
+        return `${url.origin}${url.pathname}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+    }
+    async _getSignatureKey(dateStamp) {
+        const kDate = await hmac(`AWS4${this.#secretAccessKey}`, dateStamp);
+        const kRegion = await hmac(kDate, this.region);
+        const kService = await hmac(kRegion, S3_SERVICE);
+        return await hmac(kService, AWS_REQUEST_TYPE);
+    }
+}
+
+export { S3mini, S3mini as default, runInBatches, sanitizeETag };
+//# sourceMappingURL=s3mini.js.map

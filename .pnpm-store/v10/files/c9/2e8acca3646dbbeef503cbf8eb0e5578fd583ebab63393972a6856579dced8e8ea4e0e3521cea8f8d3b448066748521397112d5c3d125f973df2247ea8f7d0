@@ -1,0 +1,12 @@
+import { Ref, MaybeRef } from 'vue';
+import { EmblaCarouselType, EmblaOptionsType, EmblaPluginType } from 'embla-carousel';
+export type UseEmblaCarouselType = [
+    Ref<HTMLElement | undefined>,
+    Ref<EmblaCarouselType | undefined>,
+    EmblaCarouselType
+];
+declare function useEmblaCarousel(options?: MaybeRef<EmblaOptionsType>, plugins?: MaybeRef<EmblaPluginType[]>): UseEmblaCarouselType;
+declare namespace useEmblaCarousel {
+    let globalOptions: EmblaOptionsType | undefined;
+}
+export default useEmblaCarousel;

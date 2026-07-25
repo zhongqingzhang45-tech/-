@@ -1,0 +1,12 @@
+import { C as ChatProvider, S as SpeechProvider } from '../types-DW1hvH0W.js';
+import '@xsai/shared';
+
+/**
+ * Create a Player2 Provider
+ * @see {@link https://player2.game}
+ * @remarks
+ * - baseURL - `http://localhost:4315/v1/`
+ */
+declare const player2: ChatProvider<string> & SpeechProvider<string>;
+
+export { player2 };

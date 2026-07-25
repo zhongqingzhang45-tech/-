@@ -1,0 +1,7 @@
+import type { InjectionKey, Ref } from 'vue';
+export interface PlatformLayoutContext {
+    dock: Ref<HTMLElement | null>;
+    root: Readonly<Ref<HTMLElement | null>>;
+    uiScale: Readonly<Ref<number>>;
+}
+export declare const injectPlatformLayout: InjectionKey<PlatformLayoutContext>;

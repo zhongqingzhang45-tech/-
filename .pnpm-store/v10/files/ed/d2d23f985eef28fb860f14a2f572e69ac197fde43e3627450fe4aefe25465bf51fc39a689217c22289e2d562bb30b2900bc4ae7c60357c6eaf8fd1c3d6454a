@@ -1,0 +1,2 @@
+import { t as UnpluginInfo } from "./core-CXsJy3-3.mjs";
+export { UnpluginInfo };

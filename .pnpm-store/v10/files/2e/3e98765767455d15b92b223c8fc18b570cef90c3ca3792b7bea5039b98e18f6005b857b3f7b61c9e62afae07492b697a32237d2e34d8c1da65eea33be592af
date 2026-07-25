@@ -1,0 +1,35 @@
+import { EventTag, EventaType } from "../../eventa-B2HPBK4S.mjs";
+import { EventContext } from "../../context-C_-MRU46.mjs";
+import "../../invoke-LTUFMmHi.mjs";
+import "../../index-BgaYNgPh.mjs";
+
+//#region src/adapters/event-emitter/shared.d.ts
+interface Payload<T> {
+  id: string;
+  type: EventTag<any, any>;
+  payload: T;
+}
+declare const errorEvent: {
+  body?: {
+    error: unknown;
+  } | undefined;
+  id: string;
+  type?: EventaType.Event | undefined;
+};
+//#endregion
+//#region src/adapters/event-emitter/index.d.ts
+declare function createContext(eventTarget: NodeJS.EventEmitter, options?: {
+  messageEventName?: string | false;
+  errorEventName?: string | false;
+  extraListeners?: Record<string, (event: Event) => void | Promise<void>>;
+}): {
+  context: EventContext<any, {
+    raw: {
+      event: CustomEvent | Event | unknown;
+    };
+  }>;
+  dispose: () => void;
+};
+//#endregion
+export { Payload, createContext, errorEvent };
+//# sourceMappingURL=index.d.mts.map

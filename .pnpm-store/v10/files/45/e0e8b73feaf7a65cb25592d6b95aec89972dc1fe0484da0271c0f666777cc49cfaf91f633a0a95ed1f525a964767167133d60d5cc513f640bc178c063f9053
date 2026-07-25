@@ -1,0 +1,71 @@
+import { imageDataToUrl as i } from "./image-data-to-url.js";
+function d(r) {
+  const { imageData: e } = r, t = r.cornerWidth * r.pixelRatio, o = 1 * r.pixelRatio;
+  if (e.width !== t * 2 + o)
+    throw new Error("ImageData width is too small for the given corner width");
+  if (e.height !== e.width)
+    throw new Error("ImageData should be square");
+  const a = i(e, t, t, 0, 0), n = i(
+    e,
+    o,
+    t,
+    t,
+    0
+  ), c = i(
+    e,
+    t,
+    t,
+    t + o,
+    0
+  ), h = i(
+    e,
+    t,
+    o,
+    0,
+    t
+  ), s = i(
+    e,
+    o,
+    o,
+    t,
+    t
+  ), m = i(
+    e,
+    t,
+    o,
+    t + o,
+    t
+  ), g = i(
+    e,
+    t,
+    t,
+    0,
+    t + o
+  ), l = i(
+    e,
+    o,
+    t,
+    t,
+    t + o
+  ), f = i(
+    e,
+    t,
+    t,
+    t + o,
+    t + o
+  );
+  return {
+    bottom: l,
+    bottomLeft: g,
+    bottomRight: f,
+    center: s,
+    left: h,
+    right: m,
+    top: n,
+    topLeft: a,
+    topRight: c
+  };
+}
+export {
+  d as splitImageDataToParts
+};

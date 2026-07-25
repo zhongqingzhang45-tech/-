@@ -1,0 +1,12 @@
+
+<h1 align='center'><samp>./sponsors.svg</samp></h1>
+
+<p align='center'>Serve your sponsors badges without a server</p>
+
+<p align='center'>
+<a href='./sponsors.svg?raw=true'>
+<img src='./sponsors.svg'/>
+</a>
+</p>
+
+> WIP: basic works, should tweak the style and make the config better.

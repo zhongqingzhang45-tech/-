@@ -1,0 +1,61 @@
+import { repository } from '../package.json.js'
+import { createTestWithParameters } from '../utils/create-test-with-parameters.js'
+import { hasNegationInsideParens } from '../utils/has-negation-inside-parens.js'
+import { hasBooleanContext } from '../utils/has-boolean-context.js'
+import { applyToProperty } from '../utils/apply-to-property.js'
+import { isConjunction } from '../utils/is-conjunction.js'
+import { sanitizeCode } from '../utils/sanitize-code.js'
+import { isPureGroup } from '../utils/is-pure-group.js'
+import { isNegated } from '../utils/is-negated.js'
+import { transform } from '../utils/transform.js'
+import { not } from '../utils/not.js'
+import { or } from '../utils/or.js'
+var no_negated_conjunction_default = {
+  create: context => ({
+    UnaryExpression: node => {
+      if (
+        createTestWithParameters(node, context)(
+          isNegated,
+          applyToProperty('argument', isConjunction),
+          isPureGroup,
+          or(hasBooleanContext, not(hasNegationInsideParens)),
+        )
+      ) {
+        let fixedExpression = transform({
+          expressionType: 'conjunction',
+          shouldWrapInParens: isConjunction(node.parent),
+          context,
+          node,
+        })
+        if (fixedExpression) {
+          let originalExpression = context.sourceCode.getText(node)
+          context.report({
+            data: {
+              original: sanitizeCode(originalExpression),
+              fixed: sanitizeCode(fixedExpression),
+            },
+            fix: fixer => fixer.replaceText(node, fixedExpression),
+            messageId: 'convertNegatedConjunction',
+            node,
+          })
+        }
+      }
+    },
+  }),
+  meta: {
+    docs: {
+      description:
+        'Transforms the negation of a conjunction !(A && B) into the equivalent !A || !B according to De Morgan’s law',
+      url: `https://github.com/${repository}/blob/main/docs/no-negated-conjunction.md`,
+      recommended: true,
+    },
+    messages: {
+      convertNegatedConjunction:
+        'Replace negated conjunction `{{ original }}` with `{{ fixed }}`',
+    },
+    type: 'suggestion',
+    fixable: 'code',
+    schema: [],
+  },
+}
+export { no_negated_conjunction_default as default }

@@ -1,0 +1,28 @@
+import { defineComponent as t, computed as s, openBlock as a, createElementBlock as r, normalizeStyle as c, normalizeClass as n } from "vue";
+const i = /* @__PURE__ */ t({
+  __name: "deco-focus-mask",
+  props: {
+    blurPx: { default: 8 },
+    class: {},
+    color: { default: "0, 0, 0" },
+    mode: { default: "dim" },
+    opacity: { default: 0.42 },
+    style: { type: [Boolean, null, String, Object, Array] }
+  },
+  setup(l) {
+    const e = l, o = s(() => ({
+      backgroundColor: `rgba(${e.color}, ${e.opacity})`,
+      backdropFilter: e.mode === "blur" ? `blur(${e.blurPx}px)` : void 0
+    }));
+    return (u, p) => (a(), r("div", {
+      class: n([
+        ...e.class ? typeof e.class == "string" ? [e.class] : e.class : [],
+        "absolute inset-0 pointer-events-none"
+      ]),
+      style: c([o.value, e.style])
+    }, null, 6));
+  }
+});
+export {
+  i as default
+};

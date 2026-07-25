@@ -1,0 +1,20 @@
+declare const _default: __VLS_WithSlots<import("vue").DefineComponent<{
+    title?: string;
+    tag?: string;
+}, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{
+    title?: string;
+    tag?: string;
+}> & Readonly<{}>, {
+    title: string;
+    tag: string;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>, {
+    default?: (props: {}) => any;
+} & {
+    actions?: (props: {}) => any;
+}>;
+export default _default;
+type __VLS_WithSlots<T, S> = T & {
+    new (): {
+        $slots: S;
+    };
+};

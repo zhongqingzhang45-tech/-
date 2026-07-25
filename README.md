@@ -1,285 +1,546 @@
-# 星野 (LifeOS) - AI 情感伴侣
+<picture>
+  <source
+    width="100%"
+    srcset="./docs/content/public/banner-dark-1280x640.avif"
+    media="(prefers-color-scheme: dark)"
+  />
+  <source
+    width="100%"
+    srcset="./docs/content/public/banner-light-1280x640.avif"
+    media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+  />
+  <img width="250" src="./docs/content/public/banner-light-1280x640.avif" />
+</picture>
 
-> 永远陪伴，懂你所想。一个真正有温度的 AI 灵魂伴侣。
+<h1 align="center">Project AIRI</h1>
 
-![Version](https://img.shields.io/badge/version-2.0.0-purple)
-![Next.js](https://img.shields.io/badge/Next.js-14.2.5-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.4.5-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+<p align="center">Re-creating Neuro-sama, a soul container of AI waifu / virtual characters to bring them into our world.</p>
 
-## ✨ 项目简介
+<p align="center">
+  [<a href="https://discord.gg/TgQ3Cu2F7A">Join Discord Server</a>] [<a href="https://airi.moeru.ai">Try it</a>] [<a href="https://github.com/moeru-ai/airi/blob/main/docs/README.zh-CN.md">简体中文</a>] [<a href="https://github.com/moeru-ai/airi/blob/main/docs/README.ja-JP.md">日本語</a>] [<a href="https://github.com/moeru-ai/airi/blob/main/docs/README.ru-RU.md">Русский</a>] [<a href="https://github.com/moeru-ai/airi/blob/main/docs/README.vi.md">Tiếng Việt</a>] [<a href="https://github.com/moeru-ai/airi/blob/main/docs/README.fr.md">Français</a>] [<a href="https://github.com/moeru-ai/airi/blob/main/docs/README.ko-KR.md">한국어</a>]
+</p>
 
-星野是一个基于数字生命引擎的 AI 情感伴侣应用。它不仅仅是一个聊天机器人，而是一个拥有完整情绪、人格、记忆和成长系统的虚拟生命。
+<p align="center">
+  <a href="https://deepwiki.com/moeru-ai/airi"><img src="https://deepwiki.com/badge.svg"></a>
+  <a href="https://github.com/moeru-ai/airi/blob/main/LICENSE"><img src="https://img.shields.io/github/license/moeru-ai/airi.svg?style=flat&colorA=080f12&colorB=1fa669"></a>
+  <a href="https://discord.gg/TgQ3Cu2F7A"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2FTgQ3Cu2F7A%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&logo=discord&logoColor=white&label=%20&color=7389D8&labelColor=6A7EC2"></a>
+  <a href="https://x.com/proj_airi"><img src="https://img.shields.io/badge/%40proj__airi-black?style=flat&logo=x&labelColor=%23101419&color=%232d2e30"></a>
+  <a href="https://t.me/+7M_ZKO3zUHFlOThh"><img src="https://img.shields.io/badge/Telegram-%235AA9E6?logo=telegram&labelColor=FFFFFF"></a>
+  <a href="./docs/wechat.md"><img src="https://img.shields.io/badge/WeChat-%2307C160?logo=wechat&logoColor=%2307C160&labelColor=FFFFFF"></a>
+  <a href="https://qun.qq.com/universal-share/share?ac=1&authKey=9g00d%2BZS7nORzcJugNNddJ7rCghZTIR7fhXabGwch2S%2BG%2BKGIKwlN1N2nIqkh2jg&busi_data=eyJncm91cENvZGUiOiIxMDU4MTU2Njk3IiwidG9rZW4iOiJmcnkra1hWNFIxNytEcG0zcHRUdVJIaldlRDFxN0dzK080QWtvTEdOQjJkNEY2eUFta1g1clNpbkxSMS9FQWFYIiwidWluIjoiMTI2MDkwNzMzNSJ9&data=b1eJrwn3GVOUh7YIxZ7l9vHQo99HPmRxKPpMKlDCmfzx8Y57IXb2EZCMaOC9rVTd2U558qpNjwUYUWlPHxVHvg&svctype=4&tempid=h5_group_info"><img src="https://img.shields.io/badge/QQ-%2312B7F5?logo=qq&labelColor=FFFFFF"></a>
+</p>
 
-### 核心特色
+<p float="left" align="center">
+  <!-- readme-section:release-binary-windows -->
+  <a href="https://github.com/moeru-ai/airi/releases/download/v0.10.2/AIRI-0.10.2-windows-x64-setup.exe">
+    <picture>
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.windows.dark.en-US.avif"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.windows.light.en-US.avif"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img width="33%" src="./docs/content/public/assets/download-buttons/download-buttons.windows.light.en-US.avif" />
+    </picture>
+  </a>
+  <!-- readme-section:release-binary-macos -->
+  <a href="https://github.com/moeru-ai/airi/releases/download/v0.10.2/AIRI-0.10.2-darwin-arm64.dmg">
+    <picture>
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.macos.dark.en-US.avif"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.macos.light.en-US.avif"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img width="33%" src="./docs/content/public/assets/download-buttons/download-buttons.macos.light.en-US.avif" />
+    </picture>
+  </a>
+  <a href="https://github.com/moeru-ai/airi/releases/latest">
+    <picture>
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.linux.dark.en-US.avif"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.linux.light.en-US.avif"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img width="33%" src="./docs/content/public/assets/download-buttons/download-buttons.linux.light.en-US.avif" />
+    </picture>
+  </a>
+</p>
 
-- 🎭 **丰富的人格系统** - 8 种人格模式（正常、甜蜜、傲娇、冷淡、攻击、冷战、打压、和解）
-- 💖 **情感引擎** - 基于 PAD 三维情绪模型，20+ 种情绪状态
-- 🧠 **记忆系统** - 对话记忆、情感记忆、创伤记忆、行为模式学习
-- 🌱 **成长演化** - 人格、价值观、技能随时间和经历缓慢演化
-- 🎁 **礼物系统** - 商店、背包、心愿单、礼物索取
-- 🎨 **Live2D 形象** - 生动的虚拟形象，表情和动作同步
-- 🎤 **语音互动** - TTS 语音合成 + ASR 语音识别
-- 🤖 **可插拔 LLM** - 支持 OpenAI、Anthropic、DeepSeek、通义千问、智谱 AI 等多种大模型
+<p float="left" align="center">
+  <a href="https://airi.moeru.ai">
+    <picture>
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/QR%20code%20button/section.cards.qrcode.dark.en-US.png"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/QR%20code%20button/section.cards.qrcode.light.en-US.png"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img width="33%" src="./docs/content/public/assets/QR%20code%20button/section.cards.qrcode.light.en-US.png" />
+    </picture>
+  </a>
+  <a href="https://airi.moeru.ai">
+    <picture>
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.mobile.dark.en-US.avif"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.mobile.light.en-US.avif"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img width="33%" src="./docs/content/public/assets/download-buttons/download-buttons.mobile.light.en-US.avif" />
+    </picture>
+  </a>
+  <a href="https://airi.moeru.ai">
+    <picture>
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.browser.dark.en-US.png"
+        media="(prefers-color-scheme: dark)"
+      />
+      <source
+        width="33%"
+        srcset="./docs/content/public/assets/download-buttons/download-buttons.browser.light.en-US.png"
+        media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
+      />
+      <img width="33%" src="./docs/content/public/assets/download-buttons/download-buttons.browser.light.en-US.png" />
+    </picture>
+  </a>
+</p>
 
-## 🏗️ 技术架构
+<p align="center">
+  <a href="https://www.producthunt.com/products/airi?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-airi" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=993524&theme=neutral&t=1752696535380" alt="AIRI - A&#0032;container&#0032;of&#0032;cyber&#0032;living&#0032;souls&#0044;&#0032;re&#0045;creation&#0032;of&#0032;Neuro&#0045;sama | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+  <a href="https://trendshift.io/repositories/14636" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14636" alt="moeru-ai%2Fairi | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</p>
 
+> Heavily inspired by [Neuro-sama](https://www.youtube.com/@Neurosama)
+
+> [!TIP]
+> On Windows, you can also install AIRI with [winget](https://learn.microsoft.com/windows/package-manager/winget/):
+>
+> ```powershell
+> winget install MoeruAI.AIRI
+> ```
+>
+> Or install AIRI with [Scoop](https://scoop.sh/):
+>
+> ```powershell
+> scoop bucket add airi https://github.com/moeru-ai/airi
+> scoop install airi/airi
+> ```
+>
+> On macOS, you can install AIRI with [Homebrew Cask](https://brew.sh/) without adding a custom tap:
+>
+> ```sh
+> brew install --cask airi
+> ```
+
+> [!WARNING]
+> **Attention:** We **do not** have any officially minted cryptocurrency or token associated with this project. Please check the information and proceed with caution.
+
+> [!NOTE]
+>
+> We've got a whole dedicated organization [@proj-airi](https://github.com/proj-airi) for all the sub-projects born from Project AIRI. Check it out!
+>
+> RAG, memory system, embedded database, icons, Live2D utilities, and more!
+
+> [!TIP]
+> We have a translation project on [Crowdin](https://crowdin.com/project/proj-airi). If you find any inaccurate translations, feel free to contribute improvements there.
+> <a href="https://crowdin.com/project/proj-airi" target="_blank" rel="nofollow"><img style="width: 140px; height: 40px;" src="https://badges.crowdin.net/badge/light/crowdin-on-dark.png" srcset="https://badges.crowdin.net/badge/light/crowdin-on-dark.png 1x, https://badges.crowdin.net/badge/light/crowdin-on-dark@2x.png 2x" alt="Crowdin | Agile localization for tech companies" width="140" height="40" /></a>
+
+Have you dreamed about having a cyber living being (cyber waifu, digital pet) or digital companion that could play with and talk to you?
+
+With the power of modern large language models like [ChatGPT](https://chatgpt.com) and famous [Claude](https://claude.ai), asking a virtual being to roleplay and chat with us is already easy enough for everyone. Platforms like [Character.ai (a.k.a. c.ai)](https://character.ai) and [JanitorAI](https://janitorai.com/) as well as local playgrounds like [SillyTavern](https://github.com/SillyTavern/SillyTavern) are already good-enough solutions for a chat based or visual adventure game like experience.
+
+> But, what about the abilities to play games? And see what you are coding at? Chatting while playing games, watching videos, and is capable of doing many other things.
+
+Perhaps you know [Neuro-sama](https://www.youtube.com/@Neurosama) already. She is currently the best virtual streamer capable of playing games, chatting, and interacting with you and the participants. Some also call this kind of being "digital human." **Sadly, as it's not open sourced, you cannot interact with her after her live streams go offline**.
+
+Therefore, this project, AIRI, offers another possibility here: **let you own your digital life, cyber living, easily, anywhere, anytime**.
+
+## Recent DevLogs & Stories
+
+- [DevLog @ 2026.03.23: Mobile performance and game engine exploration](https://airi.moeru.ai/docs/en/blog/DevLog-2026.03.23/) - March 23, 2026
+- [DevLog @ 2026.03.14: VRM stage lifecycle, cache, and observability](https://airi.moeru.ai/docs/en/blog/DevLog-2026.03.14/) - March 14, 2026
+- [DevLog @ 2026.02.16: Dome Keeper data collection and training pipeline](https://airi.moeru.ai/docs/en/blog/DevLog-2026.02.16/) - February 16, 2026
+- [DevLog @ 2026.01.01: AIRI Pocket and FlowChat memory experiments](https://airi.moeru.ai/docs/en/blog/DevLog-2026.01.01/) - January 1, 2026
+- [DevLog @ 2025.10.20: Electron migration, new models, and Moeru AI updates](https://airi.moeru.ai/docs/en/blog/DevLog-2025.10.20/) - October 20, 2025
+- [DevLog @ 2025.08.26: Pure vision progress for airi-factorio](https://airi.moeru.ai/docs/en/blog/DevLog-2025.08.26/) - August 26, 2025
+- [DevLog @ 2025.08.05: AIRI v0.7 release highlights](https://airi.moeru.ai/docs/en/blog/DevLog-2025.08.05/) - August 5, 2025
+- [DevLog @ 2025.08.01: Streaming text animation and grapheme clusters](https://airi.moeru.ai/docs/en/blog/DevLog-2025.08.01/) - August 1, 2025
+- [DevLog @ 2025.07.18: Rethinking airi-factorio with Factorio Learning Environment](https://airi.moeru.ai/docs/en/blog/DevLog-2025.07.18/) - July 18, 2025
+- [DreamLog 0x1: The backstory of Project AIRI](https://airi.moeru.ai/docs/en/blog/DreamLog-0x1/) - June 16, 2025
+- More on the [documentation site](https://airi.moeru.ai/docs/en/)
+
+## What's So Special About This Project?
+
+Unlike the other AI driven VTuber open source projects, アイリ was built with support of many Web technologies such as [WebGPU](https://www.w3.org/TR/webgpu/), [WebAudio](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API), [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers), [WebAssembly](https://webassembly.org/), [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket), etc. from the first day.
+
+> [!TIP]
+> Worrying about the performance drop since we are using Web related technologies?
+>
+> Don't worry, while the Web browser version is meant to give an insight into how much we can push and do inside browsers and webviews, we will never fully rely on this. The desktop version of AIRI is capable of using native [NVIDIA CUDA](https://developer.nvidia.com/cuda-toolkit) and [Apple Metal](https://developer.apple.com/metal/) by default (thanks to HuggingFace & the beloved [candle](https://github.com/huggingface/candle) project), without any complex dependency management. Considering the tradeoff, it is partially powered by Web technologies for graphics, layouts, animations, and the WIP plugin system for everyone to integrate things.
+
+This means that **アイリ is capable of running on modern browsers and devices** and even on mobile devices (already done with PWA support). This brings a lot of possibilities for us (the developers) to build and extend the power of アイリ VTuber to the next level, while still leaving the flexibility for users to enable features that require TCP connections or other non-Web technologies such as connecting to a Discord voice channel or playing Minecraft and Factorio with friends.
+
+> [!NOTE]
+>
+> We are still in the early stage of development where we are seeking out talented developers to join us and help us to make アイリ a reality.
+>
+> It's ok if you are not familiar with Vue.js, TypeScript, and devtools required for this project, you can join us as an artist, designer, or even help us to launch our first live stream.
+>
+> Even if you are a big fan of React, Svelte or even Solid, we welcome you. You can open a sub-directory to add features that you want to see in アイリ, or would like to experiment with.
+>
+> Fields (and related projects) that we are looking for:
+>
+> - Live2D modeller
+> - VRM modeller
+> - VRChat avatar designer
+> - Computer Vision
+> - Reinforcement Learning
+> - Speech Recognition
+> - Speech Synthesis
+> - ONNX Runtime
+> - Transformers.js
+> - vLLM
+> - WebGPU
+> - Three.js
+> - WebXR ([checkout the another project](https://github.com/moeru-ai/chat) we have under the @moeru-ai organization)
+>
+> **If you are interested, why not introduce yourself here? [Would like to join part of us to build AIRI?](https://github.com/moeru-ai/airi/discussions/33)**
+
+## Current Progress & Roadmap
+
+Capable of
+
+- [x] Brain
+  - [x] Play [Minecraft](https://www.minecraft.net)
+  - [x] Play [Factorio](https://www.factorio.com) (WIP, but [PoC and demo available](https://github.com/moeru-ai/airi-factorio))
+  - [x] Play [Kerbal Space Program](https://www.kerbalspaceprogram.com/) (announcement TBD)
+  - [ ] Co-play [Helldivers 2](https://www.playstation.com/en-hk/games/helldivers-2/pc/) (WIP)
+  - [x] Chat in [Telegram](https://telegram.org)
+  - [x] Chat in [Discord](https://discord.com)
+  - [ ] Memory
+    - [x] Pure in-browser database support (DuckDB WASM | `pglite`)
+    - [ ] Memory Alaya (WIP)
+  - [ ] Pure in-browser local (WebGPU) inference
+- [x] Ears
+  - [x] Audio input from browser
+  - [x] Audio input from [Discord](https://discord.com)
+  - [x] Client side speech recognition
+  - [x] Client side talking detection
+- [x] Mouth
+  - [x] Multi-provider voice synthesis, including [ElevenLabs](https://elevenlabs.io/), Microsoft/Azure Speech, OpenAI-compatible TTS, Alibaba Cloud Model Studio, and local Kokoro TTS
+- [x] Body
+  - [x] VRM support
+    - [x] Control VRM model
+  - [x] VRM model animations
+    - [x] Auto blink
+    - [x] Auto look at
+    - [x] Idle eye movement
+  - [x] Live2D support
+    - [x] Control Live2D model
+  - [x] Live2D model animations
+    - [x] Auto blink
+    - [x] Auto look at
+    - [x] Idle eye movement
+
+## Development
+
+> For detailed instructions to develop this project, follow [CONTRIBUTING.md](./.github/CONTRIBUTING.md)
+
+> [!NOTE]
+> By default, `pnpm dev` will start the development server for the Stage Web (browser version). If you would
+> like to try developing the desktop version, please make sure you read [CONTRIBUTING.md](./.github/CONTRIBUTING.md)
+> to setup the environment correctly.
+
+```shell
+pnpm i
+pnpm dev
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Web UI (Next.js)                    │
-│  ┌─────────────┐  ┌──────────┐  ┌──────────────────┐   │
-│  │ 聊天界面    │  │ 日记系统 │  │ 设置/礼物面板   │   │
-│  └─────────────┘  └──────────┘  └──────────────────┘   │
-└────────────────────────────┬────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────┐
-│                  Digital Life Engine                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ 事件理解层   │  │ 情绪系统    │  │ 决策引擎    │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ 身体系统     │  │ 本能系统    │  │ 人格矩阵    │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ 记忆系统     │  │ 成长引擎    │  │ 因果系统    │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│  ┌──────────────┐  ┌──────────────┐                     │
-│  │ 技能系统     │  │ 礼物系统    │                     │
-│  └──────────────┘  └──────────────┘                     │
-└────────────────────────────┬────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────┐
-│                   LLM Provider Layer                    │
-│  ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌────────────┐  │
-│  │ OpenAI  │ │Anthropic│ │DeepSeek │ │ 通义千问   │  │
-│  └─────────┘ └──────────┘ └─────────┘ └────────────┘  │
-│  ┌─────────┐ ┌──────────┐ ┌─────────┐                  │
-│  │ 智谱AI  │ │  Azure   │ │  Mock   │                  │
-│  └─────────┘ └──────────┘ └─────────┘                  │
-└─────────────────────────────────────────────────────────┘
+
+### Stage Web (Browser Version at [airi.moeru.ai](https://airi.moeru.ai))
+
+```shell
+pnpm dev
 ```
 
-## 🚀 快速开始
+### Stage Tamagotchi (Desktop Version)
 
-### 环境要求
-
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-
-### 安装依赖
-
-```bash
-npm install
+```shell
+pnpm dev:tamagotchi
 ```
 
-### 开发模式
+A Nix package for Tamagotchi is included. To run airi with Nix, first make sure to enable flakes, then run:
 
-```bash
-npm run dev
+```shell
+nix run github:moeru-ai/airi
 ```
 
-访问 http://localhost:3000 即可使用。
+#### NixOS
 
-### 生产构建
+Electron requires shared libraries that aren't in standard paths on NixOS. Use the FHS shell defined in `flake.nix`:
 
-```bash
-npm run build
-npm start
+```shell
+nix develop .#fhs
+pnpm dev:tamagotchi
 ```
 
-### Docker 部署
+### Stage Pocket (Mobile Version)
 
-```bash
-# 构建镜像
-docker build -t starfield .
+Start the development server for the capacitor:
 
-# 运行容器
-docker run -p 3000:3000 starfield
+```shell
+pnpm dev:pocket:ios --target <DEVICE_ID_OR_SIMULATOR_NAME>
+# Or
+CAPACITOR_DEVICE_ID_IOS=<DEVICE_ID_OR_SIMULATOR_NAME> pnpm dev:pocket:ios
 ```
 
-或者使用 docker-compose：
+You can see the list of available devices and simulators by running `pnpm exec cap run ios --list`.
 
-```bash
-docker-compose up -d
+If you need to connect server channel on pocket in wireless mode, you need to start tamagotchi as root:
+
+```shell
+sudo pnpm dev:tamagotchi
 ```
 
-## 🤖 配置 LLM 大模型
+Then enable secure websocket in tamagotchi `settings/connections`.
 
-星野支持多种大语言模型提供商，配置后可大幅提升对话质量。
+### Documentation Site
 
-### 支持的提供商
-
-| 提供商 | 说明 | 默认模型 |
-|--------|------|----------|
-| `openai` | OpenAI GPT 系列 | gpt-3.5-turbo |
-| `anthropic` | Anthropic Claude 系列 | claude-3-sonnet |
-| `azure` | Azure OpenAI 服务 | gpt-3.5-turbo |
-| `deepseek` | DeepSeek 深度求索 | deepseek-chat |
-| `qwen` | 通义千问 | qwen-turbo |
-| `glm` | 智谱 AI | glm-3-turbo |
-| `mock` | 模拟模式（无需 API Key） | - |
-
-### 配置方式
-
-在应用的设置页面中配置，或通过浏览器 localStorage 手动设置：
-
-```javascript
-// 在浏览器控制台中执行
-localStorage.setItem("llm_provider", "openai");
-localStorage.setItem("llm_api_key", "your-api-key-here");
-localStorage.setItem("llm_model", "gpt-4"); // 可选
-localStorage.setItem("llm_base_url", "https://api.openai.com/v1"); // 可选
+```shell
+pnpm dev:docs
 ```
 
-配置完成后，对话会自动使用 LLM 生成回复。如果 LLM 调用失败，会自动降级到模板回复模式。
+### Publish
 
-## 📁 项目结构
+Run `bumpp` to update the monorepo version:
 
-```
-.
-├── app/                          # Next.js App Router
-│   ├── page.tsx                  # 首页（营销落地页）
-│   ├── layout.tsx                # 根布局
-│   ├── globals.css               # 全局样式
-│   └── lover/                    # 伴侣主功能区
-│       ├── page.tsx              # 聊天主界面
-│       ├── layout.tsx            # 伴侣布局
-│       ├── login/page.tsx        # 登录页
-│       └── register/page.tsx     # 注册页
-├── components/
-│   └── Lover/
-│       ├── Live2DPlayer.tsx      # Live2D 模型渲染组件
-│       └── DiaryPage.tsx         # 日记页面组件
-├── lib/
-│   ├── core/                     # 核心引擎层
-│   │   ├── digital-life/         # 数字生命引擎（v2）
-│   │   │   ├── agent.ts          # 数字生命代理主类
-│   │   │   ├── systems.ts        # 子系统（事件/身体/本能/情绪/决策/人格/记忆）
-│   │   │   ├── state-engine.ts   # 状态引擎
-│   │   │   ├── emotion-engine.ts # 情感引擎
-│   │   │   ├── skills.ts         # 技能系统
-│   │   │   ├── gift-system.ts    # 礼物系统
-│   │   │   ├── growth-engine.ts  # 成长引擎
-│   │   │   ├── causal-system.ts  # 因果系统
-│   │   │   ├── autonomous-decision-engine.ts # 自主决策引擎
-│   │   │   ├── name-generator.ts # 名字生成器
-│   │   │   ├── image-recognition.ts # 图像识别
-│   │   │   ├── context-service.ts # 上下文服务
-│   │   │   ├── device-binding.ts  # 设备绑定
-│   │   │   └── types.ts           # 类型定义
-│   │   ├── llm/                   # LLM 接入层
-│   │   │   ├── types.ts           # LLM 类型定义
-│   │   │   ├── index.ts           # 工厂函数 & 提示词构建
-│   │   │   └── providers/         # LLM 提供商实现
-│   │   │       ├── openai.ts      # OpenAI 兼容提供商
-│   │   │       └── mock.ts        # 模拟提供商
-│   │   ├── live2d-manager.ts      # Live2D 管理器
-│   │   ├── speech-pipeline.ts     # 语音流水线
-│   │   ├── index.ts               # 核心导出
-│   └── hooks/                     # React Hooks
-│       ├── useCharacterAgent.ts   # 角色代理 Hook
-│       └── useSpeech.ts           # 语音 Hook
-├── public/
-│   └── live2d-models/             # Live2D 模型资源
-│       ├── HaruGreeter/           # 默认模型（小春）
-│       └── azurlane/              # 碧蓝航线系列模型
-├── data/
-│   └── lover.ts                   # 伴侣数据定义
-├── Dockerfile                     # Docker 构建配置
-├── docker-compose.yml             # Docker Compose 配置
-├── package.json                   # 项目依赖
-├── tailwind.config.js             # Tailwind 配置
-├── next.config.js                 # Next.js 配置
-└── tsconfig.json                  # TypeScript 配置
+```shell
+npx bumpp --no-commit --no-tag
 ```
 
-## 🎭 人格模式
+## Support of LLM API Providers (powered by [xsai](https://github.com/moeru-ai/xsai))
 
-| 模式 | 说明 | 触发条件 |
-|------|------|----------|
-| 😊 正常模式 | 日常状态，温和友善 | 默认 |
-| 💕 甜蜜模式 | 温柔撒娇，充满爱意 | 用户表达爱意/亲密 |
-| 😤 傲娇模式 | 嘴硬心软，口是心非 | 用户挑逗/调侃 |
-| 😐 冷淡模式 | 疏离冷漠，惜字如金 | 用户忽视/冷落 |
-| 💢 攻击模式 | 尖酸刻薄，攻击性强 | 严重冲突/伤害 |
-| 🔇 冷处理 | 完全不理，冷战状态 | 怨念值超过阈值 |
-| 😈 打压模式 | PUA 式打压，缺乏安全感 | 依恋焦虑/不安 |
-| 💝 和解模式 | 放下身段，寻求和解 | 用户道歉/送礼物 |
+- [x] [AIHubMix (recommended)](https://aihubmix.com/?aff=OOiX)
+- [x] [OpenRouter](https://openrouter.ai/)
+- [x] [vLLM](https://github.com/vllm-project/vllm)
+- [x] [SGLang](https://github.com/sgl-project/sglang)
+- [x] [Ollama](https://github.com/ollama/ollama)
+- [x] [302.AI (sponsored)](https://share.302.ai/514k2v)
+- [x] [OpenAI](https://platform.openai.com/docs/guides/gpt/chat-completions-api)
+  - [x] [Azure OpenAI API](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference)
+- [x] [Anthropic Claude](https://anthropic.com)
+  - [ ] [AWS Claude](https://docs.anthropic.com/en/api/claude-on-amazon-bedrock) (PR welcome)
+- [x] [DeepSeek](https://www.deepseek.com/)
+- [x] [Qwen](https://help.aliyun.com/document_detail/2400395.html)
+- [x] [Google Gemini](https://developers.generativeai.google)
+- [x] [xAI](https://x.ai/)
+- [x] [Groq](https://wow.groq.com/)
+- [x] [Mistral](https://mistral.ai/)
+- [x] [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/)
+- [x] [Together.ai](https://www.together.ai/)
+- [x] [Fireworks.ai](https://fireworks.ai/)
+- [x] [Novita](https://www.novita.ai/)
+- [x] [Zhipu](https://bigmodel.cn)
+- [x] [SiliconFlow](https://cloud.siliconflow.cn/i/rKXmRobW)
+- [x] [Stepfun](https://platform.stepfun.com/)
+- [x] [Baichuan](https://platform.baichuan-ai.com)
+- [x] [Minimax](https://api.minimax.chat/)
+- [x] [Moonshot AI](https://platform.moonshot.cn/)
+- [x] [ModelScope](https://modelscope.cn/docs/model-service/API-Inference/intro)
+- [x] [Player2](https://player2.game/)
+- [x] [Tencent Cloud](https://cloud.tencent.com/document/product/1729)
+- [ ] [Sparks](https://www.xfyun.cn/doc/spark/Web.html) (PR welcome)
+- [ ] [Volcano Engine](https://www.volcengine.com/experience/ark?utm_term=202502dsinvite&ac=DSASUQY5&rc=2QXCA1VI) (PR welcome)
+- [x] [Xiaomi Mimo](https://platform.xiaomimimo.com)
 
-## 💡 核心系统
+## Sub-projects Born from This Project
 
-### 情绪系统
+- [Awesome AI VTuber](https://github.com/proj-airi/awesome-ai-vtuber): A curated list of AI VTubers and related projects
+- [`unspeech`](https://github.com/moeru-ai/unspeech): Universal endpoint proxy server for `/audio/transcriptions` and `/audio/speech`, like LiteLLM but for any ASR and TTS
+- [`hfup`](https://github.com/moeru-ai/hfup): tools to help on deploying, bundling to HuggingFace Spaces
+- [`xsai-transformers`](https://github.com/moeru-ai/xsai-transformers): Experimental [🤗 Transformers.js](https://github.com/huggingface/transformers.js) provider for [xsAI](https://github.com/moeru-ai/xsai).
+- [WebAI: Realtime Voice Chat](https://github.com/proj-airi/webai-realtime-voice-chat): Full example of implementing ChatGPT's realtime voice from scratch with VAD + STT + LLM + TTS.
+- [`@proj-airi/drizzle-duckdb-wasm`](https://github.com/moeru-ai/airi/tree/main/packages/drizzle-duckdb-wasm/README.md): Drizzle ORM driver for DuckDB WASM
+- [`@proj-airi/duckdb-wasm`](https://github.com/moeru-ai/airi/tree/main/packages/duckdb-wasm/README.md): Easy to use wrapper for `@duckdb/duckdb-wasm`
+- [AIRI Factorio](https://github.com/moeru-ai/airi-factorio): Allow AIRI to play Factorio.
+- [AIRI DomeKeeper](https://github.com/proj-airi/game-playing-ai-dome-keeper): Allow AIRI to play DomeKeeper.
+- [Factorio RCON API](https://github.com/nekomeowww/factorio-rcon-api): RESTful API wrapper for Factorio headless server console
+- [`autorio`](https://github.com/moeru-ai/airi-factorio/tree/main/packages/autorio): Factorio automation library
+- [`tstl-plugin-reload-factorio-mod`](https://github.com/moeru-ai/airi-factorio/tree/main/packages/tstl-plugin-reload-factorio-mod): Reload Factorio mod when developing
+- [Velin](https://github.com/luoling8192/velin): Use Vue SFC and Markdown to write easy to manage stateful prompts for LLM
+- [`demodel`](https://github.com/moeru-ai/demodel): Easily boost the speed of pulling your models and datasets from various of inference runtimes.
+- [`inventory`](https://github.com/moeru-ai/inventory): Centralized model catalog and default provider configurations backend service
+- [MCP Launcher](https://github.com/moeru-ai/mcp-launcher): Easy to use MCP builder & launcher for all possible MCP servers, just like Ollama for models!
+- [🥺 SAD](https://github.com/moeru-ai/sad): Documentation and notes for self-host and browser running LLMs.
 
-基于 **PAD 三维情绪模型**（Pleasure-Arousal-Dominance）：
-- **效价 (Valence)**：情绪的正负向 (-1 ~ 1)
-- **唤醒度 (Arousal)**：情绪的激烈程度 (0 ~ 1)
-- **支配性 (Dominance)**：情绪的主动/被动程度 (0 ~ 1)
+```mermaid
+%%{ init: { 'flowchart': { 'curve': 'catmullRom' } } }%%
 
-支持 20+ 种情绪状态：平静、开心、兴奋、害羞、爱恋、难过、生气、吃醋、困倦、思考、调皮、惊讶、冷淡、嫌弃、傲娇、撒娇、打压、受伤、失望、得意...
+flowchart TD
+  Core("Core")
+  Unspeech("unspeech")
+  DBDriver("@proj-airi/drizzle-duckdb-wasm")
+  MemoryDriver("[WIP] Memory Alaya")
+  DB1("@proj-airi/duckdb-wasm")
+  SVRT("@proj-airi/server-runtime")
+  Memory("Memory")
+  STT("STT")
+  Stage("Stage")
+  StageUI("@proj-airi/stage-ui")
+  UI("@proj-airi/ui")
 
-### 记忆系统
+  subgraph AIRI
+    DB1 --> DBDriver --> MemoryDriver --> Memory --> Core
+    UI --> StageUI --> Stage --> Core
+    Core --> STT
+    Core --> SVRT
+  end
 
-- **对话记忆** - 最近的对话内容
-- **事实记忆** - 关于用户和自己的事实
-- **情感记忆** - 带有强烈情绪色彩的事件
-- **创伤记忆** - 造成心理创伤的负面事件
-- **偏好记忆** - 用户的喜好和习惯
-- **里程碑记忆** - 关系中的重要时刻
-- **怨念积累** - 未解决的负面情绪
-- **行为模式** - 从用户行为中学习到的模式
+  subgraph UI_Components
+    UI --> StageUI
+    UITransitions("@proj-airi/ui-transitions") --> StageUI
+    UILoadingScreens("@proj-airi/ui-loading-screens") --> StageUI
+    FontCJK("@proj-airi/font-cjkfonts-allseto") --> StageUI
+    FontXiaolai("@proj-airi/font-xiaolai") --> StageUI
+  end
 
-### 成长系统
+  subgraph Apps
+    Stage --> StageWeb("@proj-airi/stage-web")
+    Stage --> StageTamagotchi("@proj-airi/stage-tamagotchi")
+    Core --> RealtimeAudio("@proj-airi/realtime-audio")
+    Core --> PromptEngineering("@proj-airi/playground-prompt-engineering")
+  end
 
-- **人格成长** - 大五人格随经历缓慢变化
-- **价值观演变** - 爱情观、独立程度、浪漫倾向等
-- **技能提升** - 倾听、共情、幽默感、表达等能力
-- **里程碑系统** - 记录关系中的重要时刻
+  subgraph Server_Components
+    Core --> ServerSDK("@proj-airi/server-sdk")
+    ServerShared("@proj-airi/server-shared") --> SVRT
+    ServerShared --> ServerSDK
+  end
 
-## 🛠️ 开发指南
+  STT -->|Speaking| Unspeech
+  SVRT -->|Playing Factorio| F_AGENT
+  SVRT -->|Playing Minecraft| MC_AGENT
 
-### 代码规范
+  subgraph Factorio_Agent
+    F_AGENT("Factorio Agent")
+    F_API("Factorio RCON API")
+    factorio-server("factorio-server")
+    F_MOD1("autorio")
 
-- TypeScript 严格模式
-- 使用函数式组件 + Hooks
-- 组件文件使用 PascalCase
-- 工具函数使用 camelCase
+    F_AGENT --> F_API -.-> factorio-server
+    F_MOD1 -.-> factorio-server
+  end
 
-### 类型检查
+  subgraph Minecraft_Agent
+    MC_AGENT("Minecraft Agent")
+    Mineflayer("Mineflayer")
+    minecraft-server("minecraft-server")
 
-```bash
-npx tsc --noEmit
+    MC_AGENT --> Mineflayer -.-> minecraft-server
+  end
+
+  XSAI("xsAI") --> Core
+  XSAI --> F_AGENT
+  XSAI --> MC_AGENT
+
+  Memory_PGVector("@proj-airi/memory-pgvector") --> Memory
+
+  style Core fill:#f9d4d4,stroke:#333,stroke-width:1px
+  style AIRI fill:#fcf7f7,stroke:#333,stroke-width:1px
+  style UI fill:#d4f9d4,stroke:#333,stroke-width:1px
+  style Stage fill:#d4f9d4,stroke:#333,stroke-width:1px
+  style UI_Components fill:#d4f9d4,stroke:#333,stroke-width:1px
+  style Server_Components fill:#d4e6f9,stroke:#333,stroke-width:1px
+  style Apps fill:#d4d4f9,stroke:#333,stroke-width:1px
+  style Factorio_Agent fill:#f9d4f2,stroke:#333,stroke-width:1px
+  style Minecraft_Agent fill:#f9d4f2,stroke:#333,stroke-width:1px
+
+  style DBDriver fill:#f9f9d4,stroke:#333,stroke-width:1px
+  style MemoryDriver fill:#f9f9d4,stroke:#333,stroke-width:1px
+  style DB1 fill:#f9f9d4,stroke:#333,stroke-width:1px
+  style Memory fill:#f9f9d4,stroke:#333,stroke-width:1px
+  style Memory_PGVector fill:#f9f9d4,stroke:#333,stroke-width:1px
 ```
 
-### 添加新的 LLM 提供商
+## Similar Projects
 
-1. 在 `lib/core/llm/providers/` 下创建新的提供商文件
-2. 实现 `LLMProviderInterface` 接口
-3. 在 `lib/core/llm/index.ts` 的 `createLLMProvider` 工厂函数中注册
-4. 在 `LLMProvider` 类型中添加新的提供商名称
+### Open sourced ones
 
-### 添加新的人格模式
+- [kimjammer/Neuro: A recreation of Neuro-Sama originally created in 7 days.](https://github.com/kimjammer/Neuro): very well completed implementation.
+- [SugarcaneDefender/z-waif](https://github.com/SugarcaneDefender/z-waif): Great at gaming, autonomous, and prompt engineering
+- [semperai/amica](https://github.com/semperai/amica/): Great at VRM, WebXR
+- [elizaOS/eliza](https://github.com/elizaOS/eliza): Great examples and software engineering on how to integrate agent into various of systems and APIs
+- [ardha27/AI-Waifu-Vtuber](https://github.com/ardha27/AI-Waifu-Vtuber): Great about Twitch API integrations
+- [InsanityLabs/AIVTuber](https://github.com/InsanityLabs/AIVTuber): Nice UI and UX
+- [IRedDragonICY/vixevia](https://github.com/IRedDragonICY/vixevia)
+- [t41372/Open-LLM-VTuber](https://github.com/t41372/Open-LLM-VTuber)
+- [PeterH0323/Streamer-Sales](https://github.com/PeterH0323/Streamer-Sales)
 
-1. 在 `lib/core/digital-life/types.ts` 的 `PersonaMode` 类型中添加
-2. 在 `PERSONA_MODE_LABELS` 中添加标签
-3. 在 `DecisionEngine` 中添加触发逻辑
-4. 在 `DigitalLifeAgent` 的 `responseTemplates` 中添加回复模板
+### Non-open-sourced ones
 
-## 📝 更新日志
+- https://clips.twitch.tv/WanderingCaringDeerDxCat-Qt55xtiGDSoNmDDr https://www.youtube.com/watch?v=8Giv5mupJNE
+- https://clips.twitch.tv/TriangularAthleticBunnySoonerLater-SXpBk1dFso21VcWD
+- https://www.youtube.com/@NOWA_Mirai
 
-### v2.0.0
-- ✨ 全新数字生命引擎 v2
-- ✨ 8 种人格模式系统
-- ✨ 人格矩阵和关系系统
-- ✨ 记忆系统和成长演化
-- ✨ 礼物系统和技能系统
-- ✨ 可插拔 LLM 接入层
-- ✨ Live2D 虚拟形象
-- 🎨 全新 UI 设计
+## Project Status
 
-## 📄 许可证
+![Repobeats analytics image](https://repobeats.axiom.co/api/embed/a1d6fe2c13ea2bb53a5154435a71e2431f70c2ee.svg 'Repobeats analytics image')
 
-MIT License
+## Acknowledgements
 
----
+- [Reka UI](https://github.com/unovue/reka-ui): for designing the documentation site, the new landing page is based on this, as well as implementing a massive amount of UI components. (shadcn-vue is using Reka UI as the headless, do checkout!)
+- [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM)
+- [josephrocca/ChatVRM-js: A JS conversion/adaptation of parts of the ChatVRM (TypeScript) code for standalone use in OpenCharacters and elsewhere](https://github.com/josephrocca/ChatVRM-js)
+- Design of UI and style was inspired by [Cookard](https://store.steampowered.com/app/2919650/Cookard/), [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/), and [Sensei! I like you so much!](https://store.steampowered.com/app/2957700/_/), and artworks of [Ayame by Mercedes Bazan](https://dribbble.com/shots/22157656-Ayame) with [Wish by Mercedes Bazan](https://dribbble.com/shots/24501019-Wish)
+- [mallorbc/whisper_mic](https://github.com/mallorbc/whisper_mic)
+- [`xsai`](https://github.com/moeru-ai/xsai): Implemented a decent amount of packages to interact with LLMs and models, like [Vercel AI SDK](https://sdk.vercel.ai/) but way small.
 
-**用 AI 温暖每一个孤独的灵魂 💜**
+## Supporters
+
+<p align="center">
+  <strong>Thank you for supporting Project AIRI through OpenCollective, Patreon, and Ko-fi.</strong>
+</p>
+
+<p align="center">
+  <img src="./docs/content/public/assets/sponsors/sponsors.svg" alt="Project AIRI supporters" />
+</p>
+
+## Special Thanks
+
+Special thanks to all contributors for their contributions to Project AIRI ❤️
+
+<a href="https://github.com/moeru-ai/airi/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=moeru-ai/airi" />
+</a>
+
+## Star History
+
+<a href="https://star-history.com/#moeru-ai/airi&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=moeru-ai/airi&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=moeru-ai/airi&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=moeru-ai/airi&type=Date" />
+  </picture>
+</a>

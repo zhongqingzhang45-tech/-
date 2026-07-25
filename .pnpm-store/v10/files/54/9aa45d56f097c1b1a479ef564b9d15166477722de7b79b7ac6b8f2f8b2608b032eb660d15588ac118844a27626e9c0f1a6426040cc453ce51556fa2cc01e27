@@ -1,0 +1,16 @@
+import { Logg } from "@guiiai/logg";
+import { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+
+//#region src/postgres/index.d.ts
+interface MigrateOptions {
+  logger?: Logg;
+}
+declare function migrate<TSchema extends Record<string, unknown>>(db: PostgresJsDatabase<TSchema>, bundledMigrations: {
+  idx: number;
+  when: number;
+  tag: string;
+  hash: string;
+  sql: string[];
+}[], options?: MigrateOptions): Promise<void>;
+//#endregion
+export { MigrateOptions, migrate };

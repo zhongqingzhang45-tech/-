@@ -1,0 +1,40 @@
+import { calculateRoundedSquareMap as R } from "./calculate-rounded-square-map.js";
+function v(i) {
+  const { maximumDisplacement: h, pixelRatio: o, precomputedDisplacementMap: m } = i, a = Math.round(i.width * o), t = Math.round(i.height * o), M = Math.min(i.radius * o, a / 2, t / 2), r = Math.min(i.bezelWidth * o, a / 2, t / 2);
+  return R({
+    fillColor: 4278222976,
+    height: t,
+    maximumDistanceToBorder: r,
+    processPixel(d, c, n, e, q, l, g, u, s) {
+      const D = Math.cos(u), x = Math.sin(u), y = r > M ? g : l / r, z = Math.round(y * m.length), p = m[z] ?? 0, _ = -D * p / h, B = -x * p / h;
+      n[e] = 128 + _ * 127 * s, n[e + 1] = 128 + B * 127 * s, n[e + 2] = 0, n[e + 3] = 255;
+    },
+    radius: M,
+    width: a
+  });
+}
+function w(i = 200, h = 50, o = (t) => t, m = 1.5, a = 128) {
+  const t = 1 / m;
+  function M(r, d) {
+    const c = d, n = 1 - t * t * (1 - c * c);
+    if (n < 0)
+      return null;
+    const e = Math.sqrt(n);
+    return [
+      -(t * c + e) * r,
+      t - (t * c + e) * d
+    ];
+  }
+  return Array.from({ length: a }, (r, d) => {
+    const c = d / a, n = o(c), e = c < 1 ? 1e-4 : -1e-4, l = (o(c + e) - n) / e, g = Math.sqrt(l * l + 1), u = [-l / g, -1 / g], s = M(u[0], u[1]);
+    if (s) {
+      const x = n * h + i;
+      return s[0] * (x / s[1]);
+    } else
+      return 0;
+  });
+}
+export {
+  v as calculateDisplacementMap,
+  w as calculateDisplacementMapRadius
+};

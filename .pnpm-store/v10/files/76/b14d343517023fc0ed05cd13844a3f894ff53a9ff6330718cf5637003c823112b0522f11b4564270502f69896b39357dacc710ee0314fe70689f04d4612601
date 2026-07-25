@@ -1,0 +1,4 @@
+//#region src/selectors.d.ts
+declare function captureRootSelector(rootName: string): string;
+//#endregion
+export { captureRootSelector };

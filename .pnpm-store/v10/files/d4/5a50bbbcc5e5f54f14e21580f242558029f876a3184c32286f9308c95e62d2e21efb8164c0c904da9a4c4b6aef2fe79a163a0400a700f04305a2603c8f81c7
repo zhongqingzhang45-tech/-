@@ -1,0 +1,17 @@
+/**
+ * @see @{@link https://github.com/hashintel/hash/blob/b03f6fe875220edd0f01ae4626ed223d3cf663ed/libs/%40hashintel/refractive/src/maps/calculate-circle-map.ts}
+ */
+import type { ProcessPixelFunction } from './process-pixel.type';
+/**
+ * Generates a circular (or rounded rectangle) map and allows processing of each pixel.
+ * Used by Diplacement and Specular maps.
+ */
+export declare function calculateRoundedSquareMap(props: {
+    fillColor: number;
+    height: number;
+    /** Restricts pixel processing to a certain distance from the border. */
+    maximumDistanceToBorder?: number;
+    processPixel: ProcessPixelFunction;
+    radius: number;
+    width: number;
+}): ImageData;

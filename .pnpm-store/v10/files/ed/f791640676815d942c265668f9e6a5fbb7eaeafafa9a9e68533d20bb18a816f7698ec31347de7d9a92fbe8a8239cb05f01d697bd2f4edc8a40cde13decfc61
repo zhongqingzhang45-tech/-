@@ -1,0 +1,12 @@
+import { EventTag } from "../../eventa-B2HPBK4S.mjs";
+
+//#region src/adapters/websocket/shared.d.ts
+interface WebsocketPayload<T> {
+  id: string;
+  type: EventTag<any, any>;
+  payload: T;
+  timestamp: number;
+}
+//#endregion
+export { WebsocketPayload };
+//# sourceMappingURL=index.d.mts.map

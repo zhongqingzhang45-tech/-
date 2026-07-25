@@ -1,0 +1,4 @@
+import "./split-CKPPrG1i.mjs";
+import { newPlugin } from "./src-Dbre5JHh.mjs";
+
+export { newPlugin };

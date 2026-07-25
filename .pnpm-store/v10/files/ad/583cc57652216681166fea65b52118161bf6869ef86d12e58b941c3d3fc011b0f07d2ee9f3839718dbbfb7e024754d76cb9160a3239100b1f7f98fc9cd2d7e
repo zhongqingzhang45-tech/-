@@ -1,0 +1,19 @@
+import { Linter, Rule } from 'eslint'
+interface PluginConfig {
+  rules: {
+    'no-negated-conjunction': Rule.RuleModule
+    'no-negated-disjunction': Rule.RuleModule
+  }
+  configs: {
+    'recommended-legacy': Linter.LegacyConfig
+    recommended: Linter.Config
+  }
+  meta: {
+    version: string
+    name: string
+  }
+}
+export declare let rules: Record<string, Rule.RuleModule>
+export declare let configs: PluginConfig['configs']
+declare const _default: PluginConfig
+export default _default

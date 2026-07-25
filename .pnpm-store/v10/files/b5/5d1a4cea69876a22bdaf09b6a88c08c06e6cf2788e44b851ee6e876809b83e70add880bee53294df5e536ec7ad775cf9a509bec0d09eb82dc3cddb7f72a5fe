@@ -1,0 +1,111 @@
+import { M as ModelProvider, a as ChatProviderWithExtraOptions } from './types-DW1hvH0W.js';
+import { O as OpenrouterModels, A as AnthropicModels } from './types-B2HZyaCH.js';
+
+interface OpenRouterOptions {
+    extraHeaders?: (Headers | Record<string, string>) & {
+        'HTTP-Referer'?: string;
+        'X-Title'?: string;
+    };
+    /**
+     * Model routing
+     *
+     * @see {@link https://openrouter.ai/docs/features/model-routing}
+     * @example
+     * ```
+     * {
+     *   model: [ 'openai/gpt-1o' ],
+     *   models: [ 'openai/gpt-4o', 'google/gemini-2.0-flash-001' ],
+     *   messages: [
+     *     { role: 'user', content: 'Hello, world!' },
+     *   ]
+     * }
+     * ```
+     */
+    models?: string[];
+    /**
+     * Provider routing
+     *
+     * @see {@link https://openrouter.ai/docs/features/provider-routing}
+     */
+    provider?: {
+        /**
+         * Whether to allow backup providers when the primary is unavailable.
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#disabling-fallbacks}
+         * @default true
+         * @example false
+         */
+        allowFallbacks?: boolean;
+        /**
+         * Control whether to use providers that may store data.
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#requiring-providers-to-comply-with-data-policies}
+         * @default 'allow'
+         */
+        dataCollection?: 'allow' | 'deny';
+        /**
+         * List of provider names to skip for this request.
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#ignoring-providers}
+         */
+        ignore?: string[];
+        /**
+         * List of provider names to try in order (e.g. ["Anthropic", "OpenAI"]).
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#ordering-specific-providers}
+         * @example [ 'Anthropic', 'OpenAI' ]
+         */
+        order?: string[];
+        /**
+         * List of quantization levels to filter by (e.g. ["int4", "int8"]).
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#quantization}
+         * @example [ 'int4', 'int8' ]
+         */
+        quantizations?: string[];
+        /**
+         * Only use providers that support all parameters in your request.
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#requiring-providers-to-support-all-parameters-beta}
+         */
+        requireParameters?: boolean;
+        /**
+         * Sort providers by price or throughput. (e.g. "price" or "throughput").
+         *
+         * @see {@link https://openrouter.ai/docs/features/provider-routing#provider-sorting}
+         * @example 'price'
+         */
+        sort?: string;
+    };
+    /**
+     * To help with prompts that exceed the maximum context size of a model.
+     *
+     * All OpenRouter endpoints with 8k or less context length will default to using middle-out.
+     * To disable this, set `transforms: []` in the request body.
+     *
+     * @see {@link https://openrouter.ai/docs/features/message-transforms}
+     * @default 'middle-out'
+     */
+    transforms?: string[];
+}
+/**
+ * Create a OpenRouter Provider
+ * @see {@link https://openrouter.ai/models}
+ */
+declare const createOpenRouter: (apiKey: string, baseURL?: string) => ModelProvider & ChatProviderWithExtraOptions<OpenrouterModels, OpenRouterOptions>;
+
+interface AnthropicOptions {
+    /** @see {@link https://docs.claude.com/en/api/openai-sdk#extended-thinking-support} */
+    thinking?: {
+        budget_tokens: number;
+        type: 'enabled';
+    };
+}
+/**
+ * Create a Anthropic Provider
+ * @see {@link https://docs.claude.com/en/api/openai-sdk}
+ */
+declare const createAnthropic: (apiKey: string, baseURL?: string) => ModelProvider & ChatProviderWithExtraOptions<AnthropicModels, AnthropicOptions>;
+
+export { createOpenRouter as a, createAnthropic as c };
+export type { AnthropicOptions as A, OpenRouterOptions as O };

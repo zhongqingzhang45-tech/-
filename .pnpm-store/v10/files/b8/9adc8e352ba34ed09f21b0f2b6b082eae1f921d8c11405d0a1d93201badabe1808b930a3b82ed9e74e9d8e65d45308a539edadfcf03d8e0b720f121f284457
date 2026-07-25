@@ -1,0 +1,4 @@
+export declare const rules: unknown;
+export declare const configs: unknown;
+export * as default from "./index.ts";
+//# sourceMappingURL=index.d.ts.map

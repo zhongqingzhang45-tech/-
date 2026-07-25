@@ -1,0 +1,95 @@
+{
+  "name": "vieval",
+  "type": "module",
+  "version": "0.0.5",
+  "description": "Vitest-based evaluation framework for agents, models, and more.",
+  "author": {
+    "name": "Vieval Team",
+    "email": "vieval@moeru.ai",
+    "url": "https://github.com/vieval-dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vieval-dev/vieval.git",
+    "directory": "packages/vieval"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./config": {
+      "types": "./dist/config.d.mts",
+      "default": "./dist/config.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.mts",
+      "default": "./dist/cli/index.mjs"
+    },
+    "./core/runner": {
+      "types": "./dist/core/runner/index.d.mts",
+      "default": "./dist/core/runner/index.mjs"
+    },
+    "./core/assertions": {
+      "types": "./dist/core/assertions/index.d.mts",
+      "default": "./dist/core/assertions/index.mjs"
+    },
+    "./core/processors/results": {
+      "types": "./dist/core/processors/results/index.d.mts",
+      "default": "./dist/core/processors/results/index.mjs"
+    },
+    "./core/inference-executors": {
+      "types": "./dist/core/inference-executors/index.d.mts",
+      "default": "./dist/core/inference-executors/index.mjs"
+    },
+    "./plugins/chat-models": {
+      "types": "./dist/plugins/chat-models/index.d.mts",
+      "default": "./dist/plugins/chat-models/index.mjs"
+    },
+    "./expect": {
+      "types": "./dist/expect.d.mts",
+      "default": "./dist/expect.mjs"
+    },
+    "./testing/expect-extensions": {
+      "types": "./dist/testing/expect-extensions.d.mts",
+      "default": "./dist/testing/expect-extensions.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "bin": {
+    "vieval": "./dist/bin/vieval.mjs"
+  },
+  "files": [
+    "README.md",
+    "dist",
+    "package.json"
+  ],
+  "dependencies": {
+    "@moeru/std": "0.1.0-beta.17",
+    "@pnpm/find-workspace-dir": "^1000.1.5",
+    "@vitest/expect": "^4.1.4",
+    "@vitest/runner": "^4.1.4",
+    "@xsai-ext/providers": "0.5.0-beta.2",
+    "@xsai/generate-text": "0.5.0-beta.2",
+    "c12": "^4.0.0-beta.4",
+    "es-toolkit": "1.43.0",
+    "fast-string-width": "^3.0.2",
+    "meow": "^14.1.0",
+    "tinyglobby": "^0.2.16",
+    "tinyrainbow": "^3.1.0",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "eval:run": "node --import tsx src/bin/vieval.ts run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  }
+}

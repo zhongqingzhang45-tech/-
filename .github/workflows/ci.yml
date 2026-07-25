@@ -1,178 +1,188 @@
-name: CI/CD Pipeline
-
+name: CI
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
 
-env:
-  NODE_VERSION: "18"
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
 
 jobs:
-  # ========== 代码检查 ==========
   lint:
-    name: Lint & Type Check
+    name: Lint
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          node-version: lts/*
+          cache: pnpm
 
-      - name: Install dependencies
-        run: npm ci
+    # Setup .NET for Godot C# linting
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-      - name: Run ESLint
-        run: npm run lint
+    # Lint Godot C# code
+      - name: Lint Godot C#
+        working-directory: ./engines/stage-tamagotchi-godot
+        run: dotnet format stage-tamagotchi-godot.sln --verify-no-changes
 
-      - name: Run TypeScript check
-        run: npx tsc --noEmit
+      - run: docker run -v `pwd`:`pwd` -w `pwd` ghcr.io/realm/swiftlint:latest
+        working-directory: ./apps/stage-pocket
 
-  # ========== 单元测试 ==========
-  test:
-    name: Unit Tests
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: docker run -v `pwd`:`pwd` -w `pwd` ghcr.io/realm/swiftlint:latest
+        working-directory: ./apps/stage-pocket
+
+  build-test:
+    name: Build Test (${{ matrix.app_name }})
+    if: ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.label, 'moeru-ai:i18n/')) }}
+    strategy:
+      matrix:
+        include:
+          - app_name: stage-web
+            command: pnpm -F @proj-airi/stage-web run build && pnpm -F @proj-airi/docs run build:base && mv ./docs/.vitepress/dist ./apps/stage-web/dist/docs && pnpm -F @proj-airi/stage-ui run story:build && mv ./packages/stage-ui/.histoire/dist ./apps/stage-web/dist/ui
+
+          - app_name: stage-tamagotchi
+            command: pnpm -F @proj-airi/stage-tamagotchi run build
+
+          - app_name: stage-tamagotchi-godot
+            command: cd engines/stage-tamagotchi-godot && dotnet restore && dotnet build -c ExportRelease
+
+          - app_name: ui-transitions
+            command: pnpm -F @proj-airi/ui-transitions run play:build
+
+          - app_name: ui-loading-screens
+            command: pnpm -F @proj-airi/ui-loading-screens run play:build
+
     runs-on: ubuntu-latest
-    needs: lint
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # Turborepo
+      - name: Cache turbo build setup
+        uses: actions/cache@v5
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test
-        env:
-          CI: true
-
-  # ========== 构建 ==========
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          node-version: lts/*
+          cache: pnpm
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      # Setup .NET and Godot
+      - name: Setup .NET
+        if: matrix.app_name == 'stage-tamagotchi-godot'
+        uses: actions/setup-dotnet@v4
         with:
-          name: build
-          path: .next
-          retention-days: 7
+          dotnet-version: '8.0.x'
 
-  # ========== Docker 构建 ==========
-  docker:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
+      - name: Setup Godot
+        if: matrix.app_name == 'stage-tamagotchi-godot'
+        uses: chickensoft-games/setup-godot@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          version: 4.6.2
+          use-dotnet: true
+          include-templates: true
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build:packages
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build App
+        run: ${{ matrix.command }}
 
-  # ========== 部署到服务器 ==========
-  deploy:
-    name: Deploy to Server
-    runs-on: ubuntu-latest
-    needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          script: |
-            cd ${{ secrets.SERVER_PATH }}
-            docker-compose pull
-            docker-compose up -d
-            docker image prune -f
-
-  # ========== 健康检查 ==========
-  health-check:
-    name: Health Check
-    runs-on: ubuntu-latest
-    needs: deploy
-    
-    steps:
-      - name: Check application health
+      - name: Export Godot Linux sidecar
+        if: matrix.app_name == 'stage-tamagotchi-godot'
+        working-directory: ./engines/stage-tamagotchi-godot
         run: |
-          for i in {1..5}; do
-            response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.DEPLOY_URL }}/api/health)
-            if [ "$response" = "200" ]; then
-              echo "Health check passed"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying..."
-            sleep 10
-          done
-          echo "Health check failed after 5 attempts"
-          exit 1
+          mkdir -p build/linux
+          godot --headless --export-release "Linux x64" build/linux/godot-stage
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # Turborepo
+      - name: Cache turbo build setup
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      # # Setup .NET and Godot
+      # - name: Setup .NET
+      #   if: matrix.app_name == 'stage-tamagotchi-godot'
+      #   uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '8.0.x'
+
+      # - name: Setup Godot
+      #   if: matrix.app_name == 'stage-tamagotchi-godot'
+      #   uses: chickensoft-games/setup-godot@v2
+      #   with:
+      #     version: 4.6.2
+      #     use-dotnet: true
+      #     include-templates: true
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Setup Playwright
+        run: npx playwright install chromium
+
+      - run: pnpm run build:packages
+      - run: pnpm run test:run
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    if: ${{ !(github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.label, 'moeru-ai:i18n/')) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # Node.js
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+
+  check-provenance:
+    name: Check Provenance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: danielroe/provenance-action@main
+        id: check
+        with:
+          fail-on-provenance-change: true # optional, default: false
+        #   lockfile: pnpm-lock.yaml      # optional
+        #   base-ref: origin/main         # optional, default: origin/main
+        #   fail-on-downgrade: true       # optional, default: true
+      - name: Print result
+        run: "echo 'Downgraded: ${{ steps.check.outputs.downgraded }}'"

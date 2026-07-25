@@ -1,0 +1,22 @@
+import "./split-CKPPrG1i.mjs";
+import { newPlugin } from "./src-Dbre5JHh.mjs";
+
+//#region src/rolldown.ts
+/**
+* Rolldown plugin
+*
+* @example
+* ```ts
+* // rolldown.config.js
+* import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/rolldown'
+*
+* export default {
+*   plugins: [DrizzleORMMigrations()],
+* }
+* ```
+*/
+const rolldown = newPlugin(true).rolldown;
+var rolldown_default = rolldown;
+
+//#endregion
+export { rolldown_default as default, rolldown as "module.exports" };

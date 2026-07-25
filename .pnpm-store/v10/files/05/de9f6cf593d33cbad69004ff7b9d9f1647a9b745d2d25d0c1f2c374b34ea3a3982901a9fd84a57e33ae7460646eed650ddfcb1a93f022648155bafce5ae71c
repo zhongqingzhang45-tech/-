@@ -1,0 +1,5 @@
+import { i as runCli, u as parseNlx } from "./src-DinnZ_Bc.mjs";
+//#region src/commands/nlx.ts
+runCli(parseNlx);
+//#endregion
+export {};

@@ -1,0 +1,43 @@
+import { defineComponent as d, computed as t, openBlock as h, createElementBlock as c, normalizeStyle as o, createElementVNode as l, renderSlot as n } from "vue";
+const m = /* @__PURE__ */ d({
+  __name: "provider",
+  props: {
+    height: {},
+    width: {}
+  },
+  setup(s) {
+    const e = s, p = t(() => ({
+      position: "relative",
+      width: `${e.width}px`,
+      height: `${e.height}px`,
+      overflow: "hidden"
+    })), r = t(() => ({
+      position: "absolute",
+      left: "0px",
+      top: "0px",
+      width: `${e.width}px`,
+      height: `${e.height}px`
+    })), a = t(() => ({
+      position: "absolute",
+      inset: "0px",
+      pointerEvents: "none"
+    }));
+    return (i, v) => (h(), c("div", {
+      style: o(p.value)
+    }, [
+      l("div", {
+        style: o(r.value)
+      }, [
+        n(i.$slots, "default")
+      ], 4),
+      l("div", {
+        style: o(a.value)
+      }, [
+        n(i.$slots, "overlay")
+      ], 4)
+    ], 4));
+  }
+});
+export {
+  m as default
+};

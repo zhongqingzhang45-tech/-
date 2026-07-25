@@ -1,0 +1,413 @@
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { basename, isAbsolute, join, resolve } from "node:path";
+import { cwd, exit } from "node:process";
+import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
+import defu, { defu as defu$1 } from "defu";
+import { createUnplugin } from "unplugin";
+import grayMatter from "gray-matter";
+//#region src/plugins/lfs/index.ts
+const defaultLFSOptions = {
+	root: cwd(),
+	enableFn: async () => true,
+	extraGlobs: [],
+	extraAttributes: [],
+	withDefault: true
+};
+const defaultGitAttributes = `# Default
+*.7z filter=lfs diff=lfs merge=lfs -text
+*.arrow filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.bz2 filter=lfs diff=lfs merge=lfs -text
+*.ckpt filter=lfs diff=lfs merge=lfs -text
+*.ftz filter=lfs diff=lfs merge=lfs -text
+*.gz filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.joblib filter=lfs diff=lfs merge=lfs -text
+*.lfs.* filter=lfs diff=lfs merge=lfs -text
+*.mlmodel filter=lfs diff=lfs merge=lfs -text
+*.model filter=lfs diff=lfs merge=lfs -text
+*.msgpack filter=lfs diff=lfs merge=lfs -text
+*.npy filter=lfs diff=lfs merge=lfs -text
+*.npz filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+*.ot filter=lfs diff=lfs merge=lfs -text
+*.parquet filter=lfs diff=lfs merge=lfs -text
+*.pb filter=lfs diff=lfs merge=lfs -text
+*.pickle filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.rar filter=lfs diff=lfs merge=lfs -text
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+saved_model/**/* filter=lfs diff=lfs merge=lfs -text
+*.tar.* filter=lfs diff=lfs merge=lfs -text
+*.tar filter=lfs diff=lfs merge=lfs -text
+*.tflite filter=lfs diff=lfs merge=lfs -text
+*.tgz filter=lfs diff=lfs merge=lfs -text
+*.wasm filter=lfs diff=lfs merge=lfs -text
+*.xz filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.zst filter=lfs diff=lfs merge=lfs -text
+*tfevents* filter=lfs diff=lfs merge=lfs -text
+`;
+function resolveLFSOptions(rawOptions) {
+	return defu(rawOptions, defaultLFSOptions);
+}
+function generateGitAttributes(rawOptions) {
+	const options = resolveLFSOptions(rawOptions);
+	const extraGlobsIntoGitAttributes = options.extraGlobs.map((glob) => {
+		return `${glob} filter=lfs diff=lfs merge=lfs -text`;
+	});
+	return `${[
+		options.extraAttributes.join("\n").trim(),
+		extraGlobsIntoGitAttributes.join("\n").trim(),
+		options.withDefault ? defaultGitAttributes.trim() : ""
+	].filter(Boolean).join("\n")}\n`;
+}
+createUnplugin((rawOptions) => {
+	const options = resolveLFSOptions(rawOptions);
+	return {
+		name: "hfup:lfs-gitattributes",
+		async buildEnd() {
+			if (options?.enableFn && !await options.enableFn(options)) return;
+			this.emitFile({
+				type: "asset",
+				fileName: ".gitattributes",
+				source: generateGitAttributes(options)
+			});
+		}
+	};
+});
+//#endregion
+//#region src/utils/fs.ts
+async function exists(path) {
+	try {
+		await stat(path);
+		return true;
+	} catch (error) {
+		if (isENOENTError(error)) return false;
+		throw error;
+	}
+}
+function isENOENTError(error) {
+	if (!(error instanceof Error)) return false;
+	if (!("code" in error)) return false;
+	if (error.code !== "ENOENT") return false;
+	return true;
+}
+//#endregion
+//#region src/plugins/model-card/index.ts
+function renderSections(sections) {
+	if (!sections) return "";
+	return [
+		"model_description",
+		"intended_uses",
+		"limitations",
+		"training_data",
+		"evaluation",
+		"environmental_impact",
+		"citation",
+		"model_card_authors",
+		"model_card_contact",
+		"more_information"
+	].filter((key) => sections[key]?.trim()).map((key) => {
+		return `## ${key.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase())}\n\n${sections[key].trim()}`;
+	}).join("\n\n");
+}
+async function generateModelCardReadme(configurations = {}) {
+	const { root = cwd(), metadata: extraMetadata, body, sections, ...inputConfiguration } = configurations;
+	const resolvedConfiguration = defu$1(inputConfiguration, {});
+	const rootPackageJSONPath = join(root, "package.json");
+	let packageJSON;
+	if (await exists(rootPackageJSONPath)) {
+		const rootPackageJSONContent = await readFile(rootPackageJSONPath, "utf-8");
+		packageJSON = JSON.parse(rootPackageJSONContent);
+	}
+	const rootReadmePaths = [
+		join(root, "README.md"),
+		join(root, "readme.md"),
+		join(root, "README.markdown"),
+		join(root, "readme.markdown"),
+		join(root, "README"),
+		join(root, "readme")
+	];
+	let readme;
+	for (const rootReadmePath of rootReadmePaths) if (await exists(rootReadmePath)) {
+		const { content } = grayMatter(await readFile(rootReadmePath, "utf-8"));
+		readme = content;
+		break;
+	}
+	if (!resolvedConfiguration.title) resolvedConfiguration.title = packageJSON?.name ?? "Model Card";
+	const frontMatter = {
+		...resolvedConfiguration,
+		...extraMetadata
+	};
+	delete frontMatter.title;
+	delete frontMatter.body;
+	delete frontMatter.sections;
+	delete frontMatter.metadata;
+	const fallbackReadme = `# ${resolvedConfiguration.title}`;
+	const baseReadme = body ?? readme ?? fallbackReadme;
+	const sectionBlock = renderSections(sections);
+	const combinedBody = sectionBlock ? `${baseReadme}\n\n${sectionBlock}` : baseReadme;
+	return grayMatter.stringify({ content: `\n${combinedBody}` }, frontMatter);
+}
+createUnplugin((configurations = {}) => {
+	let generatedReadme = "";
+	return {
+		name: "hfup:modelcard-readme",
+		async buildStart() {
+			generatedReadme = await generateModelCardReadme(configurations);
+		},
+		buildEnd() {
+			this.emitFile({
+				type: "asset",
+				fileName: "README.md",
+				source: generatedReadme
+			});
+		}
+	};
+});
+//#endregion
+//#region src/plugins/space-card/types.ts
+const licenseValues = [
+	"apache-2.0",
+	"mit",
+	"openrail",
+	"bigscience-openrail-m",
+	"creativeml-openrail-m",
+	"bigscience-bloom-rail-1.0",
+	"bigcode-openrail-m",
+	"afl-3.0",
+	"artistic-2.0",
+	"bsl-1.0",
+	"bsd",
+	"bsd-2-clause",
+	"bsd-3-clause",
+	"bsd-3-clause-clear",
+	"c-uda",
+	"cc",
+	"cc0-1.0",
+	"cc-by-2.0",
+	"cc-by-2.5",
+	"cc-by-3.0",
+	"cc-by-4.0",
+	"cc-by-sa-3.0",
+	"cc-by-sa-4.0",
+	"cc-by-nc-2.0",
+	"cc-by-nc-3.0",
+	"cc-by-nc-4.0",
+	"cc-by-nd-4.0",
+	"cc-by-nc-nd-3.0",
+	"cc-by-nc-nd-4.0",
+	"cc-by-nc-sa-2.0",
+	"cc-by-nc-sa-3.0",
+	"cc-by-nc-sa-4.0",
+	"cdla-sharing-1.0",
+	"cdla-permissive-1.0",
+	"cdla-permissive-2.0",
+	"wtfpl",
+	"ecl-2.0",
+	"epl-1.0",
+	"epl-2.0",
+	"etalab-2.0",
+	"eupl-1.1",
+	"agpl-3.0",
+	"gfdl",
+	"gpl",
+	"gpl-2.0",
+	"gpl-3.0",
+	"lgpl",
+	"lgpl-2.1",
+	"lgpl-3.0",
+	"isc",
+	"lppl-1.3c",
+	"ms-pl",
+	"apple-ascl",
+	"mpl-2.0",
+	"odc-by",
+	"odbl",
+	"openrail++",
+	"osl-3.0",
+	"postgresql",
+	"ofl-1.1",
+	"ncsa",
+	"unlicense",
+	"zlib",
+	"pddl",
+	"lgpl-lr",
+	"deepfloyd-if-license",
+	"llama2",
+	"llama3",
+	"llama3.1",
+	"llama3.2",
+	"llama3.3",
+	"gemma",
+	"unknown",
+	"other"
+];
+//#endregion
+//#region src/plugins/space-card/index.ts
+const defaultSpaceCardConfiguration = {
+	emoji: "🚀",
+	sdk: "static",
+	pinned: false,
+	license: "unknown"
+};
+async function generateSpaceCardReadme(configurations = {}) {
+	const { root = cwd(), ...inputConfiguration } = configurations;
+	const resolvedConfiguration = defu$1(inputConfiguration, defaultSpaceCardConfiguration);
+	const rootPackageJSONPath = join(root, "package.json");
+	let packageJSON;
+	if (await exists(rootPackageJSONPath)) {
+		const rootPackageJSONContent = await readFile(rootPackageJSONPath, "utf-8");
+		packageJSON = JSON.parse(rootPackageJSONContent);
+	}
+	let readme;
+	const rootReadmePaths = [
+		join(root, "README.md"),
+		join(root, "readme.md"),
+		join(root, "README.markdown"),
+		join(root, "readme.markdown"),
+		join(root, "README"),
+		join(root, "readme")
+	];
+	for (const rootReadmePath of rootReadmePaths) if (await exists(rootReadmePath)) {
+		const { content } = grayMatter(await readFile(rootReadmePath, "utf-8"));
+		readme = content;
+		break;
+	}
+	if (resolvedConfiguration.title == null) {
+		if (!packageJSON) throw new Error(`\`title\` is required when \`package.json\` does not exist in the root directory (${rootPackageJSONPath})`);
+		if (!packageJSON.name) throw new Error("`title` is required when `name` does not exist in the root package.json");
+		resolvedConfiguration.title = packageJSON.name;
+	}
+	if (resolvedConfiguration.license == null) {
+		if (!packageJSON) throw new Error(`\`license\` is required when \`package.json\` does not exist in the root directory (${rootPackageJSONPath})`);
+		if (!packageJSON.license) throw new Error("`license` is required when `license` does not exist in the root package.json");
+		const license = String(packageJSON.license).toLowerCase();
+		if (!licenseValues.includes(license)) throw new Error(`Auto discovered license \`${license}\` in \`package.json\` is not supported. Must be one of licenses: ${licenseValues.join(", ")} to specified in \`configuration\` argument`);
+		resolvedConfiguration.license = license;
+	}
+	if (resolvedConfiguration.sdk == null) resolvedConfiguration.sdk = "static";
+	if (resolvedConfiguration.short_description && resolvedConfiguration.short_description.length > 60) throw new Error("short_description must be less or equal to 60 characters");
+	const fallbackReadme = `# ${resolvedConfiguration.title}`;
+	return grayMatter.stringify({ content: `\n${readme ?? fallbackReadme}` }, resolvedConfiguration);
+}
+createUnplugin((configurations = {}) => {
+	let generatedReadme = "";
+	return {
+		name: "hfup:spacecard-readme",
+		async buildStart() {
+			generatedReadme = await generateSpaceCardReadme(configurations);
+		},
+		buildEnd() {
+			this.emitFile({
+				type: "asset",
+				fileName: "README.md",
+				source: generatedReadme
+			});
+		}
+	};
+});
+//#endregion
+//#region src/cli.ts
+function printHelp() {
+	console.log(`hfup CLI
+
+Usage:
+  hfup generate [options]
+
+Options:
+  --root <path>        Root directory used to resolve source files (default: cwd)
+  --outDir <path>      Directory where generated files are written (default: root)
+  --config <path>      Config file path (json/js/mjs/cjs)
+  --with-lfs           Generate .gitattributes
+  --with-space-card    Generate README.md with HuggingFace front matter
+  --with-model-card    Generate README.md with HuggingFace model card front matter
+  --help               Show this help
+`);
+}
+async function loadConfig(configPath) {
+	const absoluteConfigPath = resolve(configPath);
+	if (!await exists(absoluteConfigPath)) throw new Error(`Config file does not exist: ${absoluteConfigPath}`);
+	if (absoluteConfigPath.endsWith(".json")) {
+		const { readFile } = await import("node:fs/promises");
+		const content = await readFile(absoluteConfigPath, "utf-8");
+		return JSON.parse(content);
+	}
+	const module = await import(pathToFileURL(absoluteConfigPath).href);
+	return module.default ?? module;
+}
+async function findDefaultConfig(root) {
+	for (const candidateFile of [
+		"hfup.config.json",
+		"hfup.config.mjs",
+		"hfup.config.js",
+		"hfup.config.cjs"
+	]) {
+		const candidatePath = join(root, candidateFile);
+		if (await exists(candidatePath)) return candidatePath;
+	}
+}
+function resolveOutputPath(root, outDir) {
+	return isAbsolute(outDir) ? outDir : resolve(root, outDir);
+}
+async function main() {
+	const { positionals, values } = parseArgs({
+		allowPositionals: true,
+		options: {
+			root: { type: "string" },
+			outDir: { type: "string" },
+			config: { type: "string" },
+			"with-lfs": { type: "boolean" },
+			"with-space-card": { type: "boolean" },
+			"with-model-card": { type: "boolean" },
+			help: { type: "boolean" }
+		},
+		strict: true
+	});
+	if (values.help || positionals.length === 0) {
+		printHelp();
+		return;
+	}
+	const command = positionals[0];
+	if (command !== "generate") throw new Error(`Unknown command: ${command}`);
+	const root = resolve(values.root ?? cwd());
+	const outDir = resolveOutputPath(root, values.outDir ?? root);
+	const discoveredConfigPath = (values.config ? resolve(values.config) : void 0) ?? await findDefaultConfig(root);
+	const config = discoveredConfigPath ? await loadConfig(discoveredConfigPath) : {};
+	if (values["with-space-card"] && values["with-model-card"]) throw new Error("`--with-space-card` and `--with-model-card` cannot be used together because both write README.md");
+	const shouldGenerateLFS = values["with-lfs"] || !values["with-lfs"] && !values["with-space-card"] && !values["with-model-card"];
+	const noCardFlagProvided = !values["with-space-card"] && !values["with-model-card"];
+	const shouldGenerateModelCard = values["with-model-card"] || noCardFlagProvided && Boolean(config.modelCard) && !config.spaceCard;
+	const shouldGenerateSpaceCard = values["with-space-card"] || noCardFlagProvided && !shouldGenerateModelCard;
+	await mkdir(outDir, { recursive: true });
+	const writes = [];
+	if (shouldGenerateLFS) {
+		const lfsContent = generateGitAttributes(config.lfs);
+		writes.push(writeFile(join(outDir, ".gitattributes"), lfsContent, "utf-8"));
+	}
+	if (shouldGenerateSpaceCard) {
+		const spaceCardContent = await generateSpaceCardReadme({
+			...config.spaceCard,
+			root
+		});
+		writes.push(writeFile(join(outDir, "README.md"), spaceCardContent, "utf-8"));
+	} else if (shouldGenerateModelCard) {
+		const modelCardContent = await generateModelCardReadme({
+			...config.modelCard,
+			root
+		});
+		writes.push(writeFile(join(outDir, "README.md"), modelCardContent, "utf-8"));
+	}
+	await Promise.all(writes);
+	const outputs = [shouldGenerateLFS ? ".gitattributes" : null, shouldGenerateSpaceCard || shouldGenerateModelCard ? "README.md" : null].filter(Boolean).join(", ");
+	console.log(`Generated ${outputs} in ${outDir}${discoveredConfigPath ? ` (config: ${basename(discoveredConfigPath)})` : ""}`);
+}
+main().catch((error) => {
+	console.error(error instanceof Error ? error.message : String(error));
+	exit(1);
+});
+//#endregion

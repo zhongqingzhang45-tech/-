@@ -1,0 +1,6 @@
+declare const _default: import("../rule.ts").RuleModuleWithName<"fix" | "assign", [], {
+    description: string;
+    recommended: string;
+}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
+export default _default;
+//# sourceMappingURL=prefer-timer-id.d.ts.map

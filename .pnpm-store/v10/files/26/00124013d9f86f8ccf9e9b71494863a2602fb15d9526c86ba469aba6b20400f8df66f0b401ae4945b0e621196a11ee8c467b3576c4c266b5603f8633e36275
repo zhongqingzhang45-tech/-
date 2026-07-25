@@ -1,0 +1,129 @@
+import { defineComponent as f, computed as r, openBlock as u, createElementBlock as a, Fragment as g, createElementVNode as i, renderList as m } from "vue";
+import { splitImageDataToParts as v } from "../helpers/split-imagedata-to-parts.js";
+const w = ["href", "width", "height", "result"], R = ["href", "width", "height", "result"], y = ["href", "x", "width", "height", "result"], W = ["href", "width", "height", "result"], $ = ["href", "x", "width", "height", "result"], x = ["href", "y", "width", "height", "result"], b = ["href", "y", "width", "height", "result"], L = ["href", "x", "y", "width", "height", "result"], B = ["href", "width", "height", "result"], I = ["in", "in2", "result"], D = /* @__PURE__ */ f({
+  name: "CompositeParts",
+  __name: "composite-parts",
+  props: {
+    imageData: {},
+    cornerWidth: {},
+    pixelRatio: {},
+    width: {},
+    height: {},
+    result: {},
+    hideTop: { type: Boolean },
+    hideBottom: { type: Boolean },
+    hideLeft: { type: Boolean },
+    hideRight: { type: Boolean }
+  },
+  setup(e) {
+    const t = e, h = r(() => v({
+      imageData: t.imageData,
+      cornerWidth: t.cornerWidth,
+      pixelRatio: t.pixelRatio
+    })), l = r(() => t.width - t.cornerWidth), n = r(() => t.height - t.cornerWidth), s = r(
+      () => [
+        !t.hideTop && "top",
+        !t.hideLeft && "left",
+        !t.hideRight && "right",
+        !t.hideBottom && "bottom",
+        !t.hideTop && !t.hideLeft && "topLeft",
+        !t.hideTop && !t.hideRight && "topRight",
+        !t.hideBottom && !t.hideLeft && "bottomLeft",
+        !t.hideBottom && !t.hideRight && "bottomRight"
+      ].filter((d) => typeof d == "string")
+    );
+    return (d, A) => (u(), a(g, null, [
+      i("feImage", {
+        href: h.value.topLeft,
+        x: 0,
+        y: 0,
+        width: e.cornerWidth,
+        height: e.cornerWidth,
+        result: `${e.result}_topLeft`,
+        preserveAspectRatio: "none"
+      }, null, 8, w),
+      i("feImage", {
+        href: h.value.top,
+        x: 0,
+        y: 0,
+        width: e.width,
+        height: e.cornerWidth,
+        result: `${e.result}_top`,
+        preserveAspectRatio: "none"
+      }, null, 8, R),
+      i("feImage", {
+        href: h.value.topRight,
+        x: l.value,
+        y: 0,
+        width: e.cornerWidth,
+        height: e.cornerWidth,
+        result: `${e.result}_topRight`,
+        preserveAspectRatio: "none"
+      }, null, 8, y),
+      i("feImage", {
+        href: h.value.left,
+        x: 0,
+        y: 0,
+        width: e.cornerWidth,
+        height: e.height,
+        result: `${e.result}_left`,
+        preserveAspectRatio: "none"
+      }, null, 8, W),
+      i("feImage", {
+        href: h.value.right,
+        x: l.value,
+        y: 0,
+        width: e.cornerWidth,
+        height: e.height,
+        result: `${e.result}_right`,
+        preserveAspectRatio: "none"
+      }, null, 8, $),
+      i("feImage", {
+        href: h.value.bottomLeft,
+        x: 0,
+        y: n.value,
+        width: e.cornerWidth,
+        height: e.cornerWidth,
+        result: `${e.result}_bottomLeft`,
+        preserveAspectRatio: "none"
+      }, null, 8, x),
+      i("feImage", {
+        href: h.value.bottom,
+        x: 0,
+        y: n.value,
+        width: e.width,
+        height: e.cornerWidth,
+        result: `${e.result}_bottom`,
+        preserveAspectRatio: "none"
+      }, null, 8, b),
+      i("feImage", {
+        href: h.value.bottomRight,
+        x: l.value,
+        y: n.value,
+        width: e.cornerWidth,
+        height: e.cornerWidth,
+        result: `${e.result}_bottomRight`,
+        preserveAspectRatio: "none"
+      }, null, 8, L),
+      i("feImage", {
+        href: h.value.center,
+        x: 0,
+        y: 0,
+        width: e.width,
+        height: e.height,
+        result: `${e.result}_base`,
+        preserveAspectRatio: "none"
+      }, null, 8, B),
+      (u(!0), a(g, null, m(s.value, (c, o) => (u(), a("feComposite", {
+        key: c,
+        operator: "over",
+        in: `${e.result}_${c}`,
+        in2: o === 0 ? `${e.result}_base` : `${e.result}_composite_${o}`,
+        result: o === s.value.length - 1 ? e.result : `${e.result}_composite_${o}`
+      }, null, 8, I))), 128))
+    ], 64));
+  }
+});
+export {
+  D as default
+};

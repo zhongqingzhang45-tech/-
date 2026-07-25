@@ -1,0 +1,45 @@
+import { WithUnknown } from '@xsai/shared';
+import { ChatOptions, CompletionStep, OnToolCallFinishCallback, OnToolCallStartCallback, PrepareStep, RepairToolCallFunction, StopCondition, FinishReason, AssistantMessage, Usage, Message, CompletionToolCall, CompletionToolResult } from '@xsai/shared-chat';
+
+interface GenerateTextOptions extends ChatOptions {
+    onStepFinish?: (step: CompletionStep<true>) => Promise<unknown> | unknown;
+    captureToolErrors?: boolean;
+    onToolCallFinish?: OnToolCallFinishCallback;
+    onToolCallStart?: OnToolCallStartCallback;
+    prepareStep?: PrepareStep;
+    repairToolCall?: RepairToolCallFunction;
+    /** @internal */
+    steps?: CompletionStep<true>[];
+    /** @default `stepCountAtLeast(1)` */
+    stopWhen?: StopCondition;
+    /** if you want to enable stream, use `@xsai/stream-{text,object}` */
+    stream?: never;
+}
+interface GenerateTextResponse {
+    choices: {
+        finish_reason: FinishReason;
+        index: number;
+        message: Omit<AssistantMessage, 'name'>;
+        refusal?: string;
+    }[];
+    created: number;
+    id: string;
+    model: string;
+    object: 'chat.completion';
+    system_fingerprint: string;
+    usage: Usage;
+}
+interface GenerateTextResult {
+    finishReason: FinishReason;
+    messages: Message[];
+    reasoningText?: string;
+    steps: CompletionStep<true>[];
+    text?: string;
+    toolCalls: CompletionToolCall[];
+    toolResults: CompletionToolResult[];
+    usage: Usage;
+}
+declare const generateText: (options: WithUnknown<GenerateTextOptions>) => Promise<GenerateTextResult>;
+
+export { generateText };
+export type { GenerateTextOptions, GenerateTextResponse, GenerateTextResult };

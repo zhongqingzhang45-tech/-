@@ -1,0 +1,72 @@
+{
+  "name": "injeca",
+  "type": "module",
+  "version": "0.2.0",
+  "description": "Pure functional programming based dependency injection library inspired by go.uber.org/fig and go.uber.org/dig.",
+  "author": {
+    "name": "Moeru AI Project AIRI Team",
+    "email": "airi@moeru.ai",
+    "url": "https://github.com/moeru-ai"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/moeru-ai/injeca",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moeru-ai/injeca.git"
+  },
+  "exports": {
+    ".": {
+      "type": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./global": {
+      "type": "./dist/global.d.mts",
+      "default": "./dist/global.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.mts",
+  "files": [
+    "README.md",
+    "dist",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "@guiiai/logg": ">= 1",
+    "error-stack-parser": "^2.1.4",
+    "nanoid": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "@guiiai/logg": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^8.2.0",
+    "@moeru/eslint-config": "^0.1.0-beta.18",
+    "@moeru/std": "^0.1.0-beta.18",
+    "@moeru/tsconfig": "^0.1.0-beta.18",
+    "@types/node": "^25.6.0",
+    "bumpp": "^11.0.1",
+    "eslint": "^10.2.0",
+    "eslint-plugin-oxlint": "^1.60.0",
+    "oxlint": "^1.60.0",
+    "publint": "^0.3.18",
+    "taze": "^19.11.0",
+    "tsdown": "^0.17.4",
+    "typescript": "^6.0.2",
+    "unplugin-unused": "^0.5.7",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest --coverage",
+    "test:run": "vitest run",
+    "lint": "eslint --cache .",
+    "lint:fix": "eslint --cache --fix .",
+    "typecheck": "tsc --noEmit",
+    "up": "taze -w -r -I -f && pnpm prune && pnpm dedupe"
+  }
+}

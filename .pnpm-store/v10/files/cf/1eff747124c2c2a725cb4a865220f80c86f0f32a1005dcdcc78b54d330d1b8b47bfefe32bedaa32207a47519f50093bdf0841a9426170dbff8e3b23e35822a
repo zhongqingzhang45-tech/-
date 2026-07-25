@@ -1,0 +1,47 @@
+import { merge, createSpeechProvider, createChatProvider } from './utils/index.js';
+
+const createPlayer2 = (baseURL = "http://localhost:4315/v1/", gameKey = "xsai") => merge(
+  createChatProvider({ baseURL, headers: { "player2-game-key": gameKey } }),
+  createSpeechProvider({
+    baseURL,
+    fetch: async (input, reqInit) => {
+      const newUrl = `${input.toString().slice(0, -"audio/speech".length)}tts/speak`;
+      try {
+        const { input: input2, response_format, speed, voice, ...rest } = JSON.parse(reqInit?.body);
+        const modified = {
+          audio_format: response_format,
+          play_in_app: false,
+          speed: speed ?? 1,
+          text: input2,
+          voice_ids: voice != null ? [voice] : [],
+          ...rest
+        };
+        if (reqInit) {
+          reqInit.body = JSON.stringify(modified);
+        }
+      } catch (err) {
+        console.warn("Could not parse body as JSON:", err);
+      }
+      return globalThis.fetch(newUrl, reqInit).then(async (res) => res.json()).then((json) => {
+        const base64 = json.data ?? "";
+        const bytes = Uint8Array.fromBase64(base64);
+        const body = new ReadableStream({
+          start: (controller) => {
+            controller.enqueue(bytes);
+            controller.close();
+          }
+        });
+        return new Response(body, {
+          headers: {
+            "Content-Type": "audio/mpeg"
+            // adjust if needed
+          },
+          status: 200
+        });
+      });
+    },
+    headers: { "player2-game-key": gameKey }
+  })
+);
+
+export { createPlayer2 as c };

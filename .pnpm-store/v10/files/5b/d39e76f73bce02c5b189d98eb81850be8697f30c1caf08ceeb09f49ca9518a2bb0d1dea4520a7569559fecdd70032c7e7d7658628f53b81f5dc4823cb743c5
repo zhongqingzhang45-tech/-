@@ -1,0 +1,17 @@
+import { unpluginFactory } from "./index.mjs";
+import { createWebpackPlugin } from "unplugin";
+//#region src/webpack.ts
+/**
+* Webpack plugin
+*
+* @example
+* ```ts
+* // webpack.config.js
+* module.exports = {
+*  plugins: [require("unplugin-yaml/webpack")()],
+* }
+* ```
+*/
+var webpack_default = createWebpackPlugin(unpluginFactory);
+//#endregion
+export { webpack_default as default };

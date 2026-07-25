@@ -1,0 +1,22 @@
+//#region src/rspack.d.ts
+/**
+ * This entry file is for rspack plugin.
+ *
+ * @module
+ */
+/**
+ * Rspack plugin
+ *
+ * @example
+ * ```ts
+ * // rspack.config.js
+ * module.exports = {
+ *  plugins: [require('@proj-airi/unplugin-drizzle-orm-migrations/rspack')()],
+ * }
+ * ```
+ */
+declare const rspack: (options?: {
+  root?: string;
+}) => RspackPluginInstance;
+//#endregion
+export { rspack as default, rspack as "module.exports" };

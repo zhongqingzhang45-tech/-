@@ -1,0 +1,3 @@
+declare function eadableStreamToAsyncIterator<T, F = Uint8Array>(res: ReadableStream<F>, func: (value: F) => Promise<T>): AsyncGenerator<T, void, unknown>;
+
+export { eadableStreamToAsyncIterator };

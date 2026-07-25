@@ -1,0 +1,19 @@
+import unplugin from "./index.mjs";
+
+//#region src/rollup.d.ts
+/**
+ * Rollup plugin
+ *
+ * @example
+ * ```ts
+ * // rollup.config.js
+ * import yaml from "unplugin-yaml/rollup"
+ *
+ * export default {
+ *   plugins: [yaml()],
+ * }
+ * ```
+ */
+declare const _default: typeof unplugin.rollup;
+//#endregion
+export { _default as default };

@@ -1,0 +1,30 @@
+import { default as a } from "./components/canvas.vue.js";
+import { default as f } from "./components/controls/navigator/navigator.vue.js";
+import { default as m } from "./components/helpers/decos/deco-focus-mask.vue.js";
+import { default as d } from "./components/helpers/decos/deco-highlight-region.vue.js";
+import { default as p } from "./components/helpers/decos/deco-outline-region.vue.js";
+import { default as x } from "./components/helpers/decos/provider.vue.js";
+import { default as n } from "./components/helpers/router/capture-root.vue.js";
+import { default as g } from "./components/helpers/router/provider.vue.js";
+import "vue";
+import { default as v } from "./components/platforms/macos/PlatformRoot.vue.js";
+import { default as P } from "./components/platforms/windows/PlatformRoot.vue.js";
+import { useSceneNavigation as h } from "./composables/screen-navigation/use-screen-navigation.js";
+import { useSceneReady as C } from "./use-scene-ready.js";
+import { markScenarioReady as N, resetScenarioReady as w } from "@vishot/core";
+export {
+  m as DecoFocusMask,
+  d as DecoHighlightRegion,
+  p as DecoOutlineRegion,
+  x as DecoProvider,
+  v as MacosPlatformRoot,
+  n as RouterCaptureRoot,
+  g as RouterProvider,
+  a as ScenarioCanvas,
+  f as ScreenNavigator,
+  P as WindowsPlatformRoot,
+  N as markScenarioReady,
+  w as resetScenarioReady,
+  h as useSceneNavigation,
+  C as useSceneReady
+};

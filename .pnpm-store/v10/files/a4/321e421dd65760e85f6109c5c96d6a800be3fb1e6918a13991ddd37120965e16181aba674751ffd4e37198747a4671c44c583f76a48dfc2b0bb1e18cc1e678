@@ -1,0 +1,451 @@
+import { createSpeechProviderWithExtraOptions, merge } from "@xsai-ext/providers/utils";
+import { objCamelToSnake, requestBody, requestHeaders, requestURL } from "@xsai/shared";
+
+//#region src/backend/alibabacloud.ts
+/**
+* [Alibaba Cloud / 阿里云 通义听悟](https://tingwu.aliyun.com/) provider for [UnSpeech](https://github.com/moeru-ai/unspeech)
+* only.
+*
+* [UnSpeech](https://github.com/moeru-ai/unspeech) is a open-source project that provides a
+* OpenAI-compatible audio & speech related API that can be used with various providers such
+* as ElevenLabs, Azure TTS, Google TTS, etc.
+*
+* @param apiKey - Alibaba Cloud AccessKey Token (see https://help.aliyun.com/document_detail/72153.html)
+* @param baseURL - UnSpeech Instance URL
+* @returns SpeechProviderWithExtraOptions & VoiceProviderWithExtraOptions
+*/
+function createUnAlibabaCloud(apiKey, baseURL = "http://localhost:5933/v1/") {
+	const toUnSpeechOptions = (options) => {
+		const { pitch, rate, sampleRate, volume } = options;
+		const extraBody = {
+			pitch,
+			rate,
+			sampleRate,
+			volume
+		};
+		Object.keys(extraBody).forEach((key) => extraBody[key] === void 0 && delete extraBody[key]);
+		return { extraBody: objCamelToSnake(extraBody) };
+	};
+	return merge({ speech: (model, options) => ({
+		...options ? toUnSpeechOptions(options) : {},
+		apiKey,
+		baseURL,
+		model: `alibaba/${model}`
+	}) }, { voice: (options) => {
+		let adjustedBaseURL = baseURL;
+		if (adjustedBaseURL.endsWith("v1/")) adjustedBaseURL = adjustedBaseURL.slice(0, -3);
+		else if (adjustedBaseURL.endsWith("v1")) adjustedBaseURL = adjustedBaseURL.slice(0, -2);
+		return {
+			query: "provider=alibaba",
+			...options ? toUnSpeechOptions(options) : {},
+			apiKey,
+			baseURL: adjustedBaseURL
+		};
+	} });
+}
+
+//#endregion
+//#region src/backend/deepgram.ts
+/**
+* [Deepgram](https://deepgram.com/) provider for [UnSpeech](https://github.com/moeru-ai/unspeech)
+* only.
+*
+* [UnSpeech](https://github.com/moeru-ai/unspeech) is a open-source project that provides a
+* OpenAI-compatible audio & speech related API that can be used with various providers such
+* as ElevenLabs, Azure TTS, Google TTS, etc.
+*
+* @param apiKey - Deepgram API Key
+* @param baseURL - UnSpeech Instance URL
+* @returns SpeechProviderWithExtraOptions
+*/
+function createUnDeepgram(apiKey, baseURL = "http://localhost:5933/v1/") {
+	return merge({ speech: (model, _options) => ({
+		apiKey,
+		baseURL,
+		model: model.startsWith("deepgram/") ? model : `deepgram/${model}`
+	}) }, { voice: (_options) => {
+		if (baseURL.endsWith("v1/")) baseURL = baseURL.slice(0, -3);
+		else if (baseURL.endsWith("v1")) baseURL = baseURL.slice(0, -2);
+		return {
+			query: "provider=deepgram",
+			apiKey,
+			baseURL
+		};
+	} });
+}
+
+//#endregion
+//#region src/backend/elevenlabs.ts
+/**
+* [ElevenLabs](https://elevenlabs.io/) provider for [UnSpeech](https://github.com/moeru-ai/unspeech)
+* only.
+*
+* [UnSpeech](https://github.com/moeru-ai/unspeech) is a open-source project that provides a
+* OpenAI-compatible audio & speech related API that can be used with various providers such
+* as ElevenLabs, Azure TTS, Google TTS, etc.
+*
+* @param apiKey - ElevenLabs API Key
+* @param baseURL - UnSpeech Instance URL
+* @returns SpeechProviderWithExtraOptions
+*/
+function createUnElevenLabs(apiKey, baseURL = "http://localhost:5933/v1/") {
+	const toUnSpeechOptions = ({ applyTextNormalization, languageCode, nextRequestIds, nextText, previousRequestIds, previousText, pronunciationDictionaryLocators, seed, voiceSettings }) => ({ extraBody: objCamelToSnake({
+		applyTextNormalization,
+		languageCode,
+		nextRequestIds,
+		nextText,
+		previousRequestIds,
+		previousText,
+		pronunciationDictionaryLocators: pronunciationDictionaryLocators ? pronunciationDictionaryLocators.map((pdl) => objCamelToSnake(pdl)) : void 0,
+		seed,
+		voiceSettings: objCamelToSnake(voiceSettings != null ? voiceSettings : {
+			similarityBoost: .75,
+			stability: .5
+		})
+	}) });
+	return merge({ speech: (model, options) => ({
+		...options ? toUnSpeechOptions(options) : {},
+		apiKey,
+		baseURL,
+		model: `elevenlabs/${model}`
+	}) }, { voice: (options) => {
+		if (baseURL.endsWith("v1/")) baseURL = baseURL.slice(0, -3);
+		else if (baseURL.endsWith("v1")) baseURL = baseURL.slice(0, -2);
+		return {
+			query: "provider=elevenlabs",
+			...options ? toUnSpeechOptions(options) : {},
+			apiKey,
+			baseURL
+		};
+	} });
+}
+
+//#endregion
+//#region src/backend/microsoft.ts
+/**
+* Default Microsoft output format used when callers only ask for OpenAI-style
+* `mp3`. This keeps the common path on a compact 24kHz MP3 instead of the
+* backend's maximum-quality 48kHz default.
+*/
+const DEFAULT_MICROSOFT_OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3";
+const MICROSOFT_VOICE_ID = /^[a-z0-9-]+$/i;
+/**
+* Checks whether a Microsoft voice id is safe to embed in SSML attributes.
+*
+* Use when:
+* - A caller builds SSML locally before sending it to unspeech.
+*
+* Expects:
+* - Microsoft neural voice ids such as `en-US-AvaMultilingualNeural`.
+*
+* Returns:
+* - `true` for the canonical letters/digits/hyphen shape.
+*/
+function isMicrosoftVoiceId(voice) {
+	return MICROSOFT_VOICE_ID.test(voice);
+}
+/**
+* Resolves OpenAI-style short audio format names to Microsoft output formats.
+*
+* Before:
+* - `"mp3"`
+* - `"wav"`
+* - `"audio-24khz-48kbitrate-mono-mp3"`
+*
+* After:
+* - `"audio-24khz-48kbitrate-mono-mp3"`
+* - `"riff-24khz-16bit-mono-pcm"`
+* - `"audio-24khz-48kbitrate-mono-mp3"`
+*/
+function resolveMicrosoftOutputFormat(responseFormat) {
+	if (!responseFormat) return DEFAULT_MICROSOFT_OUTPUT_FORMAT;
+	if (responseFormat.includes("-")) return responseFormat;
+	if (responseFormat === "mp3") return DEFAULT_MICROSOFT_OUTPUT_FORMAT;
+	if (responseFormat === "wav") return "riff-24khz-16bit-mono-pcm";
+	if (responseFormat === "opus") return "ogg-24khz-16bit-mono-opus";
+	return responseFormat;
+}
+/**
+* Infers the MIME type for a Microsoft output format.
+*
+* Before:
+* - `"audio-24khz-48kbitrate-mono-mp3"`
+* - `"ogg-24khz-16bit-mono-opus"`
+* - `"riff-24khz-16bit-mono-pcm"`
+*
+* After:
+* - `"audio/mpeg"`
+* - `"audio/ogg"`
+* - `"audio/wav"`
+*/
+function inferMicrosoftContentType(format) {
+	if (format.includes("mp3")) return "audio/mpeg";
+	if (format.includes("opus")) return "audio/ogg";
+	if (format.includes("pcm") || format.startsWith("riff")) return "audio/wav";
+	return "application/octet-stream";
+}
+/**
+* Normalizes a speech speed multiplier into Microsoft SSML prosody rate.
+*
+* Before:
+* - `1.0`
+* - `1.2`
+* - `0.8`
+*
+* After:
+* - `""`
+* - `"+20%"`
+* - `"-20%"`
+*/
+function microsoftSpeedToProsodyRate(speed) {
+	if (speed == null || speed === 1) return "";
+	const delta = Math.round((speed - 1) * 100);
+	if (delta === 0) return "";
+	return delta > 0 ? `+${delta}%` : `${delta}%`;
+}
+/**
+* Escapes plain text before inserting it into Microsoft SSML.
+*
+* Before:
+* - `"Tom & <Jerry>"`
+*
+* After:
+* - `"Tom &amp; &lt;Jerry&gt;"`
+*/
+function escapeMicrosoftSsmlText(text) {
+	return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;").replaceAll("'", "&apos;");
+}
+/**
+* Builds a Microsoft-compatible SSML envelope.
+*
+* Use when:
+* - Sending plain text through unspeech's Microsoft backend while preserving
+*   speed/prosody control.
+*
+* Expects:
+* - `text` is plain text. Already-built SSML should be passed through with
+*   `disableSsml`.
+*
+* Returns:
+* - A `<speak>` document that Microsoft accepts as `application/ssml+xml`.
+*/
+function buildMicrosoftSsml(text, voice, speed) {
+	const safe = escapeMicrosoftSsmlText(text);
+	const rate = microsoftSpeedToProsodyRate(speed);
+	return `<speak version='1.0' xml:lang='en-US'><voice name='${voice}'>${rate ? `<prosody rate='${rate}'>${safe}</prosody>` : safe}</voice></speak>`;
+}
+/**
+* [Microsoft / Azure AI](https://speech.microsoft.com/portal) provider for [UnSpeech](https://github.com/moeru-ai/unspeech)
+* only.
+*
+* [UnSpeech](https://github.com/moeru-ai/unspeech) is a open-source project that provides a
+* OpenAI-compatible audio & speech related API that can be used with various providers such
+* as ElevenLabs, Azure TTS, Google TTS, etc.
+*
+* @param apiKey - Microsoft / Azure AI subscription key
+* @param baseURL - UnSpeech Instance URL
+* @returns SpeechProviderWithExtraOptions
+*/
+function createUnMicrosoft(apiKey, baseURL = "http://localhost:5933/v1/") {
+	const toUnSpeechOptions = (options) => {
+		const { deploymentId, region, sampleRate } = options;
+		const extraBody = {
+			deploymentId,
+			region,
+			sampleRate
+		};
+		if ("disableSsml" in options) extraBody.disableSsml = options.disableSsml;
+		else if ("lang" in options) {
+			extraBody.lang = options.lang;
+			extraBody.gender = options.gender;
+			extraBody.voice = options.voice;
+		}
+		return { extraBody: objCamelToSnake(extraBody) };
+	};
+	return merge({ speech: (model, options) => ({
+		...options ? toUnSpeechOptions(options) : {},
+		apiKey,
+		baseURL,
+		model: `microsoft/${model}`
+	}) }, { voice: (options) => {
+		if (baseURL.endsWith("v1/")) baseURL = baseURL.slice(0, -3);
+		else if (baseURL.endsWith("v1")) baseURL = baseURL.slice(0, -2);
+		return {
+			query: `region=${options?.region}&provider=microsoft`,
+			...options ? toUnSpeechOptions(options) : {},
+			apiKey,
+			baseURL
+		};
+	} });
+}
+
+//#endregion
+//#region src/backend/volcengine.ts
+/**
+* [Volcengine / 火山引擎](https://www.volcengine.com/docs/6561/162929) provider for [UnSpeech](https://github.com/moeru-ai/unspeech)
+* only.
+*
+* [UnSpeech](https://github.com/moeru-ai/unspeech) is a open-source project that provides a
+* OpenAI-compatible audio & speech related API that can be used with various providers such
+* as ElevenLabs, Azure TTS, Google TTS, etc.
+*
+* @param apiKey - Volcano Engine Speech Service Token
+* @param baseURL - UnSpeech Instance URL
+* @returns SpeechProviderWithExtraOptions
+*/
+function createUnVolcengine(apiKey, baseURL = "http://localhost:5933/v1/") {
+	const toUnSpeechOptions = (options) => {
+		const extraBody = { app: {
+			appid: options.app?.appId,
+			token: apiKey
+		} };
+		if (typeof options.app !== "undefined") extraBody.app = {
+			...options.app,
+			appid: options.app?.appId,
+			token: apiKey
+		};
+		if (typeof options.user !== "undefined") extraBody.user = options.user;
+		if (typeof options.audio !== "undefined") extraBody.audio = options.audio;
+		return { extraBody: objCamelToSnake(extraBody) };
+	};
+	return merge({ speech: (model, options) => ({
+		...options ? toUnSpeechOptions(options) : {},
+		apiKey,
+		baseURL,
+		model: `volcengine/${model}`
+	}) }, { voice: (options) => {
+		if (baseURL.endsWith("v1/")) baseURL = baseURL.slice(0, -3);
+		else if (baseURL.endsWith("v1")) baseURL = baseURL.slice(0, -2);
+		return {
+			query: "provider=volcengine",
+			...options ? toUnSpeechOptions(options) : {},
+			apiKey,
+			baseURL
+		};
+	} });
+}
+
+//#endregion
+//#region src/backend/index.ts
+/** @see {@link https://github.com/moeru-ai/unspeech} */
+function createUnSpeech(apiKey, baseURL = "http://localhost:5933/v1/") {
+	return merge(createSpeechProviderWithExtraOptions({
+		apiKey,
+		baseURL
+	}), { voice: (options) => {
+		if (baseURL.endsWith("v1/")) baseURL = baseURL.slice(0, -3);
+		else if (baseURL.endsWith("v1")) baseURL = baseURL.slice(0, -2);
+		if (options?.backend === "microsoft" || options?.backend === "azure") return {
+			apiKey,
+			baseURL,
+			query: `region=${options.region}&provider=${options.backend}`
+		};
+		return {
+			apiKey,
+			baseURL,
+			query: `provider=${options?.backend}`
+		};
+	} });
+}
+
+//#endregion
+//#region src/utils/generate-speech-response.ts
+/**
+* Error thrown when unspeech returns a non-2xx response.
+*
+* Use when:
+* - Callers need to preserve unspeech/upstream status codes for fallback,
+*   retries, or diagnostics.
+*
+* Expects:
+* - The caller has already read the response body text.
+*
+* Returns:
+* - An Error carrying status, response body, headers, and URL metadata.
+*/
+var UnSpeechAPIError = class extends Error {
+	requestBody;
+	response;
+	responseBody;
+	responseHeaders;
+	status;
+	statusCode;
+	statusText;
+	url;
+	constructor(message, options) {
+		super(message);
+		this.name = "UnSpeechAPIError";
+		this.requestBody = options.requestBody;
+		this.response = options.response;
+		this.responseBody = options.responseBody;
+		this.responseHeaders = Object.fromEntries(options.response.headers.entries());
+		this.status = options.response.status;
+		this.statusCode = options.response.status;
+		this.statusText = options.response.statusText;
+		this.url = options.response.url;
+	}
+};
+/**
+* Generates speech through unspeech and preserves response metadata.
+*
+* Use when:
+* - A server proxy needs the binary audio bytes plus headers such as
+*   `content-type`.
+* - A router needs non-2xx status/body metadata for fallback decisions.
+*
+* Expects:
+* - `baseURL` points at an unspeech v1 endpoint.
+* - Provider-specific options are passed through as xsAI-compatible fields
+*   such as `extraBody`, which are serialized into OpenAI-style snake_case.
+*
+* Returns:
+* - The generated audio bytes, the `content-type` header when present, and
+*   the original `Response`.
+*/
+async function generateSpeechResponse(options) {
+	const body = requestBody(options);
+	const response = await (options.fetch ?? globalThis.fetch)(requestURL("audio/speech", options.baseURL).toString(), {
+		body,
+		headers: requestHeaders({
+			"Content-Type": "application/json",
+			...options.headers
+		}, options.apiKey),
+		method: "POST",
+		signal: options.abortSignal
+	});
+	if (!response.ok) {
+		const responseBody = await response.text().catch(() => "");
+		throw new UnSpeechAPIError(`unspeech audio speech ${response.status}: ${responseBody.slice(0, 256)}`, {
+			requestBody: body,
+			response,
+			responseBody
+		});
+	}
+	return {
+		body: await response.arrayBuffer(),
+		contentType: response.headers.get("content-type"),
+		response
+	};
+}
+
+//#endregion
+//#region src/utils/list-voices.ts
+async function listVoices(options) {
+	const response = await (options.fetch ?? globalThis.fetch)(requestURL(options.query ? `api/voices?${options.query}` : "api/voices", options.baseURL).toString(), {
+		headers: requestHeaders({ ...options.headers }, options.apiKey),
+		method: "GET",
+		signal: options.abortSignal
+	});
+	if (!response.ok) {
+		const responseBody = await response.text().catch(() => "");
+		throw new UnSpeechAPIError(`unspeech voices ${response.status}: ${responseBody.slice(0, 256)}`, {
+			requestBody: "",
+			response,
+			responseBody
+		});
+	}
+	return (await response.json()).voices;
+}
+
+//#endregion
+export { UnSpeechAPIError, buildMicrosoftSsml, createUnAlibabaCloud, createUnDeepgram, createUnElevenLabs, createUnMicrosoft, createUnSpeech, createUnVolcengine, escapeMicrosoftSsmlText, generateSpeechResponse, inferMicrosoftContentType, isMicrosoftVoiceId, listVoices, microsoftSpeedToProsodyRate, resolveMicrosoftOutputFormat };

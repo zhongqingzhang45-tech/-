@@ -1,0 +1,395 @@
+//#region \0rolldown/runtime.js
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
+		key = keys[i];
+		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
+			get: ((k) => from[k]).bind(null, key),
+			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+		});
+	}
+	return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
+	value: mod,
+	enumerable: true
+}) : target, mod));
+//#endregion
+let node_path = require("node:path");
+node_path = __toESM(node_path);
+let node_process = require("node:process");
+node_process = __toESM(node_process);
+let unplugin = require("unplugin");
+let ci_info = require("ci-info");
+ci_info = __toESM(ci_info);
+let simple_git = require("simple-git");
+let git_url_parse = require("git-url-parse");
+git_url_parse = __toESM(git_url_parse);
+let node_fs = require("node:fs");
+node_fs = __toESM(node_fs);
+//#region src/core/modules/base.ts
+var BuildInfoModule = class {
+	constructor(name, root, options) {
+		this.name = `${options?.prefix ?? "~build"}/${name}`;
+		this.root = root;
+		this.options = options;
+	}
+	buildStart(ctx) {}
+	buildEnd(ctx) {}
+};
+//#endregion
+//#region src/core/modules/time.ts
+var BuildTimeModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("time", root, options);
+	}
+	buildStart() {
+		this.now = this.options.time ? this.options.time : /* @__PURE__ */ new Date();
+	}
+	load() {
+		return `const time = new Date(${this.now.getTime()})\nexport default time`;
+	}
+};
+//#endregion
+//#region src/core/utils/git.ts
+async function getRepoInfo(root, extra = {}) {
+	const git = (0, simple_git.simpleGit)(root);
+	if (!await git.checkIsRepo()) return;
+	const [branch, currentCommit, committer, describe, tags, github, result] = await Promise.all([
+		getBranch(git),
+		getCommit(git),
+		getCommitter(git),
+		getDescribe(git),
+		getTags(git),
+		getGitHubUrl(git),
+		Promise.all(Object.entries(extra).map(async ([key, fn]) => {
+			return [key, await fn(git)];
+		}))
+	]);
+	return {
+		...branch,
+		...currentCommit,
+		...committer,
+		...describe,
+		...tags,
+		...github,
+		...Object.fromEntries(result)
+	};
+}
+async function getBranch(git) {
+	try {
+		return { branch: (await git.branch([])).current };
+	} catch (error) {
+		return { branch: void 0 };
+	}
+}
+async function getCommit(git) {
+	try {
+		const log = await git.log(["-1"]);
+		const sha = log.latest?.hash;
+		const commitMessage = log.latest?.message;
+		const author = log.latest?.author_name;
+		const authorEmail = log.latest?.author_email;
+		const authorDate = log.latest?.date;
+		return {
+			sha,
+			abbreviatedSha: sha?.slice(0, 10),
+			commitMessage,
+			author,
+			authorEmail,
+			authorDate
+		};
+	} catch (error) {
+		return {
+			sha: void 0,
+			abbreviatedSha: void 0,
+			commitMessage: void 0,
+			author: void 0,
+			authorEmail: void 0,
+			authorDate: void 0
+		};
+	}
+}
+function removeLineBreak(str) {
+	return str.replace(/[\s\r\n]+$/, "");
+}
+async function getCommitter(git) {
+	try {
+		const [committer, committerEmail, committerDate] = await Promise.all([
+			git.show(["-s", "--format=%cn"]),
+			git.show(["-s", "--format=%ce"]),
+			git.show(["-s", "--format=%cd"])
+		]);
+		return {
+			committer: removeLineBreak(committer),
+			committerEmail: removeLineBreak(committerEmail),
+			committerDate: removeLineBreak(committerDate)
+		};
+	} catch (error) {
+		return {
+			committer: void 0,
+			committerEmail: void 0,
+			committerDate: void 0
+		};
+	}
+}
+async function getTags(git) {
+	try {
+		const hash = await git.revparse(["HEAD"]);
+		const tags = await git.tags(["--points-at", hash]);
+		const all = await git.tags();
+		return {
+			tag: tags.all[tags.all.length - 1],
+			tags: tags.all,
+			lastTag: all.latest
+		};
+	} catch (error) {
+		return {
+			tags: void 0,
+			lastTag: void 0
+		};
+	}
+}
+async function getDescribe(git) {
+	try {
+		return { describe: removeLineBreak(await git.raw(["describe", "--always"])) };
+	} catch (error) {
+		return { describe: void 0 };
+	}
+}
+async function getGitHubUrl(git) {
+	const url = (await git.getRemotes(true)).find((remote) => remote.name === "origin")?.refs.fetch;
+	if (url) {
+		const parsed = (0, git_url_parse.default)(url);
+		if (parsed.resource === "github.com" && parsed.full_name) return { github: `https://github.com/${parsed.full_name}` };
+	}
+	return { github: void 0 };
+}
+//#endregion
+//#region src/core/modules/git.ts
+var BuildGitModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("git", root, options);
+	}
+	async load(ctx, id) {
+		const { root, options } = this;
+		const info = await getRepoInfo(root, options?.git);
+		if (info && options?.github) info.github = options.github;
+		if (!info) ctx.warn("This may not be a git repo");
+		const keys = [...new Set([
+			"github",
+			"sha",
+			"abbreviatedSha",
+			"branch",
+			"tag",
+			"tags",
+			"lastTag",
+			"describe",
+			"author",
+			"authorEmail",
+			"authorDate",
+			"committer",
+			"committerEmail",
+			"committerDate",
+			"commitMessage",
+			...Object.keys(options?.git ?? {})
+		])];
+		const gen = (key) => {
+			return `export const ${key} = ${info ? JSON.stringify(info[key]) : "null"}`;
+		};
+		return [id.endsWith("info") ? `export const CI = ${ci_info.default.isCI ? `"${ci_info.default.name}"` : "null"}` : ``, ...keys.map((key) => gen(key))].join("\n");
+	}
+};
+//#endregion
+//#region src/core/modules/info.ts
+var LegacyInfoModule = class extends BuildGitModule {
+	constructor(root, options) {
+		super(root, options);
+		this.name = `${options.prefix ?? "~build"}/info`;
+	}
+};
+//#endregion
+//#region src/core/modules/console.ts
+var BuildConsoleModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("console", root, options);
+	}
+	load() {
+		const { environment = ["development", "production"] } = this.options.console ?? {};
+		return [
+			`import time from '~build/time';`,
+			`import { isCI } from '~build/ci';`,
+			`import { github } from '~build/git';`,
+			`import { name, version } from '~build/package';`,
+			``,
+			`export const print = () => {`,
+			`  if (!${JSON.stringify(environment)}.includes(process.env.NODE_ENV)) return;`,
+			`  if (typeof import.meta?.env?.SSR !== 'undefined' && import.meta.env.SSR) return;`,
+			`  console.groupCollapsed('~build/console');`,
+			`  console.log('Project:', name);`,
+			`  console.log('Build-at:', time ? time.toLocaleString() : 'Unknown');`,
+			`  console.log('Environment:', \`${process.env.NODE_ENV}\${isCI ? '(ci)' : ''}\`);`,
+			`  console.log('Version:', version);`,
+			`  console.log('GitHub:', github);`,
+			`  console.groupEnd();`,
+			`};`,
+			``,
+			`print();`
+		].join("\n");
+	}
+};
+//#endregion
+//#region src/core/modules/ci.ts
+var BuildCIModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("ci", root, options);
+	}
+	load() {
+		return [
+			`export const isCI = ${ci_info.default.isCI !== null ? ci_info.default.isCI ? "true" : "false" : "null"}`,
+			`export const isPR = ${ci_info.default.isPR !== null ? ci_info.default.isPR ? "true" : "false" : "null"}`,
+			`export const name = ${ci_info.default.name !== null ? `\`${ci_info.default.name}\`` : "null"}`
+		].join("\n");
+	}
+};
+//#endregion
+//#region src/core/modules/meta.ts
+var BuildMetaModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("meta", root, options);
+	}
+	async load() {
+		const { options } = this;
+		const get = () => {
+			if (!options?.meta) return {};
+			if (typeof options.meta === "function") return options.meta();
+			return options.meta;
+		};
+		const meta = await get();
+		const body = Object.entries(meta).map(([key, value]) => `export const ${key} = ${JSON.stringify(value, null, 2)};`);
+		return body.length > 0 ? body.join("\n") : "export {};";
+	}
+};
+//#endregion
+//#region src/core/modules/env.ts
+var BuildEnvModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("env", root, options);
+	}
+	async load() {
+		const { options } = this;
+		const get = () => {
+			if (!options?.env) return {};
+			if (typeof options.env === "function") return options.env();
+			return options.env;
+		};
+		const cloudflare = options.cloudflare === true;
+		const meta = await get();
+		const body = Object.entries(meta).map(([key, value]) => !cloudflare ? `export const ${key} = (typeof import.meta?.env?.SSR !== 'undefined' && import.meta.env.SSR ? process?.env?.['${key.replace(/'/g, "\\\\")}'] : undefined) ?? ${JSON.stringify(value, null, 2)};` : `export const ${key} = ${JSON.stringify(value, null, 2)};`);
+		return body.length > 0 ? body.join("\n") : "export {};";
+	}
+};
+//#endregion
+//#region src/core/modules/package.ts
+var BuildPackageModule = class extends BuildInfoModule {
+	constructor(root, options) {
+		super("package", root, options);
+	}
+	load() {
+		const { root, options } = this;
+		const pkg = JSON.parse(node_fs.default.readFileSync(node_path.default.join(root, "package.json"), "utf-8"));
+		const defaults = [
+			"name",
+			"version",
+			"description",
+			"keywords",
+			"license",
+			"author"
+		];
+		const keys = new Set(Array.isArray(options?.package) ? [...defaults, ...options.package] : typeof options?.package === "object" ? Object.entries(Object.fromEntries([...defaults.map((d) => [d, true]), ...Object.entries(options.package)])).filter(([k, v]) => !!v).map(([k, v]) => k) : defaults);
+		const resolved = {
+			name: "",
+			version: "0.0.0",
+			description: "",
+			keywords: [],
+			license: "",
+			author: "",
+			...pkg
+		};
+		return [...keys].map((key) => [key, resolved[key]]).map(([key, value]) => `export const ${key} = ${JSON.stringify(value, null, 2)};`).join("\n");
+	}
+};
+//#endregion
+//#region src/core/index.ts
+const UnpluginInfo = /* @__PURE__ */ (0, unplugin.createUnplugin)((options = {}, meta) => {
+	const root = node_path.default.resolve(options?.root ?? node_process.default.cwd());
+	const modules = {
+		Time: new BuildTimeModule(root, options),
+		Git: new BuildGitModule(root, options),
+		CI: new BuildCIModule(root, options),
+		Info: new LegacyInfoModule(root, options),
+		Console: new BuildConsoleModule(root, options),
+		Meta: new BuildMetaModule(root, options),
+		Env: new BuildEnvModule(root, options),
+		Package: new BuildPackageModule(root, options)
+	};
+	return {
+		name: "unplugin-info",
+		async buildStart() {
+			await Promise.all(Object.values(modules).map((mod) => mod.buildStart(this)));
+		},
+		async buildEnd() {
+			await Promise.all(Object.values(modules).map((mod) => mod.buildEnd(this)));
+		},
+		resolveId(id) {
+			if (Object.values(modules).map((m) => m.name).includes(id)) return `\0${id}`;
+		},
+		loadInclude(id) {
+			if (!id.startsWith("\0")) return false;
+			id = id.slice(1);
+			return Object.values(modules).map((m) => m.name).includes(id);
+		},
+		async load(id) {
+			if (!id.startsWith("\0")) return;
+			id = id.slice(1);
+			for (const mod of Object.values(modules)) if (id === mod.name) {
+				if (id === modules.Info.name) this.warn(`${modules.Info.name} is deprecated, please migrate to ${modules.Git.name} and ${modules.CI.name}.`);
+				if (id === modules.Env.name && meta.framework !== "vite") {
+					this.warn(`${modules.Env.name} is only supported in Vite.`);
+					return;
+				}
+				return mod.load(this, id);
+			}
+		},
+		vite: { handleHotUpdate({ file, server }) {
+			if (file === normalizePath(node_path.default.resolve(root, "package.json"))) {
+				const module = server.moduleGraph.getModuleById("\0" + modules.Package.name);
+				if (module) {
+					server.moduleGraph.invalidateModule(module);
+					server.ws.send({ type: "full-reload" });
+				}
+			}
+		} }
+	};
+});
+function normalizePath(filename) {
+	return filename.split(node_path.default.win32.sep).join(node_path.default.posix.sep);
+}
+//#endregion
+Object.defineProperty(exports, "UnpluginInfo", {
+	enumerable: true,
+	get: function() {
+		return UnpluginInfo;
+	}
+});
+Object.defineProperty(exports, "__toESM", {
+	enumerable: true,
+	get: function() {
+		return __toESM;
+	}
+});

@@ -1,0 +1,152 @@
+interface APICallErrorOptions extends ErrorOptions {
+    requestBody?: string;
+    response: Response;
+    responseBody?: string;
+}
+interface InvalidResponseErrorOptions extends ErrorOptions {
+    body?: unknown;
+    contentType?: null | string;
+    reason: InvalidResponseReason;
+    response?: Response;
+    responseBody?: string;
+}
+type InvalidResponseReason = 'empty_body' | 'invalid_body' | 'no_choices';
+interface InvalidToolCallErrorOptions extends ErrorOptions {
+    availableTools?: string[];
+    reason: InvalidToolCallReason;
+    toolCall: unknown;
+    toolName?: string;
+}
+type InvalidToolCallReason = 'missing_arguments' | 'missing_name' | 'unknown_tool';
+interface InvalidToolInputErrorOptions extends ErrorOptions {
+    toolInput: unknown;
+    toolName: string;
+}
+interface JSONParseErrorOptions extends ErrorOptions {
+    text: string;
+}
+interface RemoteAPIErrorOptions extends ErrorOptions {
+    response?: Response;
+    responseBody: string;
+}
+interface ToolExecutionErrorOptions extends InvalidToolInputErrorOptions {
+    toolCallId?: string;
+}
+type XSAIErrorCode = 'api_call_error' | 'invalid_response' | 'invalid_tool_call' | 'invalid_tool_input' | 'json_parse_error' | 'remote_api_error' | 'tool_execution_error';
+declare class XSAIError extends Error {
+    code: XSAIErrorCode;
+    constructor(message: string, code: XSAIErrorCode, options?: ErrorOptions);
+    static isInstance<T extends abstract new (...args: any[]) => XSAIError>(this: T, error: unknown): error is InstanceType<T>;
+}
+declare class APICallError extends XSAIError {
+    requestBody?: string;
+    response: Response;
+    responseBody?: string;
+    responseHeaders: Record<string, string>;
+    statusCode: number;
+    statusText: string;
+    url: string;
+    constructor(message: string, options: APICallErrorOptions);
+}
+declare class InvalidResponseError extends XSAIError {
+    body?: unknown;
+    contentType?: null | string;
+    reason: InvalidResponseErrorOptions['reason'];
+    response?: Response;
+    responseBody?: string;
+    constructor(message: string, options: InvalidResponseErrorOptions);
+}
+declare class InvalidToolCallError extends XSAIError {
+    availableTools?: string[];
+    reason: InvalidToolCallErrorOptions['reason'];
+    toolCall: unknown;
+    toolName?: string;
+    constructor(message: string, options: InvalidToolCallErrorOptions);
+}
+declare class InvalidToolInputError extends XSAIError {
+    toolInput: unknown;
+    toolName: string;
+    constructor(message: string, options: InvalidToolInputErrorOptions);
+}
+declare class JSONParseError extends XSAIError {
+    text: string;
+    constructor(message: string, options: JSONParseErrorOptions);
+}
+declare class RemoteAPIError extends XSAIError {
+    response?: Response;
+    responseBody: string;
+    constructor(message: string, options: RemoteAPIErrorOptions);
+}
+declare class ToolExecutionError extends XSAIError {
+    toolCallId?: string;
+    toolInput: unknown;
+    toolName: string;
+    constructor(message: string, options: ToolExecutionErrorOptions);
+}
+
+type Fetch = (input: URL, init: RequestInit) => Promise<Response>;
+
+interface CommonRequestOptions {
+    abortSignal?: AbortSignal;
+    apiKey?: string;
+    /** @example `https://api.openai.com/v1/` */
+    baseURL: string | URL;
+    fetch?: Fetch | typeof globalThis.fetch;
+    /** @default `undefined` */
+    headers?: Headers | Record<string, string>;
+    /** @example `gpt-4o` */
+    model: string;
+}
+
+type WithUnknown<T> = T & {
+    [key: string]: unknown;
+};
+
+declare const strCamelToSnake: (str: string) => string;
+declare const objCamelToSnake: (obj: Record<string, unknown>) => {
+    [k: string]: unknown;
+};
+
+/**
+ * Clean all undefined values.
+ * @param obj object
+ * @returns cleaned object
+ *
+ * @example
+ * ```ts
+ * import { clean } from '@xsai/shared'
+ *
+ * // { a: 'a' }
+ * const obj = clean({
+ *   a: 'a',
+ *   b: undefined
+ * })
+ * ```
+ */
+declare const clean: <T extends Record<string, undefined | unknown>>(obj: T) => Record<keyof T, Exclude<T[keyof T], unknown>>;
+
+declare class DelayedPromise<T> {
+    get promise(): Promise<T>;
+    private _promise;
+    private _reject;
+    private _resolve;
+    private status;
+    reject(error: unknown): void;
+    resolve(value: T): void;
+}
+
+declare const requestBody: (body: Record<string, unknown>) => string;
+
+declare const requestHeaders: (headers?: CommonRequestOptions["headers"], apiKey?: CommonRequestOptions["apiKey"]) => Record<"Authorization", never>;
+
+declare const requestURL: (path: string, baseURL: string | URL) => URL;
+
+declare const responseCatch: (res: Response) => Promise<Response>;
+
+declare const responseJSON: <T>(res: Response) => Promise<T>;
+
+type TrampolineFn<T> = (() => Promise<TrampolineFn<T>> | TrampolineFn<T>) | Promise<T> | T;
+declare const trampoline: <T>(fn: () => Promise<TrampolineFn<T>> | TrampolineFn<T>) => Promise<T>;
+
+export { APICallError, DelayedPromise, InvalidResponseError, InvalidToolCallError, InvalidToolInputError, JSONParseError, RemoteAPIError, ToolExecutionError, XSAIError, clean, objCamelToSnake, requestBody, requestHeaders, requestURL, responseCatch, responseJSON, strCamelToSnake, trampoline };
+export type { APICallErrorOptions, CommonRequestOptions, Fetch, InvalidResponseErrorOptions, InvalidResponseReason, InvalidToolCallErrorOptions, InvalidToolCallReason, InvalidToolInputErrorOptions, JSONParseErrorOptions, RemoteAPIErrorOptions, ToolExecutionErrorOptions, TrampolineFn, WithUnknown, XSAIErrorCode };

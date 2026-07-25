@@ -1,0 +1,30 @@
+import { CommonRequestOptions, WithUnknown } from '@xsai/shared';
+
+interface StreamTranscriptionDelta {
+    delta: string;
+    type: StreamTranscriptionDeltaType;
+}
+type StreamTranscriptionDeltaType = 'transcript.text.delta' | 'transcript.text.done';
+interface StreamTranscriptionOptions extends CommonRequestOptions {
+    file: Blob;
+    fileName?: string;
+    language?: string;
+    prompt?: string;
+    responseFormat?: never;
+    /**
+     * If you want to disable stream, use `@xsai/generate-transcription`.
+     */
+    stream?: never;
+    temperature?: string;
+    timestampGranularities?: never;
+}
+interface StreamTranscriptionResult {
+    fullStream: ReadableStream<StreamTranscriptionDelta>;
+    text: Promise<string>;
+    textStream: ReadableStream<string>;
+}
+/** @experimental */
+declare const streamTranscription: (options: WithUnknown<StreamTranscriptionOptions>) => StreamTranscriptionResult;
+
+export { streamTranscription };
+export type { StreamTranscriptionDelta, StreamTranscriptionDeltaType, StreamTranscriptionOptions, StreamTranscriptionResult };

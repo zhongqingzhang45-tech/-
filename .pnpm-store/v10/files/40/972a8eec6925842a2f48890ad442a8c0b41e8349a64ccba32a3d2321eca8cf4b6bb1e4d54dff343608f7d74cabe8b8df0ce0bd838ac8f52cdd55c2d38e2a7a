@@ -1,0 +1,15 @@
+import { Node } from 'estree'
+import { Rule } from 'eslint'
+/**
+ * Checks if there is a negation (`!`) inside the outermost parentheses of a
+ * given negated expression. This is useful for determining if De Morgan's laws
+ * can be applied without changing the logic.
+ *
+ * @param node - The starting node, assumed to be of the form `!(...)`.
+ * @param context - The ESLint rule context, used to access source code.
+ * @returns True if there is a negation (`!`) inside the parentheses.
+ */
+export declare function hasNegationInsideParens(
+  node: Node,
+  context: Rule.RuleContext,
+): boolean

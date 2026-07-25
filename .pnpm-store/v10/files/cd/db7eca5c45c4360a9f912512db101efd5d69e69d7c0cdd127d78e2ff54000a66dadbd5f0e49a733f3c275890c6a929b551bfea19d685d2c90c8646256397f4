@@ -1,0 +1,15 @@
+# Installation
+> `npm install --save @types/splitpanes`
+
+# Summary
+This package contains type definitions for splitpanes (https://github.com/antoniandre/splitpanes).
+
+# Details
+Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/splitpanes.
+
+### Additional Details
+ * Last updated: Wed, 22 Nov 2023 00:24:48 GMT
+ * Dependencies: [vue](https://npmjs.com/package/vue)
+
+# Credits
+These definitions were written by [n0k0](https://github.com/n0k0).

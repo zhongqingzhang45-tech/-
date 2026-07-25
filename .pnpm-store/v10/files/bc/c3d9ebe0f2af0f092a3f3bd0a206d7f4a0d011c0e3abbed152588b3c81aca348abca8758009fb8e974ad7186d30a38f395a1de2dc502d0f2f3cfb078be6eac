@@ -1,0 +1,20 @@
+import { openBlock as r, createElementBlock as i, createElementVNode as n, normalizeClass as t } from "vue";
+import o from "../../../../../_virtual/_plugin-vue_export-helper.js";
+const s = {}, l = {
+  class: /* @__PURE__ */ t([
+    "inline-flex flex-col justify-center items-center"
+  ])
+};
+function c(a, e) {
+  return r(), i("div", l, [...e[0] || (e[0] = [
+    n("div", {
+      class: t([
+        "i-material-symbols:android-wifi-3-bar"
+      ])
+    }, null, -1)
+  ])]);
+}
+const d = /* @__PURE__ */ o(s, [["render", c]]);
+export {
+  d as default
+};

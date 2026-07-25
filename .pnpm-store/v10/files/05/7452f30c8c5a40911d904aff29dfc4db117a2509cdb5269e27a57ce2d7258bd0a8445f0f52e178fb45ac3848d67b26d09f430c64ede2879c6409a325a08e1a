@@ -1,0 +1,259 @@
+import { WithUnknown, CommonRequestOptions } from '@xsai/shared';
+
+type FinishReason = 'content_filter' | 'error' | 'length' | 'other' | 'stop' | 'tool-calls' | 'tool_calls' | (string & {});
+
+interface AudioContentPart {
+    input_audio: {
+        data: string;
+        format: 'mp3' | 'wav';
+    };
+    type: 'input_audio';
+}
+/** @internal */
+type CommonContentPart = AudioContentPart | FileContentPart | ImageContentPart | TextContentPart;
+interface FileContentPart {
+    file: {
+        file_data?: string;
+        file_id?: string;
+        filename?: string;
+    };
+    type: 'file';
+}
+interface ImageContentPart {
+    image_url: {
+        detail?: 'auto' | 'high' | 'low';
+        url: string;
+    };
+    type: 'image_url';
+}
+interface RefusalContentPart {
+    refusal: string;
+    type: 'refusal';
+}
+interface TextContentPart {
+    text: string;
+    type: 'text';
+}
+
+interface ToolCall {
+    function: ToolCallFunction | ToolCallFunctionWithoutArguments | ToolCallFunctionWithoutName;
+    id: string;
+    type: 'function';
+}
+interface ToolCallFunction {
+    arguments: string;
+    name: string;
+}
+interface ToolCallFunctionWithoutArguments {
+    arguments?: never;
+    name: string;
+}
+interface ToolCallFunctionWithoutName {
+    arguments: string;
+    name?: never;
+}
+
+interface AssistantMessage {
+    content?: (RefusalContentPart | TextContentPart)[] | string;
+    name?: string;
+    /** @see {@link https://cookbook.openai.com/articles/gpt-oss/handle-raw-cot#chat-completions-api} */
+    reasoning?: string;
+    /** @remarks OpenAI doesn't support this, but some providers do. */
+    reasoning_content?: string;
+    refusal?: string;
+    role: 'assistant';
+    tool_calls?: ToolCall[];
+}
+interface DeveloperMessage {
+    content: string | TextContentPart[];
+    name?: string;
+    /** @remarks Before using, confirm that your model supports this. */
+    role: 'developer';
+}
+type Message = AssistantMessage | DeveloperMessage | SystemMessage | ToolMessage | UserMessage;
+interface SystemMessage {
+    content: string | TextContentPart[];
+    name?: string;
+    role: 'system';
+}
+interface ToolMessage {
+    /** @remarks considering the support of ecosystems (such as MCP), we have relaxed this type. */
+    content: CommonContentPart[] | string;
+    role: 'tool';
+    tool_call_id: string;
+}
+interface UserMessage {
+    content: CommonContentPart[] | string;
+    name?: string;
+    role: 'user';
+}
+
+interface CompletionToolCall {
+    args: string;
+    toolCallId: string;
+    toolCallType: 'function';
+    toolName: string;
+}
+interface CompletionToolResult {
+    args: Record<string, unknown>;
+    result: ToolMessage['content'];
+    toolCallId: string;
+    toolName: string;
+}
+interface Tool {
+    execute: (input: unknown, options: ToolExecuteOptions) => Promise<ToolExecuteResult> | ToolExecuteResult;
+    function: {
+        description?: string;
+        name: string;
+        parameters: Record<string, unknown>;
+        strict?: boolean;
+    };
+    type: 'function';
+}
+interface ToolExecuteOptions {
+    abortSignal?: AbortSignal;
+    messages: Message[];
+    toolCallId: string;
+}
+type ToolExecuteResult = object | string | unknown[];
+
+interface Usage {
+    completion_tokens: number;
+    prompt_tokens: number;
+    total_tokens: number;
+}
+
+type CompletionStep<T extends boolean = false> = (T extends true ? {
+    usage: Usage;
+} : {
+    usage?: Usage;
+}) & {
+    finishReason: FinishReason;
+    stepType: CompletionStepType;
+    text?: string;
+    toolCalls: CompletionToolCall[];
+    toolResults: CompletionToolResult[];
+};
+type CompletionStepType = 'continue' | 'done' | 'initial' | 'tool-result';
+
+type ToolChoice = AllowedTools | ToolChoiceMode | ToolChoiceTool;
+interface AllowedTools {
+    mode: 'auto' | 'required';
+    tools: ToolChoiceTool[];
+    type: 'allowed_tools';
+}
+type ToolChoiceMode = 'auto' | 'none' | 'required';
+interface ToolChoiceTool {
+    function: {
+        name: string;
+    };
+    type: 'function';
+}
+
+type PrepareStep = (options: PrepareStepOptions) => PrepareStepResult | Promise<PrepareStepResult>;
+interface PrepareStepOptions {
+    messages: Message[];
+    model: string;
+    stepNumber: number;
+    steps: CompletionStep[];
+}
+interface PrepareStepResult {
+    messages?: Message[];
+    model?: string;
+    toolChoice?: ToolChoice;
+}
+
+type StopCondition = (context: StopContext) => boolean;
+interface StopContext {
+    messages: readonly Message[];
+    step: StopStep;
+    steps: readonly StopStep[];
+}
+interface StopStep {
+    finishReason: FinishReason;
+    text?: string;
+    toolCalls: CompletionToolCall[];
+    toolResults: CompletionToolResult[];
+    usage?: Usage;
+}
+
+/** @see {@link https://platform.openai.com/docs/api-reference/chat/create} */
+interface ChatOptions extends CommonRequestOptions {
+    /**
+     * number between -2.0 and 2.0.
+     * @default 0
+     */
+    frequencyPenalty?: number;
+    messages: Message[];
+    /** Whether to enable parallel function calling during tool use. */
+    parallelToolCalls?: boolean;
+    /**
+     * number between -2.0 and 2.0.
+     * @default 0
+     */
+    presencePenalty?: number;
+    /** Constrains effort on reasoning for reasoning models. */
+    reasoningEffort?: 'high' | 'medium' | 'minimal' | 'none' | 'xhigh';
+    seed?: number;
+    /** up to 4 sequences where the API will stop generating further tokens. */
+    stop?: [string, string, string, string] | [string, string, string] | [string, string] | [string] | string;
+    /**
+     * what sampling temperature to use, between 0 and 2.
+     * @default 1
+     */
+    temperature?: number;
+    /** Controls which (if any) tool is called by the model. */
+    toolChoice?: ToolChoice;
+    /** A list of tools the model may call. */
+    tools?: Tool[];
+    /** @remarks OpenAI doesn't support this, but some providers do. */
+    topK?: number;
+    /** @default 1 */
+    topP?: number;
+}
+declare const chat: <T extends WithUnknown<ChatOptions>>(options: T) => Promise<Response>;
+
+interface DetermineStepTypeOptions {
+    finishReason: FinishReason;
+    stepsLength: number;
+    toolCallsLength: number;
+    willContinue: boolean;
+}
+/** @internal */
+declare const determineStepType: ({ finishReason, stepsLength, toolCallsLength, willContinue }: DetermineStepTypeOptions) => CompletionStepType;
+
+interface ExecuteToolOptions {
+    abortSignal?: AbortSignal;
+    messages: Message[];
+    toolCall: ToolCall;
+    tools?: Tool[];
+}
+interface ExecuteToolResult {
+    completionToolCall: CompletionToolCall;
+    completionToolResult: CompletionToolResult;
+    message: ToolMessage;
+}
+declare const executeTool: ({ abortSignal, messages, toolCall, tools }: ExecuteToolOptions) => Promise<ExecuteToolResult>;
+
+interface ResolvedStepOptions {
+    messages: Message[];
+    model: string;
+    toolChoice: ToolChoice | undefined;
+}
+interface ResolveStepOptionsOptions extends Pick<WithUnknown<ChatOptions>, 'messages' | 'model' | 'toolChoice'> {
+    prepareStep?: PrepareStep;
+    stepNumber: number;
+    steps: CompletionStep[];
+}
+declare const resolveStepOptions: ({ messages, model, prepareStep, stepNumber, steps, toolChoice }: ResolveStepOptionsOptions) => Promise<ResolvedStepOptions>;
+
+declare const and: (...conditions: StopCondition[]) => StopCondition;
+declare const or: (...conditions: StopCondition[]) => StopCondition;
+declare const not: (condition: StopCondition) => StopCondition;
+declare const stepCountAtLeast: (count: number) => StopCondition;
+declare const hasToolCall: (name?: string) => StopCondition;
+/** @internal */
+declare const shouldStop: (stopWhen: StopCondition, context: StopContext) => boolean;
+
+export { and, chat, determineStepType, executeTool, hasToolCall, not, or, resolveStepOptions, shouldStop, stepCountAtLeast };
+export type { AssistantMessage, AudioContentPart, ChatOptions, CommonContentPart, CompletionStep, CompletionStepType, CompletionToolCall, CompletionToolResult, DetermineStepTypeOptions, DeveloperMessage, ExecuteToolOptions, ExecuteToolResult, FileContentPart, FinishReason, ImageContentPart, Message, PrepareStep, PrepareStepOptions, PrepareStepResult, RefusalContentPart, ResolveStepOptionsOptions, ResolvedStepOptions, StopCondition, StopContext, StopStep, SystemMessage, TextContentPart, Tool, ToolCall, ToolChoice, ToolExecuteOptions, ToolExecuteResult, ToolMessage, Usage, UserMessage };

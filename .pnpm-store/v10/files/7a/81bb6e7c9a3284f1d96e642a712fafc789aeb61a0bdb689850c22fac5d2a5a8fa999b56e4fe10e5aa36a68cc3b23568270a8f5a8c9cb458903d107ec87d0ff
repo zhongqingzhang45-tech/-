@@ -1,0 +1,1 @@
+{"version":3,"file":"tailwind-tokens.d.ts","sourceRoot":"","sources":["../../../src/node/builtin-plugins/tailwind-tokens.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,MAAM,EAAiB,MAAM,kBAAkB,CAAA;AAI7D,MAAM,WAAW,qBAAqB;IACpC,UAAU,CAAC,EAAE,MAAM,CAAA;CACpB;AAED,wBAAgB,cAAc,CAAC,OAAO,GAAE,qBAA0B,GAAG,MAAM,CA2E1E"}

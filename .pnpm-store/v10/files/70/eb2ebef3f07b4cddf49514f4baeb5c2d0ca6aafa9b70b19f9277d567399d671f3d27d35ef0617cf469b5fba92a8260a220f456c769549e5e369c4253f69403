@@ -1,0 +1,47 @@
+{
+  "name": "clustr",
+  "type": "module",
+  "version": "1.0.2",
+  "description": "Stream UTF-8 bytes and read grapheme clusters safely",
+  "author": "Makito <i@maki.to>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sumimakito/clustr.git"
+  },
+  "keywords": [
+    "emoji",
+    "grapheme",
+    "grapheme cluster",
+    "readable-stream",
+    "stream",
+    "streaming",
+    "unicode",
+    "utf8",
+    "zwj-sequences"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=22.10.0"
+  },
+  "devDependencies": {
+    "@tsconfig/strictest": "^2.0.5",
+    "@types/node": "^24.0.12",
+    "tsdown": "^0.12.9",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "bump": "bumpp --no-tag --no-push --sign",
+    "lint": "eslint --cache .",
+    "lint:fix": "eslint --cache . --fix",
+    "test": "vitest"
+  }
+}

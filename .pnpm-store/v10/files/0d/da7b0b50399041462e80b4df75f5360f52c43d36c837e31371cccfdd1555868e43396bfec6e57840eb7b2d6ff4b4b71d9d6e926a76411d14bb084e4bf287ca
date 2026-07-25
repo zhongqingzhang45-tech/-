@@ -1,0 +1,27 @@
+import { PLUGIN_NAME } from "./constants.mjs";
+import unplugin from "./index.mjs";
+//#region src/astro.ts
+/**
+* Astro integration
+*
+* @example
+* ```ts
+* // astro.config.mjs
+* import yaml from "unplugin-yaml/astro"
+*
+* export default defineConfig({
+*   integrations: [yaml()],
+* })
+* ```
+*/
+function YamlIntegration(options) {
+	return {
+		name: PLUGIN_NAME,
+		hooks: { "astro:config:setup": async (astro) => {
+			astro.config.vite.plugins ||= [];
+			astro.config.vite.plugins.push(unplugin.vite(options));
+		} }
+	};
+}
+//#endregion
+export { YamlIntegration as default };

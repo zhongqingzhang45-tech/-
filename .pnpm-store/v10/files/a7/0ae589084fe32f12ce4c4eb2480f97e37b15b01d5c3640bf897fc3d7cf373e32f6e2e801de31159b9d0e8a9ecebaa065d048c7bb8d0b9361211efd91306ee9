@@ -1,0 +1,60 @@
+{
+  "name": "@xsai-transformers/transcription",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Transformers.js wrapper makes it easy to use with xsai",
+  "author": {
+    "name": "Moeru AI",
+    "email": "neko@moeru.ai",
+    "url": "https://github.com/moeru-ai"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/moeru-ai/xsai-transformers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moeru-ai/xsai-transformers.git",
+    "directory": "packages/transcription"
+  },
+  "bugs": "https://github.com/moeru-ai/xsai-transformers/issues",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "default": "./dist/worker/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "README.md",
+    "dist",
+    "package.json"
+  ],
+  "peerDependencies": {
+    "web-worker": "^1.5.0"
+  },
+  "peerDependenciesMeta": {
+    "web-worker": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.6",
+    "@moeru/eventa": "^0.3.0",
+    "@moeru/std": "^0.1.0-beta.13",
+    "@xsai-ext/shared-providers": "^0.4.0-beta.9",
+    "@xsai/embed": "^0.4.0-beta.9",
+    "@xsai/generate-transcription": "^0.4.0-beta.9",
+    "@xsai/shared": "^0.4.0-beta.9",
+    "gpuu": "^1.0.6",
+    "@xsai-transformers/shared": "^0.1.0"
+  },
+  "scripts": {
+    "build": "pkgroll",
+    "typecheck": "tsc --noEmit"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

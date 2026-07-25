@@ -1,0 +1,16 @@
+export function jsx(name: null, props: {
+    children?: Child;
+}, key?: string | undefined): Root;
+export function jsx(name: string, props: JSXProps, key?: string | undefined): Element;
+export function jsxs(name: null, props: {
+    children?: Child;
+}, key?: string | undefined): Root;
+export function jsxs(name: string, props: JSXProps, key?: string | undefined): Element;
+export const Fragment: null;
+export type Child = import('./index.js').Child;
+export type Element = import('./index.js').Element;
+export type Root = import('./index.js').Root;
+export type Value = import('./index.js').Value;
+export type JSXProps = {
+    [x: string]: string | number | boolean | import("xast").Cdata | import("xast").Comment | import("xast").Element | import("xast").Instruction | import("xast").Text | import("xast").Doctype | import("xast").Root | import("./index.js").ArrayChild | null | undefined;
+};

@@ -1,0 +1,1 @@
+{"version":3,"file":"no-for-in.spec.js","sourceRoot":"","sources":["../../src/rules/no-for-in.spec.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,YAAY,CAAA;AACnC,OAAO,MAAM,MAAM,gBAAgB,CAAA;AAEnC,MAAM,CAAC,IAAI,CAAC,MAAM,EAAE;IAClB,OAAO,EAAE;QACP;YACE,IAAI,EAAE,4BAA4B;YAClC,MAAM,EAAE,CAAC,EAAE,SAAS,EAAE,SAAS,EAAE,CAAC;SACnC;KACF;CACF,CAAC,CAAA"}

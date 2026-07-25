@@ -1,0 +1,4 @@
+import f from "./WindowRoot.vue.js";
+export {
+  f as default
+};

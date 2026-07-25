@@ -1,0 +1,105 @@
+{
+  "name": "xastscript",
+  "version": "4.0.0",
+  "description": "xast utility to create trees",
+  "license": "MIT",
+  "keywords": [
+    "unist",
+    "xast",
+    "xast-util",
+    "util",
+    "utility",
+    "xml",
+    "dsl",
+    "extensible",
+    "markup",
+    "language"
+  ],
+  "repository": "syntax-tree/xastscript",
+  "bugs": "https://github.com/syntax-tree/xastscript/issues",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/unified"
+  },
+  "author": "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)",
+  "contributors": [
+    "Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)"
+  ],
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./index.js": "./index.js",
+    "./jsx-dev-runtime": "./jsx-dev-runtime.js",
+    "./jsx-runtime": "./jsx-runtime.js"
+  },
+  "files": [
+    "lib/",
+    "index.d.ts",
+    "index.js",
+    "jsx-dev-runtime.d.ts",
+    "jsx-dev-runtime.js",
+    "jsx-runtime.d.ts",
+    "jsx-runtime.js"
+  ],
+  "dependencies": {
+    "@types/xast": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "c8": "^8.0.0",
+    "esast-util-from-js": "^1.0.0",
+    "estree-util-build-jsx": "^2.0.0",
+    "estree-util-to-js": "^1.0.0",
+    "prettier": "^3.0.0",
+    "remark-cli": "^11.0.0",
+    "remark-preset-wooorm": "^9.0.0",
+    "tsd": "^0.28.0",
+    "type-coverage": "^2.0.0",
+    "typescript": "^5.0.0",
+    "unist-builder": "^4.0.0",
+    "xo": "^0.55.0"
+  },
+  "scripts": {
+    "prepack": "npm run generate && npm run build && npm run format",
+    "generate": "node script/generate-jsx.js",
+    "build": "tsc --build --clean && tsc --build && tsd && type-coverage",
+    "format": "remark . -qfo && prettier . -w --log-level warn && xo --fix",
+    "test-api": "node --conditions development test/index.js",
+    "test-coverage": "c8 --100 --reporter lcov npm run test-api",
+    "test": "npm run generate && npm run build && npm run format && npm run test-coverage"
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "semi": false,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "none",
+    "useTabs": false
+  },
+  "remarkConfig": {
+    "plugins": [
+      "remark-preset-wooorm"
+    ]
+  },
+  "typeCoverage": {
+    "atLeast": 100,
+    "detail": true,
+    "ignoreCatch": true,
+    "strict": true
+  },
+  "xo": {
+    "overrides": [
+      {
+        "files": [
+          "**/*.ts"
+        ],
+        "rules": {
+          "@typescript-eslint/consistent-indexed-object-style": "off",
+          "@typescript-eslint/consistent-type-definitions": "off"
+        }
+      }
+    ],
+    "prettier": true
+  }
+}

@@ -1,0 +1,41 @@
+import { a as defineEventa, c as matchBy, i as and, o as defineInboundEventa, s as defineOutboundEventa, t as createContext$1 } from "../../../context-SiKOMx8N.mjs";
+import { n as parseWebsocketPayload, t as generateWebsocketPayload } from "../../../internal-CxS5mCc0.mjs";
+//#region src/adapters/websocket/native/index.ts
+const wsConnectedEvent = defineEventa();
+const wsDisconnectedEvent = defineEventa();
+const wsErrorEvent = defineEventa();
+function createContext(wsConn) {
+	const ctx = createContext$1();
+	ctx.on(and(matchBy((e) => e._flowDirection === "outbound" || !e._flowDirection), matchBy("*")), (event) => {
+		const data = JSON.stringify(generateWebsocketPayload(event.id, {
+			...defineOutboundEventa(event.type),
+			...event
+		}));
+		wsConn.send(data);
+	});
+	wsConn.onmessage = (event) => {
+		try {
+			const { type, payload } = parseWebsocketPayload(event.data);
+			ctx.emit(defineInboundEventa(type), payload.body, { raw: { message: event } });
+		} catch (error) {
+			console.error("Failed to parse WebSocket message:", error);
+			ctx.emit(wsErrorEvent, { error }, { raw: { message: event } });
+		}
+	};
+	wsConn.onopen = (event) => {
+		ctx.emit(wsConnectedEvent, { url: wsConn.url }, { raw: { open: event } });
+	};
+	wsConn.onerror = (error) => {
+		ctx.abort(/* @__PURE__ */ new Error("eventa: invoke cancelled, websocket error"));
+		ctx.emit(wsErrorEvent, { error }, { raw: { error } });
+	};
+	wsConn.onclose = (close) => {
+		ctx.abort(/* @__PURE__ */ new Error(`eventa: invoke cancelled, websocket disconnected (${wsConn.url})`));
+		ctx.emit(wsDisconnectedEvent, { url: wsConn.url }, { raw: { close } });
+	};
+	return { context: ctx };
+}
+//#endregion
+export { createContext, wsConnectedEvent, wsDisconnectedEvent, wsErrorEvent };
+
+//# sourceMappingURL=index.mjs.map

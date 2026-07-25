@@ -1,0 +1,3 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const require_core = require("./core-CEOGw--w.cjs");
+exports.UnpluginInfo = require_core.UnpluginInfo;

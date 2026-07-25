@@ -1,0 +1,20 @@
+import "./options-DC5dXKG8.mjs";
+import { Unused } from "./index.mjs";
+
+//#region src/vite.d.ts
+/**
+* Vite plugin
+*
+* @example
+* ```ts
+* // vite.config.ts
+* import Unused from 'unplugin-unused/vite'
+*
+* export default defineConfig({
+*   plugins: [Unused()],
+* })
+* ```
+*/
+declare const vite: typeof Unused.vite;
+//#endregion
+export { vite as default, vite as "module.exports" };

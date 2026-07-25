@@ -1,0 +1,14 @@
+const trampoline = async (fn) => {
+  let result = await fn();
+  while (result instanceof Function)
+    result = await result();
+  return result;
+};
+const trampolineSync = (fn) => {
+  let result = fn();
+  while (result instanceof Function)
+    result = result();
+  return result;
+};
+
+export { trampoline, trampolineSync };

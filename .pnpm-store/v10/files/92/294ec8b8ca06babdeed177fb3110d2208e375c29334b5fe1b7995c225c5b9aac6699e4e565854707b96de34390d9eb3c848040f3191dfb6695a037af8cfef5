@@ -1,0 +1,6 @@
+import { i as Factory, m as UnpluginCombineInstance } from "./types-CTyinCGO.js";
+
+//#region src/rollup.d.ts
+declare function getRollupPlugin<UserOptions>(factory: Factory<UserOptions>): UnpluginCombineInstance<UserOptions>["rollup"];
+//#endregion
+export { getRollupPlugin };

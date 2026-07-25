@@ -1,0 +1,9 @@
+export interface Options {
+    deferPackages?: string[];
+    eagerPackages?: string[];
+}
+declare const _default: import("../rule.ts").RuleModuleWithName<"prefer", [Options], {
+    description: string;
+}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
+export default _default;
+//# sourceMappingURL=prefer-defer-import.d.ts.map

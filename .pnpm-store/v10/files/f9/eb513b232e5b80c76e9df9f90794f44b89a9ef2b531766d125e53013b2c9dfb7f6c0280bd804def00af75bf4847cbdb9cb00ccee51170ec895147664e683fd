@@ -1,0 +1,14 @@
+import { n as YamlOptions, t as YAMLValue } from "./types-CQtoDK96.mjs";
+import { UnpluginFactory, UnpluginInstance } from "unplugin";
+
+//#region src/index.d.ts
+/**
+ * A unplugin factory, used by Unplugin to create a new plugin instance.
+ */
+declare const unpluginFactory: UnpluginFactory<YamlOptions | undefined>;
+/**
+ * The main unplugin instance.
+ */
+declare const unplugin: UnpluginInstance<YamlOptions | undefined, boolean>;
+//#endregion
+export { type YAMLValue, type YamlOptions, unplugin as default, unplugin, unpluginFactory };

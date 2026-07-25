@@ -1,0 +1,45 @@
+{
+  "name": "@vishot/cli",
+  "type": "module",
+  "version": "0.0.3",
+  "description": "Unified command line interface for Vishot capture adapters.",
+  "license": "MIT",
+  "homepage": "https://github.com/moeru-ai/vishot",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moeru-ai/vishot.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "types": "./dist/index.d.mts",
+  "bin": {
+    "vishot": "./dist/bin/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@moeru/std": "^0.1.0-beta.17",
+    "@napi-rs/image": "^1.12.0",
+    "cac": "^6.7.14",
+    "playwright": "^1.57.0",
+    "@vishot/core": "0.0.3",
+    "@vishot/renderer-browser": "0.0.3",
+    "@vishot/source-electron": "0.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.2"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

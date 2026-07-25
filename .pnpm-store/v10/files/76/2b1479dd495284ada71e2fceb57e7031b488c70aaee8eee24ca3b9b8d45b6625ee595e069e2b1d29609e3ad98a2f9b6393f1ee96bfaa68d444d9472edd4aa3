@@ -1,0 +1,71 @@
+import { defineComponent, createElementBlock, openBlock, Fragment, createVNode, createElementVNode, normalizeClass, createCommentVNode, createTextVNode, toDisplayString, renderList, createBlock, unref } from "@histoire/vendors/vue";
+import { Icon } from "@histoire/vendors/iconify";
+import BaseIcon from "../base/BaseIcon.vue.js";
+"use strict";
+const _hoisted_1 = { class: "htw-flex-1" };
+const _hoisted_2 = { class: "htw-flex" };
+const _hoisted_3 = { class: "htw-ml-auto htw-opacity-40" };
+const _hoisted_4 = {
+  key: 0,
+  class: "htw-flex htw-items-center htw-gap-0.5 htw-opacity-60"
+};
+const _sfc_main = /* @__PURE__ */ defineComponent({
+  __name: "SearchItemContent",
+  props: {
+    result: {},
+    selected: { type: Boolean }
+  },
+  setup(__props) {
+    const defaultIcons = {
+      story: "carbon:cube",
+      variant: "carbon:cube"
+    };
+    const kindLabels = {
+      story: "Story",
+      variant: "Variant",
+      command: "Command"
+    };
+    return (_ctx, _cache) => {
+      return openBlock(), createElementBlock(Fragment, null, [
+        createVNode(BaseIcon, {
+          icon: __props.result.icon ?? defaultIcons[__props.result.kind],
+          class: normalizeClass(["htw-w-4 htw-h-4", [
+            !__props.selected ? [
+              __props.result.iconColor ? "bind-icon-color" : {
+                "htw-text-primary-500": __props.result.kind === "story",
+                "htw-text-gray-500": __props.result.kind === "variant"
+              }
+            ] : [],
+            {
+              "colorize-black": __props.selected
+            }
+          ]])
+        }, null, 8, ["icon", "class"]),
+        createElementVNode("div", _hoisted_1, [
+          createElementVNode("div", _hoisted_2, [
+            createTextVNode(toDisplayString(__props.result.title) + " ", 1),
+            createElementVNode("span", _hoisted_3, toDisplayString(kindLabels[__props.result.kind]), 1)
+          ]),
+          __props.result.path?.length ? (openBlock(), createElementBlock("div", _hoisted_4, [
+            (openBlock(true), createElementBlock(Fragment, null, renderList(__props.result.path, (p, index) => {
+              return openBlock(), createElementBlock("div", {
+                key: index,
+                class: "htw-flex htw-items-center htw-gap-0.5"
+              }, [
+                index > 0 ? (openBlock(), createBlock(unref(Icon), {
+                  key: 0,
+                  icon: "carbon:chevron-right",
+                  class: "htw-w-4 htw-h-4 htw-mt-0.5 htw-opacity-50"
+                })) : createCommentVNode("", true),
+                createElementVNode("span", null, toDisplayString(p), 1)
+              ]);
+            }), 128))
+          ])) : createCommentVNode("", true)
+        ])
+      ], 64);
+    };
+  }
+});
+export {
+  _sfc_main as default
+};

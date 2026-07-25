@@ -1,0 +1,1 @@
+{"version":3,"file":"search.d.ts","sourceRoot":"","sources":["../../src/node/search.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,cAAc,CAAA;AAG3C,wBAAsB,uBAAuB,CAAC,GAAG,EAAE,OAAO;;;YA8CtB,MAAM;cAAQ,MAAM;;GAvBvD;AAED,wBAAsB,qBAAqB,CAAC,GAAG,EAAE,OAAO;;;YAqBpB,MAAM;cAAQ,MAAM;;GAJvD;AAuBD,wBAAgB,eAAe,CAAC,IAAI,EAAE,GAAG,UAexC"}

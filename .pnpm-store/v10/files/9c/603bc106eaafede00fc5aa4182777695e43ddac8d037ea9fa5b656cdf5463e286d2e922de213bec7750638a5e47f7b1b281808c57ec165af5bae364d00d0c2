@@ -1,0 +1,61 @@
+import { PLUGIN_NAME } from "./constants.mjs";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { createFilter } from "@rollup/pluginutils";
+import { createUnplugin } from "unplugin";
+import { parse, parseAllDocuments } from "yaml";
+//#region src/index.ts
+const PREFIX = `\0virtual:yaml:`;
+const DEFAULT_INCLUDE_RE = /\.ya?ml(\?raw)?$/;
+const RAW_IMPORT_RE = /\.ya?ml\?raw$/;
+const CRLF_RE = /\r\n/g;
+/**
+* A unplugin factory, used by Unplugin to create a new plugin instance.
+*/
+const unpluginFactory = (options = {}) => {
+	const filter = createFilter(options.include || DEFAULT_INCLUDE_RE);
+	const type = options.type || "single";
+	return {
+		name: PLUGIN_NAME,
+		enforce: "pre",
+		transformInclude(id) {
+			return filter(id);
+		},
+		transform(code, id) {
+			if (id.endsWith("?raw")) return `${code}`;
+			let parsed = {};
+			if (type === "multi") parsed = parseAllDocuments(code, options.parserOptions).map((doc) => doc.toJSON());
+			else parsed = parse(code, options.parserOptions);
+			let content = parsed;
+			if (options.transform != null && typeof options.transform === "function") {
+				const transformed = options.transform(content, id);
+				if (transformed != null) content = transformed;
+			}
+			return `var data = ${JSON.stringify(content, null, 2)};\n\nexport default data;`;
+		},
+		resolveId(id, importer) {
+			if (RAW_IMPORT_RE.test(id) && importer) {
+				const [relativePath] = id.split("?raw");
+				return `${PREFIX}${join(dirname(importer), relativePath)}:raw`;
+			}
+		},
+		async load(id) {
+			if (!id.startsWith(PREFIX)) return;
+			id = id.slice(PREFIX.length);
+			if (id.endsWith(":raw")) id = id.slice(0, -4);
+			const path = id;
+			if (!path) throw new Error("invalid path can't read yaml file");
+			const content = (await readFile(path, "utf-8")).replace(CRLF_RE, "\n");
+			return {
+				code: `export default ${JSON.stringify(content)}`,
+				map: null
+			};
+		}
+	};
+};
+/**
+* The main unplugin instance.
+*/
+const unplugin = /* @__PURE__ */ createUnplugin(unpluginFactory);
+//#endregion
+export { unplugin as default, unplugin, unpluginFactory };

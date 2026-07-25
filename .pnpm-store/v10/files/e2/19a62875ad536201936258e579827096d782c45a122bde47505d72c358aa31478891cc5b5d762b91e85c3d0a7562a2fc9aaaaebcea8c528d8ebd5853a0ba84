@@ -1,0 +1,11 @@
+import vite_default from "./vite.mjs";
+//#region src/astro.ts
+var astro_default = (options = {}) => ({
+	name: "unplugin-info",
+	hooks: { "astro:config:setup": async (astro) => {
+		astro.config.vite.plugins ||= [];
+		astro.config.vite.plugins.push(vite_default(options));
+	} }
+});
+//#endregion
+export { astro_default as default };

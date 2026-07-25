@@ -1,0 +1,3 @@
+declare function readableStreamToAsyncIterator<T>(res: ReadableStream<T>): AsyncGenerator<T, void, unknown>;
+
+export { readableStreamToAsyncIterator };

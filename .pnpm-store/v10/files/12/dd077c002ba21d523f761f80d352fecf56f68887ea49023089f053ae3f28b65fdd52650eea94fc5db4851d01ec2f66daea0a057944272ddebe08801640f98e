@@ -1,0 +1,3 @@
+import type { Context } from '../context.js';
+export declare function resolvedStories(ctx: Context): string;
+//# sourceMappingURL=resolved-stories.d.ts.map

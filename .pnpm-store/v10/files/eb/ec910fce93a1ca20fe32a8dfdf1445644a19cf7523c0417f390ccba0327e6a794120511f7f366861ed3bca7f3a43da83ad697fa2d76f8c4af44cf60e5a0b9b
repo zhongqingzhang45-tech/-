@@ -1,0 +1,6 @@
+import { default as a, default as f, default as l } from "./components/platforms/windows/PlatformRoot.vue.js";
+export {
+  a as PlatformRoot,
+  f as WindowsPlatformRoot,
+  l as default
+};

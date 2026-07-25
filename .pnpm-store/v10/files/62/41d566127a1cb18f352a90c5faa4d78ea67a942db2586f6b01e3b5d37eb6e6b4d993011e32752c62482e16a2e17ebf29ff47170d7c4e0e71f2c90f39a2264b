@@ -1,0 +1,18 @@
+import type { Profile } from "./types";
+export declare let configuration: {
+    wasmModule: WebAssembly.Module | undefined;
+};
+export declare class WLipSyncAudioNode extends AudioWorkletNode {
+    private openCloseVelocity;
+    private lastTimestamp;
+    private weightVelocities;
+    minVolume: number;
+    maxVolume: number;
+    smoothness: number;
+    volume: number;
+    weights: Record<string, number>;
+    constructor(context: BaseAudioContext, profile: Profile, wasmModule?: WebAssembly.Module | undefined);
+    private onMessage;
+    get blockSize(): number;
+    set blockSize(value: number);
+}

@@ -1,0 +1,136 @@
+//#region src/analyser.protocol.d.ts
+declare const ANALYSER_WORKLET_PROCESSOR_NAME = "workletAnalyserProcessor";
+declare const DEFAULT_ANALYSER_WORKLET_PARAMS: AnalyserWorkletParameters;
+interface AnalyserWorkletParameters {
+  /**
+   * Minimum interval between detected beats in seconds.
+   *
+   * Debounce to reduce falsely detected consecutive beats.
+   *
+   * @default 0.2 (seconds = 300 BPM)
+   */
+  minBeatInterval: number;
+  /**
+   * Overall sensitivity.
+   *
+   * Range from 0.0 (least sensitive) to 1.0 (most sensitive).
+   *
+   * @default 0.7
+   */
+  sensitivity: number;
+  /**
+   * Frequency for the lowpass filter applied to reduce high frequencies like vocals.
+   *
+   * Lowpass filter does not remove all high frequencies, but reduces their amplitude.
+   *
+   * @default 200 (Hz)
+   */
+  lowpassFilterFrequency: number;
+  /**
+   * Frequency for the highpass filter applied to reduce low frequencies like sub-bass noises.
+   *
+   * Highpass filter does not remove all low frequencies, but reduces their amplitude.
+   *
+   * @default 30 (Hz)
+   */
+  highpassFilterFrequency: number;
+  /**
+   * Cut-off (Hz) for the envelope low-pass filter that smooths instantaneous energy.
+   *
+   * Should be much lower than the lowpass filter used for spectral content, so that the envelope
+   * tracks slower amplitude changes. Lower values result in smoother and slower envelope response.
+   *
+   * @default 12 (Hz)
+   */
+  envelopeFilterFrequency: number;
+  /**
+   * Whether to apply adaptive thresholds based on signal variance over time.
+   *
+   * @default true
+   */
+  adaptiveThreshold: boolean;
+  /**
+   * Whether to enable spectral flux-based onset detection.
+   *
+   * Spectral flux measures frame-to-frame changes in spectral magnitude.
+   *
+   * @default true
+   */
+  spectralFlux: boolean;
+  /**
+   * Whether to emit detected beats only after the analysis buffer is full.
+   *
+   * @default true
+   */
+  warmup: boolean;
+  /**
+   * Duration of the internal analysis buffer in seconds.
+   *
+   * @default 4 (seconds)
+   */
+  bufferDuration: number;
+}
+interface AnalyserWorkletBaseMessage {
+  type: string;
+}
+interface AnalyserWorkletBeatMessage extends AnalyserWorkletBaseMessage {
+  type: 'beat';
+  energy: number;
+  interval: number;
+}
+interface AnalyserWorkletParametersMessage extends AnalyserWorkletBaseMessage {
+  type: 'parameters';
+  parameters: Partial<AnalyserWorkletParameters>;
+  reset: boolean;
+}
+interface AnalyserWorkletStopMessage extends AnalyserWorkletBaseMessage {
+  type: 'stop';
+}
+type AnalyserWorkletMessage = AnalyserWorkletBeatMessage | AnalyserWorkletParametersMessage | AnalyserWorkletStopMessage;
+//#endregion
+//#region src/bpm.d.ts
+interface BPMReporterParams {
+  mode?: 'default' | 'eager';
+  onReport?: (bpm: number, duration: number, full: boolean) => void;
+}
+interface BPMReporter {
+  push: (beats: number, duration: number) => void;
+  clear: () => void;
+}
+declare function createBPMReporter(params: BPMReporterParams): BPMReporter;
+//#endregion
+//#region src/analyser.d.ts
+interface AnalyserBeatEvent {
+  energy: number;
+  interval: number;
+}
+interface AnalyserListeners {
+  onBeat?: (event: AnalyserBeatEvent) => void;
+}
+interface AnalyserParameters {
+  context: AudioContext;
+  /**
+   * Worklet module URL
+   */
+  worklet: string | URL;
+  workletParams?: Partial<AnalyserWorkletParameters>;
+  listeners?: AnalyserListeners;
+  reportBPM?: BPMReporterParams;
+}
+interface Analyser {
+  workletNode: AudioWorkletNode;
+  updateParameters: (params: Partial<AnalyserWorkletParameters>, reset?: boolean) => void;
+  stop: () => void;
+}
+declare function startAnalyser(params: AnalyserParameters): Promise<Analyser>;
+//#endregion
+//#region src/helpers.d.ts
+declare function sourceFromMicrophone(context: AudioContext): Promise<AudioNode>;
+declare function sourceFromAudioElement(context: AudioContext, element: HTMLAudioElement): Promise<AudioNode>;
+declare function sourceFromMediaStream(context: AudioContext, stream: MediaStream): Promise<AudioNode>;
+declare function sourceFromScreenCapture(context: AudioContext, options: DisplayMediaStreamOptions): Promise<{
+  audioNode: AudioNode;
+  stream: MediaStream;
+}>;
+//#endregion
+export { ANALYSER_WORKLET_PROCESSOR_NAME, Analyser, AnalyserBeatEvent, AnalyserListeners, AnalyserParameters, AnalyserWorkletBeatMessage, AnalyserWorkletMessage, AnalyserWorkletParameters, AnalyserWorkletParametersMessage, AnalyserWorkletStopMessage, BPMReporter, BPMReporterParams, DEFAULT_ANALYSER_WORKLET_PARAMS, createBPMReporter, sourceFromAudioElement, sourceFromMediaStream, sourceFromMicrophone, sourceFromScreenCapture, startAnalyser };

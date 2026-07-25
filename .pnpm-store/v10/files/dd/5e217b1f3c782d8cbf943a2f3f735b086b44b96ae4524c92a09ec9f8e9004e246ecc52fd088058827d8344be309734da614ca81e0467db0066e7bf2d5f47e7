@@ -1,0 +1,16 @@
+import { openBlock as t, createElementBlock as n, createElementVNode as o, normalizeClass as r } from "vue";
+import l from "../../../../../_virtual/_plugin-vue_export-helper.js";
+const i = {}, s = {
+  class: /* @__PURE__ */ r([
+    "inline-flex items-center"
+  ])
+};
+function c(m, e) {
+  return t(), n("div", s, [...e[0] || (e[0] = [
+    o("div", { "i-mdi:apple": "" }, null, -1)
+  ])]);
+}
+const d = /* @__PURE__ */ l(i, [["render", c]]);
+export {
+  d as default
+};

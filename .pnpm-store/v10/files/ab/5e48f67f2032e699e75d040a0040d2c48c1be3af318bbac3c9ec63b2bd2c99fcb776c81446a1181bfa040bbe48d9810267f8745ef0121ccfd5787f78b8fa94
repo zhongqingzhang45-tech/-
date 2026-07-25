@@ -1,0 +1,62 @@
+import { EventaFlowDirection, and, createContext as createContext$1, defineEventa, defineInboundEventa, defineOutboundEventa, matchBy, nanoid } from "../../context-C35Qku9U.mjs";
+import "../../src-Bb-vxm5k.mjs";
+
+//#region src/adapters/event-emitter/internal.ts
+function generatePayload(type, payload) {
+	return {
+		id: nanoid(),
+		type,
+		payload
+	};
+}
+function parsePayload(data) {
+	return data;
+}
+
+//#endregion
+//#region src/adapters/event-emitter/shared.ts
+const errorEvent = { ...defineEventa() };
+
+//#endregion
+//#region src/adapters/event-emitter/index.ts
+function withRemoval(eventTarget, type, listener) {
+	eventTarget.on(type, listener);
+	return { remove: () => {
+		eventTarget.off(type, listener);
+	} };
+}
+function createContext(eventTarget, options) {
+	const ctx = createContext$1();
+	const { messageEventName = "message", errorEventName = "error", extraListeners = {} } = options || {};
+	const cleanupRemoval = [];
+	ctx.on(and(matchBy((e) => e._flowDirection === EventaFlowDirection.Outbound || !e._flowDirection), matchBy("*")), (event) => {
+		const detail = generatePayload(event.id, {
+			...defineOutboundEventa(event.type),
+			...event
+		});
+		eventTarget.emit(event.id, detail);
+	});
+	if (messageEventName) cleanupRemoval.push(withRemoval(eventTarget, messageEventName, (event) => {
+		try {
+			const { type, payload } = parsePayload(event.detail);
+			ctx.emit(defineInboundEventa(type), payload.body, { raw: { event } });
+		} catch (error) {
+			console.error("Failed to parse EventEmitter message:", error);
+			ctx.emit(errorEvent, { error }, { raw: { event } });
+		}
+	}));
+	if (errorEventName) cleanupRemoval.push(withRemoval(eventTarget, errorEventName, (error) => {
+		ctx.emit(errorEvent, { error }, { raw: { event: error } });
+	}));
+	for (const [eventName, listener] of Object.entries(extraListeners)) cleanupRemoval.push(withRemoval(eventTarget, eventName, listener));
+	return {
+		context: ctx,
+		dispose: () => {
+			cleanupRemoval.forEach((removal) => removal.remove());
+		}
+	};
+}
+
+//#endregion
+export { createContext };
+//# sourceMappingURL=index.mjs.map

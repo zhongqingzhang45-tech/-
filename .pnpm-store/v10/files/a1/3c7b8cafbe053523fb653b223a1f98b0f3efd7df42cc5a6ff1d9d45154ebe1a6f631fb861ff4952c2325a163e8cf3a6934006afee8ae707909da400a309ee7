@@ -1,0 +1,24 @@
+import { EventContext } from "./context-C_-MRU46.mjs";
+import { InvokeEventa } from "./invoke-LTUFMmHi.mjs";
+
+//#region src/stream.d.ts
+declare function defineStreamInvoke<Res, Req = undefined, ResErr = Error, ReqErr = Error, E = any, EO = any>(clientCtx: EventContext<E, EO>, event: InvokeEventa<Res, Req, ResErr, ReqErr>): (req: Req) => ReadableStream<Res>;
+type StreamHandler<Res, Req = any, RawEventOptions = unknown> = (payload: Req, options?: {
+  /**
+   * TODO: Support aborting invoke handlers
+   */
+  abortController?: AbortController;
+} & RawEventOptions) => AsyncGenerator<Res, void, unknown>;
+declare function defineStreamInvokeHandler<Res, Req = undefined, ResErr = Error, ReqErr = Error, E = any, EO extends {
+  raw?: any;
+} = any>(serverCtx: EventContext<E, EO>, event: InvokeEventa<Res, Req, ResErr, ReqErr>, fn: StreamHandler<Res, Req, EO>): void;
+declare function toStreamHandler<Req, Res, EO extends {
+  raw?: any;
+} = any>(handler: (context: {
+  payload: Req;
+  options?: EO;
+  emit: (data: Res) => void;
+}) => Promise<void>): StreamHandler<Res, Req, EO>;
+//#endregion
+export { defineStreamInvoke, defineStreamInvokeHandler, toStreamHandler };
+//# sourceMappingURL=index-BgaYNgPh.d.mts.map

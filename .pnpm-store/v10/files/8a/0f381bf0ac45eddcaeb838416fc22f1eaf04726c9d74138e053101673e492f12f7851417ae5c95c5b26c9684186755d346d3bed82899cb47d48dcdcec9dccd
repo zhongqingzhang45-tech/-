@@ -1,0 +1,28 @@
+import { defineComponent as s, computed as t, openBlock as l, createElementBlock as n, normalizeStyle as a, normalizeClass as d } from "vue";
+const u = /* @__PURE__ */ s({
+  __name: "deco-outline-region",
+  props: {
+    class: {},
+    borderColor: {},
+    borderRadius: {},
+    borderWidth: {},
+    style: { type: [Boolean, null, String, Object, Array] }
+  },
+  setup(o) {
+    const e = o, r = t(() => ({
+      border: `${e.borderWidth ?? 2}px solid ${e.borderColor ?? "rgba(255, 255, 255, 0.96)"}`,
+      borderRadius: `${e.borderRadius ?? 12}px`
+    }));
+    return (c, i) => (l(), n("div", {
+      class: d([
+        ...e.class ? typeof e.class == "string" ? [e.class] : e.class : [],
+        "box-border",
+        "pointer-events-none"
+      ]),
+      style: a([r.value, e.style])
+    }, null, 6));
+  }
+});
+export {
+  u as default
+};

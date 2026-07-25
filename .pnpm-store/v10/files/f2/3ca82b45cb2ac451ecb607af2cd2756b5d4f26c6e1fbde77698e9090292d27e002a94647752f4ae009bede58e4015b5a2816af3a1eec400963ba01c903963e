@@ -1,0 +1,4 @@
+const o = /* @__PURE__ */ Symbol("vishot:platforms:macos-26:dock:size");
+export {
+  o as injectDockSize
+};

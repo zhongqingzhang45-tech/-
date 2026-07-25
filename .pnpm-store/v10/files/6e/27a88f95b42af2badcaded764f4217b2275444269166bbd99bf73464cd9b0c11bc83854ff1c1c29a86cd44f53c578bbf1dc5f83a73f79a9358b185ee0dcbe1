@@ -1,0 +1,61 @@
+import { package_default } from "../package-DJFb95wr.mjs";
+import { Format, useLogg } from "@guiiai/logg";
+import { sql } from "drizzle-orm";
+
+//#region src/pglite/index.ts
+async function listTables(db) {
+	return (await db.execute(sql`
+    SELECT
+      table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public';
+  `)).rows;
+}
+async function migrate(db, bundledMigrations, options) {
+	const log = options?.logger ?? useLogg(package_default.name).withFormat(Format.Pretty);
+	const TABLE_NAME = sql.identifier("__drizzle_migrations");
+	await db.execute(sql`CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (
+      id bigserial PRIMARY KEY NOT NULL,
+      hash text NOT NULL,
+      tag text NOT NULL,
+      created_at bigint NOT NULL
+    );`);
+	const lastMigration = (await db.execute(sql`SELECT
+      id,
+      hash,
+      created_at
+    FROM ${TABLE_NAME}
+    ORDER BY created_at DESC
+    LIMIT 1;`)).rows.at(0);
+	const pendingMigration = bundledMigrations.filter((migration) => {
+		const timestamp = lastMigration?.created_at ?? 0;
+		return !lastMigration || Number(timestamp) < migration.when;
+	});
+	if (pendingMigration.length === 0) {
+		log.withField("tables", await listTables(db)).debug("no pending migrations");
+		log.log("no pending migrations to apply");
+		return;
+	}
+	await db.transaction(async (tx) => {
+		for (let i = 0; i < pendingMigration.length; i++) {
+			const migration = pendingMigration[i];
+			log.log(`${i + 1}. Deploying migration:`);
+			log.log(`     tag        => ${migration.tag}`);
+			log.log(`     hash       => ${migration.hash}`);
+			log.log(`     created_at => ${new Date(migration.when).toISOString()}`);
+			for (const stmt of migration.sql) await tx.execute(stmt);
+			await tx.execute(sql`
+        INSERT INTO ${TABLE_NAME} ("hash", "created_at", "tag") VALUES (
+          ${sql.raw(`'${migration.hash}'`)},
+          ${sql.raw(`${migration.when}`)},
+          ${sql.raw(`'${migration.tag}'`)}
+        );
+      `);
+		}
+	});
+	log.withField("tables", await listTables(db)).debug("migration successful");
+	log.log(`all ${pendingMigration.length} pending migrations applied!`);
+}
+
+//#endregion
+export { migrate };

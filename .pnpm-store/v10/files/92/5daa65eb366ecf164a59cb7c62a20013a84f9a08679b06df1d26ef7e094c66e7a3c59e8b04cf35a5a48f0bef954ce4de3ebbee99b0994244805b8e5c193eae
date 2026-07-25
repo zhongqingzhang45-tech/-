@@ -1,0 +1,230 @@
+import { t as EventContext } from "./context-CimstVCt.mjs";
+import { C as InvokeEventa, i as Handler, n as ExtractInvokeRequestOptions, o as InvocableEventContext, t as ExtendableInvokeResponse } from "./invoke-CwkePJ1X.mjs";
+
+//#region src/invoke-extension-transfer.d.ts
+interface WithTransfer<T> {
+  message: T;
+  _transfer?: Transferable[];
+}
+declare function withTransfer<T>(body: T, transfer?: Transferable[]): ExtendableInvokeResponse<T, EventContext<{
+  invokeResponse?: {
+    transfer?: Transferable[];
+  };
+}, any>>;
+//#endregion
+//#region src/invoke-remote-methods.d.ts
+interface InvokeFunctionStubOptions {
+  allow?: boolean;
+  maxDepth?: number;
+  maxFunctions?: number;
+  tagPrefix?: string;
+  onDisallowedTag?: 'ignore' | 'throw';
+  autoDisposeMs?: number;
+  strict?: boolean;
+}
+type RemoteInvokeOptions<EC extends EventContext<any, any>> = ExtractInvokeRequestOptions<EC> & {
+  functionStubs?: boolean | InvokeFunctionStubOptions;
+};
+interface RemoteInvokeResult<Res> extends Promise<Res> {
+  dispose: () => void;
+}
+type RemoteInvokeFunction<Res, Req, EC extends EventContext<any, any>> = [Req] extends [undefined] ? (req?: Req, options?: RemoteInvokeOptions<EC>) => RemoteInvokeResult<Res> : (req: Req, options?: RemoteInvokeOptions<EC>) => RemoteInvokeResult<Res>;
+declare function createRemoteMethodTagPrefix(prefix?: string): string;
+/**
+ * Enable "remote method" payloads for invoke: functions in the request body are
+ * serialized into stub descriptors and rehydrated into invoke callers on the
+ * receiving side.
+ *
+ * This is an adapter around the plain-value RPC primitives `defineInvoke` and
+ * `defineInvokeHandler`. It keeps the core invoke APIs clean while offering an
+ * opt-in bridge for function values.
+ *
+ * @example
+ * ```ts
+ * const remote = withRemoteMethods({ allow: true })
+ * const events = defineInvokeEventa<{ output: number }, { helper: (n: number) => Promise<number> }>()
+ *
+ * // server (handler)
+ * remote.defineInvokeHandler(serverCtx, events, async ({ helper }) => {
+ *   const output = await helper(21)
+ *   return { output }
+ * })
+ *
+ * // client (caller)
+ * const invoke = remote.defineInvoke(clientCtx, events)
+ * const result = await invoke({ helper: async n => n * 2 }, { functionStubs: true })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Manual cleanup when you fire-and-forget or cancel midway:
+ * const invoke = remote.defineInvoke(clientCtx, events)
+ * const result = invoke({ helper: () => 'ok' }, { functionStubs: true })
+ * result.dispose()
+ * await result
+ * ```
+ *
+ * Security notes:
+ * - This feature is off by default. Enabling it allows the remote side to call
+ *   back into your process; only use with trusted peers.
+ * - Function stubs are tagged; prefer a unique `tagPrefix` to avoid collisions
+ *   (see `createRemoteMethodTagPrefix`).
+ * - `maxDepth`, `maxFunctions`, and `autoDisposeMs` limit attack surface and
+ *   resource usage. `autoDisposeMs` is useful for fire-and-forget calls.
+ * - Objects are rebuilt with a null prototype to mitigate `__proto__` pollution.
+ * - Enable `strict` to reject malformed `__eventaInvoke` payloads.
+ *
+ * @param defaultOptions Defaults for function stub behavior. Use `{ allow: true }`
+ *        to enable, or provide `maxDepth`, `maxFunctions`, `tagPrefix`,
+ *        `onDisallowedTag`, `autoDisposeMs`, and `strict` for stricter control.
+ */
+declare function withRemoteMethods(defaultOptions?: boolean | InvokeFunctionStubOptions): {
+  defineInvoke<Res, Req = undefined, ResErr = Error, ReqErr = Error, CtxExt = any, EOpts = any, ECtx extends EventContext<CtxExt, EOpts> = EventContext<CtxExt, EOpts>>(ctx: ECtx, event: InvokeEventa<Res, Req, ResErr, ReqErr>): RemoteInvokeFunction<Res, Req, ECtx>;
+  defineInvokeHandler<Res, Req = undefined, ResErr = Error, ReqErr = Error, CtxExt = any, EOpts extends {
+    raw?: any;
+  } = any>(ctx: InvocableEventContext<CtxExt, EOpts>, event: InvokeEventa<Res, Req, ResErr, ReqErr>, handler: Handler<Res, Req, InvocableEventContext<CtxExt, EOpts>, EOpts>): () => void;
+};
+//#endregion
+//#region src/stream.d.ts
+/**
+ * Create a stream invoke function (client side).
+ *
+ * Use when the response is streamed and the request may be unary or streaming.
+ *
+ * Common patterns:
+ * - Unary request -> stream response (server-streaming)
+ * - Stream request -> stream response (bi-directional streaming)
+ *
+ * @example
+ * ```ts
+ * // 1) Define eventa once (shared by client/server)
+ * const events = defineInvokeEventa<Progress | Result, Params>()
+ *
+ * // 2) Client: define invoke function
+ * const invoke = defineStreamInvoke(clientCtx, events)
+ *
+ * // 3) Call with unary request
+ * for await (const msg of invoke({ name: 'alice' })) {
+ *   console.log(msg)
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Client-streaming request
+ * const input = new ReadableStream<number>({
+ *   start(c) { c.enqueue(1); c.enqueue(2); c.close() },
+ * })
+ *
+ * for await (const msg of invoke(input)) {
+ *   console.log(msg)
+ * }
+ * ```
+ *
+ * @param clientCtx Event context on the caller/client side.
+ * @param event Invoke event definition created by `defineInvokeEventa`.
+ */
+declare function defineStreamInvoke<Res, Req = undefined, ResErr = Error, ReqErr = Error, E = any, EO = any>(clientCtx: EventContext<E, EO>, event: InvokeEventa<Res, Req, ResErr, ReqErr>): (req: Req | ReadableStream<Req> | AsyncIterable<Req>, options?: ExtractInvokeRequestOptions<EventContext<E, EO>>) => ReadableStream<Res>;
+type StreamHandler<Res, Req = any, RawEventOptions = unknown> = (payload: Req, options?: {
+  abortController?: AbortController;
+} & RawEventOptions) => AsyncGenerator<Res, void, unknown>;
+/**
+ * Define a stream invoke handler (server side).
+ *
+ * The handler can receive either:
+ * - a unary request `Req`
+ * - a streaming request `ReadableStream<Req>` / `AsyncIterable<Req>`
+ *
+ * It must return an async generator of response messages.
+ *
+ * @example
+ * ```ts
+ * const events = defineInvokeEventa<Progress | Result, Params>()
+ *
+ * defineStreamInvokeHandler(serverCtx, events, async function* (payload) {
+ *   if (isReadableStream<Params>(payload) || isAsyncIterable<Params>(payload)) {
+ *     for await (const item of payload) {
+ *       yield { type: 'progress', value: item }
+ *     }
+ *   }
+ *
+ *   yield { type: 'result', ok: true }
+ * })
+ * ```
+ *
+ * @param serverCtx Event context on the handler/server side.
+ * @param event Invoke event definition created by `defineInvokeEventa`.
+ * @param fn Stream handler that yields response chunks.
+ */
+declare function defineStreamInvokeHandler<Res, Req = undefined, ResErr = Error, ReqErr = Error, E = any, EO extends {
+  raw?: any;
+} = any>(serverCtx: EventContext<E, EO>, event: InvokeEventa<Res, Req, ResErr, ReqErr>, fn: StreamHandler<Res, Req, EO>): void;
+/**
+ * Convert a callback-style handler into a stream handler.
+ *
+ * Use `emit` to push response chunks, and return when done.
+ * Works for unary or streaming requests.
+ *
+ * @example
+ * ```ts
+ * defineStreamInvokeHandler(ctx, events, toStreamHandler(async ({ payload, emit }) => {
+ *   if (isReadableStream<Params>(payload) || isAsyncIterable<Params>(payload)) {
+ *     for await (const item of payload) {
+ *       emit({ type: 'progress', value: item })
+ *     }
+ *
+ *     emit({ type: 'result', ok: true })
+ *     return
+ *   }
+ *
+ *   emit({ type: 'result', ok: true })
+ * }))
+ * ```
+ *
+ * @param handler Callback handler with `emit` for streaming responses.
+ */
+declare function toStreamHandler<Req, Res, EO extends {
+  raw?: any;
+} = any>(handler: (context: {
+  payload: Req;
+  options?: EO;
+  emit: (data: Res) => void;
+}) => Promise<void>): StreamHandler<Res, Req, EO>;
+//#endregion
+//#region src/utils.d.ts
+declare function randomBetween(min: number, max: number): number;
+/**
+ * Checks if a value is an AsyncIterable.
+ *
+ * @param value
+ * @returns True if the value is an AsyncIterable.
+ */
+declare function isAsyncIterable<T>(value: unknown): value is AsyncIterable<T>;
+/**
+ * Checks if an object is a ReadableStream.
+ *
+ * @link https://github.com/cloudflare/workerd/blob/88e8696ce7a5f8969a7e02a2dcfb6504c17c9e8d/src/cloudflare/internal/streaming-forms.ts#L3
+ * @param obj
+ * @returns True if the object looks like a ReadableStream.
+ */
+declare function isReadableStream<T>(obj?: unknown | null): obj is ReadableStream<T>;
+declare function createAbortError(reason?: unknown): Error;
+declare function isAbortError(error: unknown): error is Error;
+declare function createUntilTriggeredOnce<F extends (...args: any[]) => any, P extends any[] = Parameters<F>, R = ReturnType<F>>(fn: F): {
+  onceTriggered: Promise<Awaited<R>>;
+  wrapper: (...args: P) => Promise<Awaited<R>>;
+};
+declare function createUntilTriggered<P, R>(fn: (...args: P[]) => R): {
+  promise: Promise<void>;
+  handler: () => void;
+};
+declare function createUntil<T>(options?: {
+  intervalHandler?: () => Promise<boolean>;
+  interval?: number;
+}): {
+  promise: Promise<T>;
+  handler: (value: T) => void;
+};
+//#endregion
+export { withRemoteMethods as _, isAbortError as a, randomBetween as c, toStreamHandler as d, InvokeFunctionStubOptions as f, createRemoteMethodTagPrefix as g, RemoteInvokeResult as h, createUntilTriggeredOnce as i, defineStreamInvoke as l, RemoteInvokeOptions as m, createUntil as n, isAsyncIterable as o, RemoteInvokeFunction as p, createUntilTriggered as r, isReadableStream as s, createAbortError as t, defineStreamInvokeHandler as u, WithTransfer as v, withTransfer as y };
+//# sourceMappingURL=index-DA7FpxgP.d.mts.map

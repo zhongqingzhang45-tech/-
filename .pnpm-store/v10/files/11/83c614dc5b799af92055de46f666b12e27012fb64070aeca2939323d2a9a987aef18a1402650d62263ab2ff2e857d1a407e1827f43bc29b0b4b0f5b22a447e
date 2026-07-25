@@ -1,0 +1,30 @@
+/**
+ * Prepares a code snippet for display in error messages by removing comments
+ * and normalizing whitespace to a single line.
+ *
+ * @param code - The code snippet to clean.
+ * @returns The cleaned single-line code without comments.
+ */
+function sanitizeCode(code) {
+  let stringLiterals = []
+  let normalized = code
+    .replaceAll(
+      /(?<quote>["'`])(?:\\.|(?!\k<quote>)[^\\])*\k<quote>/gu,
+      match => {
+        let placeholder = `__STRING_LITERAL_${stringLiterals.length}__`
+        stringLiterals.push(match)
+        return placeholder
+      },
+    )
+    .replaceAll(/\/\/.*$/gmu, '')
+    .replaceAll(/\/\*[\s\S]*?\*\//gu, '')
+    .replaceAll(/\s+/gu, ' ')
+    .replaceAll(/\(\s+/gu, '(')
+    .replaceAll(/\s+\)/gu, ')')
+    .trim()
+  for (let [index, string_] of stringLiterals.entries()) {
+    normalized = normalized.replace(`__STRING_LITERAL_${index}__`, string_)
+  }
+  return normalized
+}
+export { sanitizeCode }

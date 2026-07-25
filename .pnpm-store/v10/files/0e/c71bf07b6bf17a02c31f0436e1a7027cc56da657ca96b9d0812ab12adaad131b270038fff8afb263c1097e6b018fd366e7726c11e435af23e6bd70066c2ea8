@@ -1,0 +1,79 @@
+import { a as defineEventa, c as matchBy, i as and, l as nanoid, o as defineInboundEventa, s as defineOutboundEventa, t as createContext$1 } from "../../context-SiKOMx8N.mjs";
+import "../../index.mjs";
+import { t as toError } from "../../errors-B--PnHjv.mjs";
+//#region src/adapters/event-target/internal.ts
+function generateCustomEventDetail(type, payload) {
+	return {
+		id: nanoid(),
+		type,
+		payload
+	};
+}
+function parseCustomEventDetail(data) {
+	return data;
+}
+//#endregion
+//#region src/adapters/event-target/shared.ts
+/**
+* Emitted by the EventTarget adapter when an inbound event fails to parse
+* (`kind: 'parse'`) or the underlying target dispatches an `error`
+* (`kind: 'fatal'`). This adapter is generic (it also backs WebSocket-style
+* targets), so the event is named generically rather than worker-specific.
+* Has a stable id so it can be subscribed to across module boundaries.
+*/
+const adapterErrorEvent = defineEventa("eventa:adapter:error");
+//#endregion
+//#region src/adapters/event-target/index.ts
+function withRemoval(eventTarget, type, listener) {
+	eventTarget.addEventListener(type, listener);
+	return { remove: () => {
+		eventTarget.removeEventListener(type, listener);
+	} };
+}
+function createContext(eventTarget, options) {
+	const ctx = createContext$1();
+	const { messageEventName = "message", errorEventName = "error", extraListeners = {} } = options || {};
+	const cleanupRemoval = [];
+	ctx.on(and(matchBy((e) => e._flowDirection === "outbound" || !e._flowDirection), matchBy("*")), (event) => {
+		const detail = generateCustomEventDetail(event.id, {
+			...defineOutboundEventa(event.type),
+			...event
+		});
+		const customEvent = new CustomEvent(messageEventName || "event", {
+			detail,
+			bubbles: true,
+			cancelable: true
+		});
+		eventTarget.dispatchEvent(customEvent);
+	});
+	if (messageEventName) cleanupRemoval.push(withRemoval(eventTarget, messageEventName, (event) => {
+		try {
+			const { type, payload } = parseCustomEventDetail(event.detail);
+			ctx.emit(defineInboundEventa(type), payload.body, { raw: { event } });
+		} catch (error) {
+			console.error("Failed to parse EventTarget message:", error);
+			ctx.emit(adapterErrorEvent, {
+				kind: "parse",
+				error: toError(error, "eventa: EventTarget message parse error")
+			}, { raw: { event } });
+		}
+	}));
+	if (errorEventName) cleanupRemoval.push(withRemoval(eventTarget, errorEventName, (event) => {
+		ctx.emit(adapterErrorEvent, {
+			kind: "fatal",
+			error: toError(event, "eventa: EventTarget error")
+		}, { raw: { event } });
+	}));
+	for (const [eventName, listener] of Object.entries(extraListeners)) cleanupRemoval.push(withRemoval(eventTarget, eventName, listener));
+	return {
+		context: ctx,
+		dispose: (reason) => {
+			ctx.abort(reason ?? /* @__PURE__ */ new Error("eventa: invoke cancelled, EventTarget adapter disposed"));
+			cleanupRemoval.forEach((removal) => removal.remove());
+		}
+	};
+}
+//#endregion
+export { adapterErrorEvent, createContext };
+
+//# sourceMappingURL=index.mjs.map

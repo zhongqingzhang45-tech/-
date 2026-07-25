@@ -1,0 +1,24 @@
+import { calculateCircleMap as p } from "./calculate-circle-map.js";
+const A = 20;
+function w(c) {
+  const { pixelRatio: t, specularAngle: s } = c, r = Math.round(c.width * t), l = Math.round(c.height * t), d = Math.min(c.radius * t, r / 2, l / 2), e = [
+    Math.cos(s),
+    Math.sin(s)
+  ];
+  return p({
+    fillColor: 0,
+    height: l,
+    maximumDistanceToBorder: A * t,
+    processPixel(u, m, o, a, n, B, D, P, M) {
+      const _ = d - n, g = u / n, x = -m / n, h = Math.abs(
+        g * e[0] + x * e[1]
+      ) * Math.sqrt(1 - (1 - _ / (1 * t)) ** 2), i = 255 * h, E = i * h * M;
+      o[a] = i, o[a + 1] = i, o[a + 2] = i, o[a + 3] = E;
+    },
+    radius: d,
+    width: r
+  });
+}
+export {
+  w as calculateSpecularImage
+};

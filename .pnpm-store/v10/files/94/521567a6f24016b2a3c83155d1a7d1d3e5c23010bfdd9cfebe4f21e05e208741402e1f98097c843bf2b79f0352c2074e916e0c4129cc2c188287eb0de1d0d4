@@ -1,0 +1,3 @@
+import { SETUP_COMPONENT_ID_REGEX, SETUP_COMPONENT_ID_SUFFIX, SETUP_COMPONENT_SUB_MODULE, SETUP_COMPONENT_TYPE, getMainModule, getScopeDecls, hotUpdateSetupComponent, isSubModule, loadSetupComponent, scanSetupComponent, transformPost, transformSetupComponent } from "./core-CO4Kr_Ww.js";
+
+export { SETUP_COMPONENT_ID_REGEX, SETUP_COMPONENT_ID_SUFFIX, SETUP_COMPONENT_SUB_MODULE, SETUP_COMPONENT_TYPE, getMainModule, getScopeDecls, hotUpdateSetupComponent, isSubModule, loadSetupComponent, scanSetupComponent, transformPost, transformSetupComponent };

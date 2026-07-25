@@ -1,0 +1,19 @@
+import { unpluginFactory } from "./index.mjs";
+import { createRollupPlugin } from "unplugin";
+//#region src/rollup.ts
+/**
+* Rollup plugin
+*
+* @example
+* ```ts
+* // rollup.config.js
+* import yaml from "unplugin-yaml/rollup"
+*
+* export default {
+*   plugins: [yaml()],
+* }
+* ```
+*/
+var rollup_default = createRollupPlugin(unpluginFactory);
+//#endregion
+export { rollup_default as default };

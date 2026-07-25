@@ -1,0 +1,23 @@
+const require_core = require("./core-CEOGw--w.cjs");
+//#region src/nuxt.ts
+const nuxtModule = (0, require("@nuxt/kit").defineNuxtModule)({
+	meta: {
+		name: "unplugin-info/nuxt",
+		configKey: "info",
+		compatibility: { nuxt: ">=3.0.0" }
+	},
+	defaults: {},
+	hooks: {},
+	setup(options = {}, nuxt) {
+		nuxt.hook("webpack:config", async (config) => {
+			config.plugins = config.plugins || [];
+			config.plugins.unshift(require_core.UnpluginInfo.webpack(options));
+		});
+		nuxt.hook("vite:extendConfig", async (config) => {
+			config.plugins = config.plugins || [];
+			config.plugins.push(require_core.UnpluginInfo.vite(options));
+		});
+	}
+});
+//#endregion
+module.exports = nuxtModule;

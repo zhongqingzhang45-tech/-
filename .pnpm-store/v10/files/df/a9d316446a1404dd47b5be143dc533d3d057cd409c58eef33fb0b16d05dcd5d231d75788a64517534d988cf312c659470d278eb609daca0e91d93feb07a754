@@ -1,0 +1,91 @@
+{
+  "name": "@tresjs/cientos",
+  "type": "module",
+  "version": "5.7.0",
+  "description": "Collection of useful helpers and fully functional, ready-made abstractions for Tres",
+  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tresjs/tres.git",
+    "directory": "packages/cientos"
+  },
+  "keywords": [
+    "vue",
+    "3d",
+    "threejs",
+    "three",
+    "threejs-vue",
+    "composables"
+  ],
+  "maintainers": [
+    "Alvaro Saburido (https://github.com/alvarosabu/)",
+    "Jaime Torrealba (https://github.com/JaimeTorrealba)"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/trescientos.js",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/trescientos.js",
+  "module": "./dist/trescientos.js",
+  "types": "./dist/trescientos.d.ts",
+  "files": [
+    "*.d.ts",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@tresjs/core": "5.8.0",
+    "three": ">=0.133",
+    "vue": ">=3.5.17"
+  },
+  "dependencies": {
+    "@vueuse/core": "^13.9.0",
+    "camera-controls": "^2.9.0",
+    "stats-gl": "^2.0.1",
+    "stats.js": "^0.17.0",
+    "three-custom-shader-material": "^5.4.0",
+    "three-mesh-bvh": "^0.9.8",
+    "three-stdlib": "^2.36.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/three": "^0.183.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "eslint": "^9.34.0",
+    "eslint-plugin-vue": "^10.4.0",
+    "kolorist": "^1.8.0",
+    "pathe": "^2.0.3",
+    "rollup-plugin-analyzer": "^4.0.0",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "three": "^0.183.0",
+    "tsdown": "0.18.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.1.9",
+    "vite-plugin-banner": "^0.8.1",
+    "vite-plugin-dts": "4.5.4",
+    "vite-plugin-glsl": "^1.5.1",
+    "vite-svg-loader": "^5.1.0",
+    "vue-tsc": "^3.2.1",
+    "@tresjs/eslint-config": "1.5.1",
+    "@tresjs/core": "5.8.0"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@tresjs/cientos-*"
+    ]
+  },
+  "scripts": {
+    "dev": "cd playground/vue && pnpm dev",
+    "build": "tsdown",
+    "build:analyze": "ANALYZE=true tsdown",
+    "lint": "eslint .",
+    "typecheck": "vue-tsc --noEmit",
+    "lint:fix": "eslint . --fix"
+  }
+}

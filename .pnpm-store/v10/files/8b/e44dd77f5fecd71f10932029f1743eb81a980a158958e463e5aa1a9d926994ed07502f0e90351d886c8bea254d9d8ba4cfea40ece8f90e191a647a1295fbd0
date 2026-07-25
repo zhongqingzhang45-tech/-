@@ -1,0 +1,27 @@
+import * as vite0 from "vite";
+
+//#region src/vite.d.ts
+
+/**
+ * This entry file is for Vite plugin.
+ *
+ * @module
+ */
+/**
+ * Vite plugin
+ *
+ * @example
+ * ```ts
+ * // vite.config.ts
+ * import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/vite'
+ *
+ * export default defineConfig({
+ *   plugins: [DrizzleORMMigrations()],
+ * })
+ * ```
+ */
+declare const vite: (options?: {
+  root?: string;
+}) => vite0.Plugin<any>;
+//#endregion
+export { vite as default, vite as "module.exports" };

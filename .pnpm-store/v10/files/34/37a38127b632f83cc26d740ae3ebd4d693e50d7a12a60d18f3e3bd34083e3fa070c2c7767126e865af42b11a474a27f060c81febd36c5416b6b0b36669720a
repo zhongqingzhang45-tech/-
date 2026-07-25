@@ -1,0 +1,116 @@
+import { colorResolver, handler } from "@unocss/preset-mini/utils";
+
+//#region src/index.ts
+const defaultOption = {
+	scrollbarWidth: "8px",
+	scrollbarHeight: "8px",
+	scrollbarTrackRadius: "4px",
+	scrollbarThumbRadius: "4px",
+	scrollbarTrackColor: "#f5f5f5",
+	scrollbarThumbColor: "#ddd",
+	varPrefix: "",
+	compatible: false
+};
+const customRules = {
+	"radius": ["track-radius", "thumb-radius"],
+	"w": ["width"],
+	"h": ["height"],
+	"track-radius": ["track-radius"],
+	"thumb-radius": ["thumb-radius"]
+};
+function presetScrollbar(option = {}) {
+	const config = {
+		...defaultOption,
+		...option
+	};
+	const resolveVar = (name) => `--${config.varPrefix ? `${config.varPrefix}-` : ""}scrollbar-${name}`;
+	const variantsRE = /^(scrollbar(-track|-thumb)?):.+$/;
+	const compatRules = config.compatible ? [
+		[/^scrollbar-color-(.+)$/, ([_, s]) => {
+			return { "scrollbar-color": handler.bracket.cssvar.auto.fraction.rem(s) };
+		}],
+		["scrollbar-width-auto", { "scrollbar-width": "auto" }],
+		["scrollbar-width-thin", { "scrollbar-width": "thin" }]
+	] : [];
+	return {
+		name: "unocss-preset-scrollbar",
+		shortcuts: [
+			["scrollbar", [
+				{ overflow: "auto" },
+				"scrollbar-custom-property",
+				"scrollbar-width-auto",
+				`scrollbar-color-[var(${resolveVar("thumb")})_var(${resolveVar("track")})]`,
+				`scrollbar-track:scrollbar-background-color-[var(${resolveVar("track")})]`,
+				`scrollbar-thumb:scrollbar-background-color-[var(${resolveVar("thumb")})]`,
+				`scrollbar:scrollbar-width-[var(${resolveVar("width")})]`,
+				`scrollbar:scrollbar-height-[var(${resolveVar("height")})]`
+			]],
+			["scrollbar-rounded", `
+          scrollbar-track:scrollbar-border-radius-[var(${resolveVar("track-radius")})]
+          scrollbar-thumb:scrollbar-border-radius-[var(${resolveVar("thumb-radius")})]
+        `],
+			["scrollbar-thin", `
+          scrollbar-w-8px
+          scrollbar-h-8px
+          scrollbar-width-thin
+        `],
+			["scrollbar-none", `
+          scrollbar:hidden
+          scrollbar-width-none
+        `]
+		],
+		variants: [(matcher) => {
+			if (!variantsRE.test(matcher)) return;
+			const variant = matcher.replace(variantsRE, "$1");
+			return {
+				matcher: matcher.slice(variant.length + 1),
+				selector: (s) => {
+					return `${s}::-webkit-${variant}`;
+				}
+			};
+		}],
+		rules: [
+			...compatRules,
+			["scrollbar-width-none", { "scrollbar-width": "none" }],
+			["hidden", { display: "none" }],
+			["scrollbar-custom-property", {
+				[resolveVar("track")]: config.scrollbarTrackColor,
+				[resolveVar("thumb")]: config.scrollbarThumbColor,
+				[resolveVar("width")]: config.scrollbarWidth,
+				[resolveVar("height")]: config.scrollbarHeight,
+				[resolveVar("track-radius")]: config.scrollbarTrackRadius,
+				[resolveVar("thumb-radius")]: config.scrollbarThumbRadius
+			}],
+			[
+				/^scrollbar-(thumb|track)-color-(.+)$/,
+				(match, ctx) => {
+					const [, type] = match;
+					return colorResolver(resolveVar(type), `scrollbar-${type}`)(["", match[2]], ctx);
+				},
+				{ autocomplete: "scrollbar-(thumb|track)-color-$colors" }
+			],
+			[
+				/^scrollbar-(thumb|track)-op(?:acity)?-?(.+)$/,
+				([, type, opacity]) => ({ [`${resolveVar(type)}-opacity`]: handler.bracket.percent.cssvar(opacity) }),
+				{ autocomplete: "scrollbar-(thumb|track)-(op|opacity)-<percent>" }
+			],
+			[/^scrollbar-(width|height|background-color|border-radius)-(.+)$/, ([_, prop, value]) => {
+				return { [`${prop}`]: handler.bracket.cssvar(value) };
+			}],
+			[
+				new RegExp(`^scrollbar-(${Object.keys(customRules).join("|")})-(.+)$`),
+				([_, type, value]) => {
+					const val = handler.bracket.cssvar.numberWithUnit.rem(value);
+					return customRules[type].map(resolveVar).reduce((acc, k) => {
+						acc[k] = val;
+						return acc;
+					}, {});
+				},
+				{ autocomplete: `scrollbar-(${Object.keys(customRules).join("|")})-<num>` }
+			]
+		]
+	};
+}
+
+//#endregion
+export { presetScrollbar };

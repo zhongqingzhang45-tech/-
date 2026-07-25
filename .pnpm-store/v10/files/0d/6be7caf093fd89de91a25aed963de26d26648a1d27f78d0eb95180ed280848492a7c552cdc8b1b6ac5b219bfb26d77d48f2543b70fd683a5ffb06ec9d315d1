@@ -1,0 +1,7 @@
+type TrampolineFn<T> = (() => Promise<TrampolineFn<T>> | TrampolineFn<T>) | Promise<T> | T;
+declare const trampoline: <T>(fn: () => Promise<TrampolineFn<T>> | TrampolineFn<T>) => Promise<T>;
+type TrampolineSyncFn<T> = (() => TrampolineSyncFn<T>) | T;
+declare const trampolineSync: <T>(fn: () => TrampolineSyncFn<T>) => T;
+
+export { trampoline, trampolineSync };
+export type { TrampolineFn, TrampolineSyncFn };

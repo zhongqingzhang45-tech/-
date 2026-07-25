@@ -1,0 +1,53 @@
+import { merge } from '@moeru/std/merge';
+import { createTransformersWorker } from '@xsai-transformers/shared/worker';
+
+const createEmbedProvider = (createOptions) => {
+  let workerOptions;
+  if (createOptions.worker) {
+    workerOptions = { worker: createOptions.worker };
+  } else {
+    if (!createOptions.baseURL) {
+      throw new Error("baseURL is required when worker is not provided");
+    }
+    const workerURL = new URL(createOptions.baseURL).searchParams.get("worker-url");
+    if (!workerURL) {
+      throw new Error("worker-url is required when worker is not provided");
+    }
+    workerOptions = { workerURL };
+  }
+  const worker = createTransformersWorker(workerOptions);
+  const loadEmbed = async (model, options) => {
+    let onProgress;
+    if (options && "onProgress" in options && typeof options.onProgress === "function") {
+      onProgress = options.onProgress;
+      delete options.onProgress;
+    }
+    await worker.load({ modelId: model, options, task: "feature-extraction" }, { onProgress });
+  };
+  const terminateEmbed = () => worker.dispose();
+  return {
+    embed: (model, options) => Object.assign(createOptions, {
+      fetch: async (_, init) => {
+        await loadEmbed(model, { onProgress: options?.onProgress });
+        let text = "";
+        const initBody = init.body?.toString() || "{}";
+        const body = JSON.parse(initBody);
+        text = body.input || "";
+        const processOptions = merge({ normalize: true, pooling: "mean" }, options);
+        const res = await worker.process({ options: processOptions, text }, "extract");
+        const result = {
+          data: [{ embedding: res.data, index: 0, object: "embedding" }],
+          model,
+          object: "list",
+          usage: { prompt_tokens: 0, total_tokens: 0 }
+        };
+        const encoder = new TextEncoder();
+        return new Response(encoder.encode(JSON.stringify(result)));
+      }
+    }),
+    loadEmbed,
+    terminateEmbed
+  };
+};
+
+export { createEmbedProvider };

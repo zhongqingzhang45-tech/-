@@ -1,0 +1,4 @@
+//#region src/utils/split.d.ts
+declare function splitSQL(sql: string): string[];
+//#endregion
+export { splitSQL };

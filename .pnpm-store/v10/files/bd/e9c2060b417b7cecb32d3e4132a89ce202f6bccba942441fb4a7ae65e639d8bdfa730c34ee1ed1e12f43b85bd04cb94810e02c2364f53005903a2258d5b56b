@@ -1,0 +1,2 @@
+import { getBundles } from "@proj-airi/duckdb-wasm/bundles/default-node";
+export { getBundles };

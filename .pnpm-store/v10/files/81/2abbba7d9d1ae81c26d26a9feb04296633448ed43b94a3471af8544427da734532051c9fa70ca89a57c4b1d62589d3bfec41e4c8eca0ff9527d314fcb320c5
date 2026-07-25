@@ -1,0 +1,9 @@
+export interface Options {
+    attribute: number;
+    element: number;
+}
+declare const _default: import("../../rule.ts").RuleModuleWithName<"invalid", readonly [number | Options], {
+    description: string;
+}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
+export default _default;
+//# sourceMappingURL=no-logical.d.ts.map

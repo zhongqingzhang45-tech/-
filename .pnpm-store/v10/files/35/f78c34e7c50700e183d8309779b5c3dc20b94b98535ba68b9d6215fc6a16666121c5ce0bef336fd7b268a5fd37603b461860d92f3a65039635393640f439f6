@@ -1,0 +1,4 @@
+import f from "./capture-content.vue.js";
+export {
+  f as default
+};

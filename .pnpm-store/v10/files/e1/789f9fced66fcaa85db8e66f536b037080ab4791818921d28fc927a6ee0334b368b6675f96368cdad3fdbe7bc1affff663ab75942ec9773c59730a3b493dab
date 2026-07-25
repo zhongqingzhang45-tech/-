@@ -1,0 +1,13 @@
+//#region src/ready.ts
+const scenarioCaptureReadyEventType = "scenario-capture:ready";
+function markScenarioReady() {
+	const scenarioReadyWindow = window;
+	scenarioReadyWindow.__SCENARIO_CAPTURE_READY__ = true;
+	scenarioReadyWindow.dispatchEvent(typeof Event === "function" ? new Event(scenarioCaptureReadyEventType) : { type: scenarioCaptureReadyEventType });
+}
+function resetScenarioReady() {
+	const scenarioReadyWindow = window;
+	scenarioReadyWindow.__SCENARIO_CAPTURE_READY__ = false;
+}
+//#endregion
+export { markScenarioReady, resetScenarioReady };

@@ -1,0 +1,8 @@
+import _sfc_main from "./StoryListItem.vue2.js";
+/* empty css                   */
+import _export_sfc from "../../_virtual/_plugin-vue_export-helper.js";
+"use strict";
+const StoryListItem = /* @__PURE__ */ _export_sfc(_sfc_main, [["__scopeId", "data-v-64c2458f"]]);
+export {
+  StoryListItem as default
+};

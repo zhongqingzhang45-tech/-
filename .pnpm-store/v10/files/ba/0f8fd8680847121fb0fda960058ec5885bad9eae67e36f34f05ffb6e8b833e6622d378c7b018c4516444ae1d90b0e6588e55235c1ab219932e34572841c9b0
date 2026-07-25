@@ -1,0 +1,90 @@
+{
+  "name": "@vue-macros/config",
+  "version": "3.1.2",
+  "description": "Config API for Vue Macros.",
+  "type": "module",
+  "keywords": [
+    "vue-macros",
+    "macros",
+    "vue",
+    "sfc",
+    "setup",
+    "script-setup",
+    "config"
+  ],
+  "license": "MIT",
+  "homepage": "https://vue-macros.dev",
+  "bugs": {
+    "url": "https://github.com/vue-macros/vue-macros/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vue-macros/vue-macros.git",
+    "directory": "packages/config"
+  },
+  "author": "Kevin Deng <sxzz@sxzz.moe>",
+  "funding": "https://github.com/sponsors/vue-macros",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./config": "./dist/config.js",
+    "./define": "./dist/define.js",
+    "./options": "./dist/options.js",
+    "./*": "./*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "quansync": "^0.2.11",
+    "unconfig": "^7.3.3",
+    "@vue-macros/common": "3.1.2"
+  },
+  "devDependencies": {
+    "@vue-macros/boolean-prop": "3.1.2",
+    "@vue-macros/chain-call": "3.1.2",
+    "@vue-macros/common": "3.1.2",
+    "@vue-macros/define-emit": "3.1.2",
+    "@vue-macros/define-prop": "3.1.2",
+    "@vue-macros/better-define": "3.1.2",
+    "@vue-macros/define-props": "3.1.2",
+    "@vue-macros/define-models": "3.1.2",
+    "@vue-macros/define-props-refs": "3.1.2",
+    "@vue-macros/define-render": "3.1.2",
+    "@vue-macros/define-slots": "3.1.2",
+    "@vue-macros/define-stylex": "3.1.2",
+    "@vue-macros/devtools": "3.1.2",
+    "@vue-macros/export-expose": "3.1.2",
+    "@vue-macros/export-props": "3.1.2",
+    "@vue-macros/export-render": "3.1.2",
+    "@vue-macros/hoist-static": "3.1.2",
+    "@vue-macros/jsx-directive": "3.1.2",
+    "@vue-macros/named-template": "3.1.2",
+    "@vue-macros/script-lang": "3.1.2",
+    "@vue-macros/setup-block": "3.1.2",
+    "@vue-macros/reactivity-transform": "3.1.2",
+    "@vue-macros/setup-sfc": "3.1.2",
+    "@vue-macros/short-bind": "3.1.2",
+    "@vue-macros/setup-component": "3.1.2",
+    "@vue-macros/short-emits": "3.1.2",
+    "@vue-macros/short-vmodel": "3.1.2",
+    "unplugin-vue-define-options": "3.1.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {}
+}

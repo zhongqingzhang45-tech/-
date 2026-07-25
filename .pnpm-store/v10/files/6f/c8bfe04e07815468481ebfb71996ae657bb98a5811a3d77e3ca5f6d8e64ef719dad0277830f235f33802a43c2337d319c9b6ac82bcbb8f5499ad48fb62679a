@@ -1,0 +1,18 @@
+import { EventTag, EventaType } from "./eventa-B2HPBK4S.mjs";
+
+//#region src/adapters/electron/shared.d.ts
+interface Payload<T> {
+  id: string;
+  type: EventTag<any, any>;
+  payload: T;
+}
+declare const errorEvent: {
+  body?: {
+    error: unknown;
+  } | undefined;
+  id: string;
+  type?: EventaType.Event | undefined;
+};
+//#endregion
+export { Payload, errorEvent };
+//# sourceMappingURL=shared-DllZ3RPS.d.mts.map

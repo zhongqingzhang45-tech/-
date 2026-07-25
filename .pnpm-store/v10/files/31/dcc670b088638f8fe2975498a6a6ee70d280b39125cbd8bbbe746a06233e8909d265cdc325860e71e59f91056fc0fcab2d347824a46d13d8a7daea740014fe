@@ -1,0 +1,24 @@
+import { t as UnpluginInfo } from "./core-CXsJy3-3.mjs";
+import { defineNuxtModule } from "@nuxt/kit";
+//#region src/nuxt.ts
+const nuxtModule = defineNuxtModule({
+	meta: {
+		name: "unplugin-info/nuxt",
+		configKey: "info",
+		compatibility: { nuxt: ">=3.0.0" }
+	},
+	defaults: {},
+	hooks: {},
+	setup(options = {}, nuxt) {
+		nuxt.hook("webpack:config", async (config) => {
+			config.plugins = config.plugins || [];
+			config.plugins.unshift(UnpluginInfo.webpack(options));
+		});
+		nuxt.hook("vite:extendConfig", async (config) => {
+			config.plugins = config.plugins || [];
+			config.plugins.push(UnpluginInfo.vite(options));
+		});
+	}
+});
+//#endregion
+export { nuxtModule as default };

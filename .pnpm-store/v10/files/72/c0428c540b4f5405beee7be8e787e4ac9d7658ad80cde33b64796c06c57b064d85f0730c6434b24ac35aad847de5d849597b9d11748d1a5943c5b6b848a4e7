@@ -1,0 +1,20 @@
+import "./options-DxFG7NAv.mjs";
+import plugin from "./index.mjs";
+
+//#region src/vite.d.ts
+/**
+* Vite plugin
+*
+* @example
+* ```ts
+* // vite.config.ts
+* import Starter from 'unplugin-lightningcss/vite'
+*
+* export default defineConfig({
+*   plugins: [Starter()],
+* })
+* ```
+*/
+declare const vite: typeof plugin.vite;
+//#endregion
+export { vite as default, vite as "module.exports" };

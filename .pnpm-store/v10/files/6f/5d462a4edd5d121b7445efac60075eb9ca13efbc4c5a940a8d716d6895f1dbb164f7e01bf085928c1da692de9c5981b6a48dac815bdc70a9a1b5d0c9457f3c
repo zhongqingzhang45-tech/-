@@ -1,0 +1,7 @@
+import { t as Options } from "./types-D06-cUms.cjs";
+import * as _$unplugin from "unplugin";
+
+//#region src/core/index.d.ts
+declare const UnpluginInfo: _$unplugin.UnpluginInstance<Options | undefined, boolean>;
+//#endregion
+export { UnpluginInfo as t };

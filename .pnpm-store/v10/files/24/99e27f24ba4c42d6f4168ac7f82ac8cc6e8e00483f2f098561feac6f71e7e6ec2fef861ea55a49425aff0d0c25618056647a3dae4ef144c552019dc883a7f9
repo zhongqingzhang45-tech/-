@@ -1,0 +1,183 @@
+//#region src/core/assertions/index.ts
+/**
+* Normalizes text for matching.
+*
+* Before: `"  Hello\nWorld  "`
+* After: `"hello world"`
+*/
+function normalizeMatchText(value, caseSensitive) {
+	const compactedWhitespace = value.trim().replaceAll(/\s+/g, " ");
+	if (caseSensitive) return compactedWhitespace;
+	return compactedWhitespace.toLowerCase();
+}
+function clampScore(score) {
+	if (Number.isNaN(score)) return 0;
+	if (score < 0) return 0;
+	if (score > 1) return 1;
+	return score;
+}
+function createOutcome(id, scoreKind, pass, score, reason) {
+	return {
+		id,
+		pass,
+		reason,
+		score: clampScore(score),
+		scoreKind
+	};
+}
+/**
+* Creates an assertion that requires specific keywords in model text.
+*
+* Example:
+* `expectMustInclude({ id: 'tone', keywords: ['calm', 'move'] })`
+*/
+function expectMustInclude(options) {
+	return async (context) => {
+		if (options.keywords.length === 0) return createOutcome(options.id, "exact", true, 1, "No required keywords configured.");
+		const caseSensitive = options.caseSensitive ?? false;
+		const normalizedText = normalizeMatchText(context.text, caseSensitive);
+		const matches = options.keywords.filter((keyword) => {
+			const normalizedKeyword = normalizeMatchText(keyword, caseSensitive);
+			return normalizedText.includes(normalizedKeyword);
+		});
+		const pass = (options.mode ?? "all") === "all" ? matches.length === options.keywords.length : matches.length > 0;
+		const score = options.keywords.length === 0 ? 1 : matches.length / options.keywords.length;
+		return createOutcome(options.id, "exact", pass, score, pass ? `Matched ${matches.length}/${options.keywords.length} required keywords.` : `Matched ${matches.length}/${options.keywords.length} required keywords.`);
+	};
+}
+/**
+* Creates an assertion that forbids specific keywords.
+*
+* Example:
+* `expectMustExclude({ id: 'no-engine-dump', keywords: ['bestmove', 'ponder'] })`
+*/
+function expectMustExclude(options) {
+	return async (context) => {
+		if (options.keywords.length === 0) return createOutcome(options.id, "exact", true, 1, "No excluded keywords configured.");
+		const caseSensitive = options.caseSensitive ?? false;
+		const normalizedText = normalizeMatchText(context.text, caseSensitive);
+		const forbiddenMatches = options.keywords.filter((keyword) => {
+			const normalizedKeyword = normalizeMatchText(keyword, caseSensitive);
+			return normalizedText.includes(normalizedKeyword);
+		});
+		const pass = forbiddenMatches.length === 0;
+		const score = pass ? 1 : 0;
+		return createOutcome(options.id, "exact", pass, score, pass ? "No forbidden keywords found." : `Forbidden keywords found: ${forbiddenMatches.join(", ")}`);
+	};
+}
+/**
+* Creates an assertion based on a regular expression.
+*
+* Example:
+* `expectRegex({ id: 'starts-with-act', pattern: /^<\|ACT:/ })`
+*/
+function expectRegex(options) {
+	return async (context) => {
+		const pass = options.pattern.test(context.text);
+		return createOutcome(options.id, "exact", pass, pass ? 1 : 0, pass ? "Regex matched response text." : `Regex did not match: ${options.pattern}`);
+	};
+}
+/**
+* Creates an assertion for structured model output.
+*
+* Example:
+* `expectStructuredOutput({ id: 'json-shape', validate: isMySchema })`
+*/
+function expectStructuredOutput(options) {
+	return async (context) => {
+		const pass = options.validate(context.structuredOutput);
+		return createOutcome(options.id, "exact", pass, pass ? 1 : 0, pass ? "Structured output matched validator." : options.failureReason ?? "Structured output validation failed.");
+	};
+}
+/**
+* Creates an assertion for validating tool-call arguments.
+*
+* Example:
+* `expectToolCallArgs({ id: 'spark-command-shape', toolName: 'builtIn_sparkCommand', validate: isSparkArgs })`
+*/
+function expectToolCallArgs(options) {
+	return async (context) => {
+		const targetCall = (context.toolCalls ?? []).find((call) => call.name === options.toolName);
+		if (targetCall == null) return createOutcome(options.id, "exact", false, 0, `Missing tool call: ${options.toolName}`);
+		const pass = options.validate(targetCall.args);
+		return createOutcome(options.id, "exact", pass, pass ? 1 : 0, pass ? `Tool call args validated for ${options.toolName}.` : `Tool call args validation failed for ${options.toolName}.`);
+	};
+}
+/**
+* Creates a rubric assertion driven by teacher-model style scoring.
+*
+* Example:
+* `expectRubric({ id: 'human-like-tone', judge: judgeFn, minScore: 0.8 })`
+*/
+function expectRubric(options) {
+	return async (context) => {
+		const result = await options.judge(context);
+		const minScore = options.minScore ?? .7;
+		const normalizedScore = clampScore(result.score);
+		const pass = normalizedScore >= minScore;
+		return createOutcome(options.id, "judge", pass, normalizedScore, `${result.reason}${result.judgeModel ? ` (judge: ${result.judgeModel})` : ""}`);
+	};
+}
+/**
+* Creates a custom assertion with fully user-defined logic.
+*
+* Example:
+* `expectCustom({ id: 'stateful-window', scoreKind: 'exact', evaluate: (ctx) => ... })`
+*/
+function expectCustom(options) {
+	return async (context) => {
+		const result = await options.evaluate(context);
+		return createOutcome(options.id, options.scoreKind, result.pass, result.score, result.reason);
+	};
+}
+/**
+* Creates an inverse assertion.
+*
+* Example:
+* `expectNot(expectMustInclude({ id: 'contains-engine-word', keywords: ['bestmove'] }), { id: 'no-engine-word' })`
+*/
+function expectNot(assertion, options) {
+	return async (context) => {
+		const baseOutcome = await assertion(context);
+		return createOutcome(options.id, baseOutcome.scoreKind, !baseOutcome.pass, 1 - baseOutcome.score, `NOT(${baseOutcome.id}): ${baseOutcome.reason}`);
+	};
+}
+/**
+* Executes assertion list and returns all outcomes.
+*
+* Call stack:
+*
+* {@link evaluateAssertions}
+*   -> `assertion(context)`
+*     -> {@link AssertionOutcome}[]
+*/
+async function evaluateAssertions(assertions, context) {
+	const normalizedContext = {
+		state: context.state ?? /* @__PURE__ */ new Map(),
+		structuredOutput: context.structuredOutput,
+		text: context.text,
+		toolCalls: context.toolCalls
+	};
+	const outcomes = [];
+	for (const assertion of assertions) outcomes.push(await assertion(normalizedContext));
+	return outcomes;
+}
+/**
+* Converts assertion outcomes to run-score tuples consumed by aggregation.
+*/
+function toRunScores(outcomes) {
+	return outcomes.map((outcome) => ({
+		kind: outcome.scoreKind,
+		score: outcome.score
+	}));
+}
+/**
+* Returns failing assertion outcomes in original order.
+*/
+function collectFailedAssertions(outcomes) {
+	return outcomes.filter((outcome) => !outcome.pass);
+}
+//#endregion
+export { collectFailedAssertions, evaluateAssertions, expectCustom, expectMustExclude, expectMustInclude, expectNot, expectRegex, expectRubric, expectStructuredOutput, expectToolCallArgs, normalizeMatchText, toRunScores };
+
+//# sourceMappingURL=index.mjs.map

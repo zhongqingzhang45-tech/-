@@ -1,0 +1,13 @@
+//#region src/webgpu/checker.d.ts
+interface WebGPUCheckResult {
+  supported: boolean;
+  fp16Supported: boolean;
+  isNode: boolean;
+  reason: string;
+  adapter?: GPUAdapter;
+}
+declare function check(): Promise<WebGPUCheckResult>;
+declare function isWebGPUSupported(): Promise<boolean>;
+//#endregion
+export { type WebGPUCheckResult, check, isWebGPUSupported };
+//# sourceMappingURL=index.d.mts.map

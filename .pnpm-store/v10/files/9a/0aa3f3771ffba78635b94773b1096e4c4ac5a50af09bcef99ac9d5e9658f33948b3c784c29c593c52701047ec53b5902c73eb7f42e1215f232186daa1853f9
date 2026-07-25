@@ -1,0 +1,4 @@
+const e = /* @__PURE__ */ Symbol("vishot:scene-router-store");
+export {
+  e as injectSceneRouterStore
+};

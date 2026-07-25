@@ -1,0 +1,77 @@
+//#region package.json
+var name = "@proj-airi/drizzle-orm-browser-migrator";
+var type = "module";
+var version = "0.1.6";
+var description = "🦆 Drizzle ORM migrator applies migrations in browser environment, for PGLite, SQLite, DuckDB WASM!";
+var author = {
+	"name": "Neko Ayaka",
+	"email": "neko@ayaka.moe",
+	"url": "https://github.com/nekomeowww"
+};
+var license = "MIT";
+var repository = {
+	"type": "git",
+	"url": "https://github.com/proj-airi/drizzle-orm-browser.git",
+	"directory": "packages/drizzle-orm-browser-migrator"
+};
+var exports = {
+	".": {
+		"types": "./dist/index.d.mts",
+		"import": "./dist/index.mjs",
+		"node": "./dist/index.mjs"
+	},
+	"./pglite": {
+		"types": "./dist/pglite/index.d.mts",
+		"import": "./dist/pglite/index.mjs",
+		"node": "./dist/pglite/index.mjs"
+	},
+	"./pg": {
+		"types": "./dist/pg/index.d.mts",
+		"import": "./dist/pg/index.mjs",
+		"node": "./dist/pg/index.mjs"
+	},
+	"./postgres": {
+		"types": "./dist/postgres/index.d.mts",
+		"import": "./dist/postgres/index.mjs",
+		"node": "./dist/postgres/index.mjs"
+	}
+};
+var main = "./dist/index.mjs";
+var module = "./dist/index.mjs";
+var types = "./dist/index.d.mts";
+var files = [
+	"README.md",
+	"dist",
+	"package.json"
+];
+var scripts = {
+	"dev": "tsdown",
+	"stub": "tsdown",
+	"build": "tsdown",
+	"typecheck": "tsc --noEmit",
+	"test": "vitest",
+	"test:run": "vitest run",
+	"attw": "attw --pack . --profile esm-only --ignore-rules cjs-resolves-to-esm"
+};
+var peerDependencies = { "drizzle-orm": ">=0.44.0" };
+var dependencies = { "@guiiai/logg": "^1.1.0" };
+var package_default = {
+	name,
+	type,
+	version,
+	description,
+	author,
+	license,
+	repository,
+	exports,
+	main,
+	module,
+	types,
+	files,
+	scripts,
+	peerDependencies,
+	dependencies
+};
+
+//#endregion
+export { package_default };

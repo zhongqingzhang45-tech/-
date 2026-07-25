@@ -1,0 +1,4 @@
+//#region src/index.d.ts
+declare function cropImg(origin: HTMLCanvasElement): HTMLCanvasElement;
+//#endregion
+export { cropImg as default };

@@ -1,0 +1,229 @@
+import { a as requiredEnvFrom, i as envFrom, n as EnvValueType, r as RequiredEnvFromOptions, t as EnvFromOptions } from "../../env-BTq3dV7C.mjs";
+import { createOpenAI } from "@xsai-ext/providers/create";
+
+//#region src/core/inference-executors/retry-policy.d.ts
+/**
+ * Describes how provider retries should behave.
+ *
+ * ASCII flow:
+ * attempt -> run request -> success return
+ * attempt -> run request -> retriable failure -> sleep -> next attempt
+ * attempt -> run request -> non-retriable failure -> throw
+ */
+interface RetryPolicy {
+  /**
+   * Maximum number of total attempts, including the first try.
+   */
+  maxAttempts: number;
+  /**
+   * Returns the wait time for a retry attempt.
+   */
+  delayMs: (attempt: number) => number;
+  /**
+   * Determines whether an error can be retried safely.
+   */
+  shouldRetry: (error: unknown) => boolean;
+  /**
+   * Suspends execution between retries.
+   */
+  sleep: (milliseconds: number) => Promise<void>;
+}
+/**
+ * Configures a retry policy before a provider call is executed.
+ *
+ * Use when:
+ * - you want the default retry classifier but need to tune attempts or delay
+ * - you need to replace the sleeper in tests
+ *
+ * Expects:
+ * - `maxAttempts` to be a finite integer greater than or equal to `1`
+ * - `delayMs` to return a non-negative wait time in milliseconds
+ */
+interface RetryPolicyOptions {
+  /**
+   * Maximum total attempts, including the first request.
+   *
+   * @default 3
+   */
+  maxAttempts?: number;
+  /**
+   * Computes the delay for a retry attempt.
+   *
+   * The attempt number starts at `1` for the first retry.
+   */
+  delayMs?: (attempt: number) => number;
+  /**
+   * Overrides the retry classifier.
+   */
+  shouldRetry?: (error: unknown) => boolean;
+  /**
+   * Overrides the sleeper used between attempts.
+   */
+  sleep?: (milliseconds: number) => Promise<void>;
+}
+/**
+ * Returns true when a provider failure is temporary and a retry is reasonable.
+ *
+ * Use when:
+ * - the upstream failure is a transport problem or a 5xx/429 response
+ *
+ * Expects:
+ * - provider errors to expose a status code, name, or message when possible
+ */
+declare function isRetriableProviderError(error: unknown): boolean;
+declare function createRetryPolicy(options?: RetryPolicyOptions): RetryPolicy;
+/**
+ * Runs an operation with bounded retries.
+ *
+ * Use when:
+ * - you are calling an LLM provider or other temporary upstream dependency
+ * - non-retriable failures should bubble immediately
+ *
+ * Expects:
+ * - the operation to be idempotent across attempts
+ */
+declare function runWithRetry<T>(operation: () => Promise<T>, policy?: RetryPolicy): Promise<T>;
+//#endregion
+//#region src/core/inference-executors/adapters.d.ts
+/**
+ * Bundles a provider with the retry policy used to call it.
+ *
+ * Use when:
+ * - a provider instance should travel with the retry runner that governs it
+ * - you want call sites to share one retry configuration object
+ */
+interface ProviderAdapter<TProvider> {
+  /**
+   * The underlying provider instance.
+   */
+  provider: TProvider;
+  /**
+   * The retry policy used for provider calls.
+   */
+  retryPolicy: RetryPolicy;
+  /**
+   * Runs a provider-dependent operation with the adapter retry policy.
+   */
+  runWithRetry: <TResult>(operation: () => Promise<TResult>) => Promise<TResult>;
+}
+/**
+ * Creates a provider adapter with the default retry policy.
+ *
+ * Use when:
+ * - you have a provider instance and want a consistent retry wrapper
+ *
+ * Expects:
+ * - the provider to be safe to reuse across attempts
+ */
+declare function createProviderAdapter<TProvider>(provider: TProvider, options?: RetryPolicyOptions): ProviderAdapter<TProvider>;
+//#endregion
+//#region src/core/inference-executors/remote-providers/openai/index.d.ts
+/**
+ * Represents the OpenAI provider instance returned by xsai.
+ */
+type OpenAIProvider = ReturnType<typeof createOpenAI>;
+/**
+ * Represents the OpenAI adapter used by vieval.
+ */
+type OpenAIProviderAdapter = ProviderAdapter<OpenAIProvider>;
+/**
+ * Configures env key names and source for OpenAI provider setup.
+ */
+interface OpenAIEnvSourceOptions {
+  /**
+   * Environment object used for variable lookup.
+   *
+   * @default process.env
+   */
+  env?: NodeJS.ProcessEnv;
+  /**
+   * Env key name for API key.
+   *
+   * @default 'OPENAI_API_KEY'
+   */
+  apiKey?: string;
+  /**
+   * Env key name for base URL.
+   *
+   * @default 'OPENAI_BASE_URL'
+   */
+  baseURL?: string;
+  /**
+   * Env key name for model.
+   *
+   * @default 'OPENAI_MODEL'
+   */
+  model?: string;
+}
+/**
+ * Configures fallback defaults when env values are missing.
+ */
+interface OpenAIFromEnvDefaultOptions {
+  /**
+   * API key fallback value.
+   */
+  apiKey?: string;
+  /**
+   * Base URL fallback value.
+   */
+  baseURL?: string;
+  /**
+   * Model fallback value.
+   */
+  model?: string;
+  /**
+   * Retry policy override passed to provider adapter.
+   */
+  retryOptions?: RetryPolicyOptions;
+}
+/**
+ * Result produced by `createOpenAIFromEnv`.
+ */
+interface OpenAIFromEnvResult {
+  adapter: OpenAIProviderAdapter;
+  apiKey: string;
+  baseURL?: string;
+  model: string;
+}
+/**
+ * Minimal response shape returned by text-generation calls.
+ */
+interface OpenAITextGenerationResult {
+  /**
+   * Text output from the provider.
+   *
+   * Some OpenAI-compatible implementations may return `null`.
+   */
+  text?: string | null;
+}
+/**
+ * Normalizes provider text output to a safe string.
+ *
+ * Before: `{ text: null }`
+ * After: `''`
+ *
+ * Before: `{ text: 'hello' }`
+ * After: `'hello'`
+ */
+declare function normalizeOpenAITextOutput(result: OpenAITextGenerationResult): string;
+/**
+ * Creates an OpenAI provider adapter using environment variables with defaults.
+ *
+ * Example:
+ * `const runtime = createOpenAIFromEnv({}, { model: 'gpt-4.1-mini' })`
+ */
+declare function createOpenAIFromEnv(source?: OpenAIEnvSourceOptions, defaults?: OpenAIFromEnvDefaultOptions): OpenAIFromEnvResult;
+/**
+ * Creates an OpenAI provider adapter for eval-time requests.
+ *
+ * Use when:
+ * - an eval needs the OpenAI SDK surface plus the shared retry runner
+ *
+ * Expects:
+ * - `apiKey` and `baseURL` to point at an OpenAI-compatible endpoint
+ * - `retryOptions` to follow the same invariants as `createRetryPolicy`
+ */
+declare function createOpenAIProviderAdapter(apiKey: string, baseURL?: string, retryOptions?: RetryPolicyOptions): OpenAIProviderAdapter;
+//#endregion
+export { EnvFromOptions, EnvValueType, OpenAIEnvSourceOptions, OpenAIFromEnvDefaultOptions, OpenAIFromEnvResult, OpenAIProvider, OpenAIProviderAdapter, OpenAITextGenerationResult, ProviderAdapter, RequiredEnvFromOptions, RetryPolicy, RetryPolicyOptions, createOpenAIFromEnv, createOpenAIProviderAdapter, createProviderAdapter, createRetryPolicy, envFrom, isRetriableProviderError, normalizeOpenAITextOutput, requiredEnvFrom, runWithRetry };
+//# sourceMappingURL=index.d.mts.map

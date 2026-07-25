@@ -1,0 +1,294 @@
+import ErrorStackParser from "error-stack-parser";
+import { nanoid } from "nanoid";
+
+//#region src/global.ts
+let globalContainer = createContainer();
+function setLogger(logger) {
+	globalContainer.logger = logger;
+}
+function resetContainer() {
+	globalContainer = createContainer();
+}
+function provide(nameOrOption, option) {
+	if (option != null && typeof option === "function") return provide$1(globalContainer, nameOrOption, {
+		build: option,
+		autoNameStackIndex: 2
+	});
+	return provide$1(globalContainer, nameOrOption, {
+		...option,
+		autoNameStackIndex: 2
+	});
+}
+function invoke(option) {
+	if (typeof option === "function") globalContainer.invocations.push({ callback: option });
+	else globalContainer.invocations.push(option);
+}
+function resolve(dependsOn) {
+	return resolve$1(globalContainer, dependsOn);
+}
+function start() {
+	return start$1(globalContainer);
+}
+function stop() {
+	return stop$1(globalContainer);
+}
+
+//#endregion
+//#region package.json
+var name = "injeca";
+
+//#endregion
+//#region src/logger.ts
+function formatDuration(ms) {
+	if (ms < 1) return `${(ms * 1e3).toFixed(3)}µs`;
+	if (ms < 1e3) return `${ms.toFixed(3)}ms`;
+	return `${(ms / 1e3).toFixed(3)}s`;
+}
+function createDefaultLogger() {
+	return {
+		provide: (name$1, dependencies) => {
+			const depsStr = dependencies.length > 0 ? ` (depends on: ${dependencies.join(", ")})` : "";
+			console.log(`[${name$1}] PROVIDE    ${name$1}${depsStr}`);
+		},
+		invoke: (dependencies) => {
+			const depsStr = dependencies.length > 0 ? ` (depends on: ${dependencies.join(", ")})` : "";
+			console.log(`[${name}] INVOKE${depsStr}`);
+		},
+		beforeRun: (name$1) => {
+			console.log(`[${name$1}] BEFORE RUN provide: ${name$1}()`);
+		},
+		run: (name$1, duration) => {
+			console.log(`[${name$1}] RUN        provide: ${name$1}() in ${formatDuration(duration)}`);
+		},
+		hookOnStart: (name$1) => {
+			console.log(`[${name$1}] HOOK OnStart        ${name$1}() executing`);
+		},
+		hookOnStartComplete: (name$1, duration) => {
+			console.log(`[${name$1}] HOOK OnStart        ${name$1}() ran successfully in ${formatDuration(duration)}`);
+		},
+		hookOnStop: (name$1) => {
+			console.log(`[${name$1}] HOOK OnStop         ${name$1}() executing`);
+		},
+		hookOnStopComplete: (name$1, duration) => {
+			console.log(`[${name$1}] HOOK OnStop         ${name$1}() ran successfully in ${formatDuration(duration)}`);
+		},
+		running: () => {
+			console.log(`[${name}] RUNNING`);
+		}
+	};
+}
+function createLoggLogger(logg) {
+	return {
+		provide: (name$1, dependencies) => {
+			const depsStr = dependencies.length > 0 ? ` (depends on: ${dependencies.join(", ")})` : "";
+			logg.log(`PROVIDE    ${name$1}${depsStr}`);
+		},
+		invoke: (dependencies) => {
+			const depsStr = dependencies.length > 0 ? ` (depends on: ${dependencies.join(", ")})` : "";
+			logg.log(`INVOKE${depsStr}`);
+		},
+		beforeRun: (name$1) => {
+			logg.log(`BEFORE RUN provide: ${name$1}()`);
+		},
+		run: (name$1, duration) => {
+			logg.log(`RUN        provide: ${name$1}() in ${formatDuration(duration)}`);
+		},
+		hookOnStart: (name$1) => {
+			logg.log(`HOOK OnStart        ${name$1}() executing`);
+		},
+		hookOnStartComplete: (name$1, duration) => {
+			logg.log(`HOOK OnStart        ${name$1}() ran successfully in ${formatDuration(duration)}`);
+		},
+		hookOnStop: (name$1) => {
+			logg.log(`HOOK OnStop         ${name$1}() executing`);
+		},
+		hookOnStopComplete: (name$1, duration) => {
+			logg.log(`HOOK OnStop         ${name$1}() ran successfully in ${formatDuration(duration)}`);
+		},
+		running: () => {
+			logg.log(`RUNNING`);
+		}
+	};
+}
+function createNoopLogger() {
+	return {
+		provide: () => {},
+		invoke: () => {},
+		beforeRun: () => {},
+		run: () => {},
+		hookOnStart: () => {},
+		hookOnStartComplete: () => {},
+		hookOnStop: () => {},
+		hookOnStopComplete: () => {},
+		running: () => {}
+	};
+}
+
+//#endregion
+//#region src/scoped.ts
+const lifecycle = { key: "lifecycle" };
+function createContainer(options) {
+	const logger = options?.enabled === false ? createNoopLogger() : options?.logger ?? createDefaultLogger();
+	return {
+		providers: /* @__PURE__ */ new Map(),
+		instances: /* @__PURE__ */ new Map(),
+		lifecycleHooks: /* @__PURE__ */ new Map(),
+		dependencyGraph: /* @__PURE__ */ new Map(),
+		invocations: [],
+		logger
+	};
+}
+function normalizeName(nameOrProvidedKey) {
+	if (typeof nameOrProvidedKey === "object" && nameOrProvidedKey !== null && "key" in nameOrProvidedKey) return nameOrProvidedKey.key;
+	return nameOrProvidedKey;
+}
+function normalizeProvideOption(nameOrOption, option) {
+	if (typeof nameOrOption === "string") {
+		if (option == null || !("build" in option) && typeof option !== "function") throw new Error("When using provide(...) as named callback, the second argument must be either a valid ProvideOptionObject<T, D> or a ProvideOptionFunc<T, D>.");
+		if (typeof option === "function") return { build: option };
+		return option;
+	}
+	if (typeof nameOrOption === "object" && "key" in nameOrOption) {
+		if (option == null || !("build" in option) && typeof option !== "function") throw new Error("When using provide(...) as typed ProvideOptionWithKeys<T, D, Key> callback, the second argument must be either a valid ProvideOptionObject<T, D> or a ProvideOptionFunc<T, D>.");
+		if (typeof option === "function") return { build: option };
+		return option;
+	}
+	if (typeof nameOrOption === "function") return { build: nameOrOption };
+	return nameOrOption;
+}
+function provide$1(container, nameOrOption, option) {
+	const parentFile = ErrorStackParser.parse(/* @__PURE__ */ new Error("providing"))[option?.autoNameStackIndex ?? 1];
+	const name$1 = typeof nameOrOption === "string" ? nameOrOption : `${parentFile.fileName ?? `unknown-${nanoid()}`}:${parentFile.lineNumber ?? 0}:${parentFile.columnNumber ?? 0}`;
+	const providerObject = normalizeProvideOption(nameOrOption, option);
+	if (providerObject.dependsOn) {
+		const resolvedDependsOn = {};
+		for (const [key, value] of Object.entries(providerObject.dependsOn)) resolvedDependsOn[key] = normalizeName(value);
+		providerObject.dependsOn = resolvedDependsOn;
+	}
+	container.providers.set(name$1, providerObject);
+	const dependencies = providerObject.dependsOn ? Object.values(providerObject.dependsOn) : [];
+	container.logger.provide(name$1, dependencies);
+	container.dependencyGraph.set(name$1, dependencies);
+	return { key: name$1 };
+}
+function invoke$1(container, option) {
+	const invocationObject = typeof option === "function" ? { callback: option } : option;
+	if (invocationObject.dependsOn) {
+		const resolvedDependsOn = {};
+		for (const [key, value] of Object.entries(invocationObject.dependsOn)) resolvedDependsOn[key] = normalizeName(value);
+		invocationObject.dependsOn = resolvedDependsOn;
+	}
+	const dependencies = invocationObject.dependsOn ? Object.values(invocationObject.dependsOn) : [];
+	container.logger.invoke(dependencies);
+	container.invocations.push(invocationObject);
+}
+async function resolveInstance(container, name$1) {
+	if (container.instances.has(name$1)) {
+		const existing = container.instances.get(name$1);
+		return existing instanceof Promise ? await existing : existing;
+	}
+	const provider = container.providers.get(name$1);
+	if (!provider) throw new Error(`No provider found for '${name$1}'`);
+	const resolvedDependencies = {};
+	let serviceLifecycle = null;
+	if (provider.dependsOn) for (const [key, depName] of Object.entries(provider.dependsOn)) if (depName === "lifecycle") {
+		const { buildLifecycle } = await import("./builtin-BPDNf8Z-.mjs");
+		serviceLifecycle = buildLifecycle();
+		resolvedDependencies[key] = serviceLifecycle;
+		container.lifecycleHooks.set(name$1, serviceLifecycle);
+	} else resolvedDependencies[key] = await resolveInstance(container, depName);
+	const context = {
+		container,
+		dependsOn: resolvedDependencies,
+		name: name$1
+	};
+	async function buildAndStore() {
+		container.logger.beforeRun(name$1);
+		const startTime = performance.now();
+		const instance = await provider.build(context);
+		const duration = performance.now() - startTime;
+		container.logger.run(name$1, duration);
+		container.instances.set(name$1, instance);
+		return instance;
+	}
+	const buildPromise = buildAndStore();
+	container.instances.set(name$1, buildPromise);
+	return await buildPromise;
+}
+async function resolve$1(container, dependsOn) {
+	const resolved = {};
+	for (const [key, depName] of Object.entries(dependsOn)) resolved[key] = await resolveInstance(container, normalizeName(depName));
+	return resolved;
+}
+function topologicalSort(dependencyGraph) {
+	const visited = /* @__PURE__ */ new Set();
+	const visiting = /* @__PURE__ */ new Set();
+	const result = [];
+	function visit(node) {
+		if (visiting.has(node)) throw new Error(`Circular dependency detected involving '${node}'`);
+		if (visited.has(node)) return;
+		visiting.add(node);
+		const dependencies = dependencyGraph.get(node) || [];
+		for (const dep of dependencies) visit(dep);
+		visiting.delete(node);
+		visited.add(node);
+		result.push(node);
+	}
+	for (const node of dependencyGraph.keys()) if (!visited.has(node)) visit(node);
+	return result;
+}
+async function startLifecycleHooks(container) {
+	const sortedServices = topologicalSort(container.dependencyGraph);
+	for (const serviceName of sortedServices) {
+		const lifecycle$1 = container.lifecycleHooks.get(serviceName);
+		if (lifecycle$1?.emitOnStart) {
+			container.logger.hookOnStart(serviceName);
+			const startTime = performance.now();
+			await lifecycle$1.emitOnStart();
+			const duration = performance.now() - startTime;
+			container.logger.hookOnStartComplete(serviceName, duration);
+		}
+	}
+}
+async function stopLifecycleHooks(container) {
+	const sortedServices = topologicalSort(container.dependencyGraph);
+	for (const serviceName of sortedServices.reverse()) {
+		const lifecycle$1 = container.lifecycleHooks.get(serviceName);
+		if (lifecycle$1?.emitOnStop) {
+			container.logger.hookOnStop(serviceName);
+			const startTime = performance.now();
+			await lifecycle$1.emitOnStop();
+			const duration = performance.now() - startTime;
+			container.logger.hookOnStopComplete(serviceName, duration);
+		}
+	}
+}
+async function start$1(container) {
+	const resolvedInvocations = [];
+	for (const invocation of container.invocations) {
+		const resolvedDependencies = {};
+		if (invocation.dependsOn) for (const [key, depName] of Object.entries(invocation.dependsOn)) resolvedDependencies[key] = await resolveInstance(container, normalizeName(depName));
+		resolvedInvocations.push(resolvedDependencies);
+	}
+	await startLifecycleHooks(container);
+	for (const [index, invocation] of container.invocations.entries()) await invocation.callback(resolvedInvocations[index] ?? {});
+	container.logger.running();
+}
+async function stop$1(container) {
+	await stopLifecycleHooks(container);
+}
+
+//#endregion
+//#region src/index.ts
+const injeca = {
+	provide,
+	invoke,
+	resolve,
+	start,
+	stop,
+	setLogger
+};
+
+//#endregion
+export { start as _, provide$1 as a, stop$1 as c, createNoopLogger as d, invoke as f, setLogger as g, resolve as h, lifecycle as i, createDefaultLogger as l, resetContainer as m, createContainer as n, resolve$1 as o, provide as p, invoke$1 as r, start$1 as s, injeca as t, createLoggLogger as u, stop as v };
+//# sourceMappingURL=src-UXkTj4Np.mjs.map

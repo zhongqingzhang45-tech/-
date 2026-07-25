@@ -1,0 +1,54 @@
+'use strict';
+
+var vue = require('vue');
+var emblaCarouselReactiveUtils = require('embla-carousel-reactive-utils');
+var EmblaCarousel = require('embla-carousel');
+
+function useEmblaCarousel(options = {}, plugins = []) {
+  EmblaCarousel.globalOptions = useEmblaCarousel.globalOptions;
+  const isRefOptions = vue.isRef(options);
+  const isRefPlugins = vue.isRef(plugins);
+  let storedOptions = isRefOptions ? options.value : options;
+  let storedPlugins = isRefPlugins ? plugins.value : plugins;
+  const serverApi = EmblaCarousel(null, storedOptions, storedPlugins);
+  const clientApi = vue.shallowRef();
+  const rootNode = vue.shallowRef();
+  function reInit() {
+    if (!clientApi.value) return;
+    clientApi.value.reInit(storedOptions, storedPlugins);
+  }
+  vue.watch(() => rootNode.value, node => {
+    if (clientApi.value) {
+      clientApi.value.destroy();
+      clientApi.value = undefined;
+    }
+    if (node) {
+      EmblaCarousel.globalOptions = useEmblaCarousel.globalOptions;
+      clientApi.value = EmblaCarousel(node, storedOptions, storedPlugins);
+    }
+  }, {
+    immediate: true
+  });
+  vue.onBeforeUnmount(() => {
+    if (clientApi.value) clientApi.value.destroy();
+  });
+  if (isRefOptions) {
+    vue.watch(options, newOptions => {
+      if (emblaCarouselReactiveUtils.areOptionsEqual(storedOptions, newOptions)) return;
+      storedOptions = newOptions;
+      reInit();
+    });
+  }
+  if (isRefPlugins) {
+    vue.watch(plugins, newPlugins => {
+      if (emblaCarouselReactiveUtils.arePluginsEqual(storedPlugins, newPlugins)) return;
+      storedPlugins = newPlugins;
+      reInit();
+    });
+  }
+  return [rootNode, clientApi, serverApi];
+}
+useEmblaCarousel.globalOptions = undefined;
+
+module.exports = useEmblaCarousel;
+//# sourceMappingURL=embla-carousel-vue.cjs.js.map

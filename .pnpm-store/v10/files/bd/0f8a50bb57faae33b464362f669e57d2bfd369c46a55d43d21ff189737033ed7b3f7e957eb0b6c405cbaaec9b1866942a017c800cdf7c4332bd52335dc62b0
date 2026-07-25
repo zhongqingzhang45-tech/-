@@ -1,0 +1,77 @@
+import { page, server, utils } from "vitest/browser";
+import { config, mount } from "@vue/test-utils";
+
+//#region src/pure.ts
+const { debug, getElementLocatorSelectors } = utils;
+const mountedWrappers = /* @__PURE__ */ new Set();
+let idx = 0;
+function ensureTestIdAttribute(element) {
+	const attributeId = server.config.browser.locators.testIdAttribute;
+	if (!element.hasAttribute(attributeId)) element.setAttribute(attributeId, `__vitest_${idx++}__`);
+}
+/**
+* Render a Vue component into the document.
+* Also records a `vue.render` trace mark.
+*
+* Synchronous usage is deprecated and will be removed in the next major version.
+* Please use `await render(Component)` instead of `render(Component)`.
+*/
+function render(Component, { container: customContainer, baseElement: customBaseElement,...mountOptions } = {}) {
+	const baseElement = customBaseElement || customContainer || document.body;
+	const container = customContainer || baseElement.appendChild(document.createElement("div"));
+	ensureTestIdAttribute(baseElement);
+	ensureTestIdAttribute(container);
+	if (mountOptions.attachTo) throw new Error("`attachTo` is not supported, use `container` instead");
+	const wrapper = mount(Component, {
+		...mountOptions,
+		attachTo: container
+	});
+	unwrapNode(wrapper.parentElement);
+	mountedWrappers.add(wrapper);
+	const renderResult = {
+		container,
+		baseElement,
+		locator: page.elementLocator(container),
+		debug: (el = baseElement, maxLength, options) => debug(el, maxLength, options),
+		unmount: () => {
+			wrapper.unmount();
+			return markThenable(renderResult.locator, "vue.unmount", renderResult.unmount, void 0);
+		},
+		emitted: ((name) => wrapper.emitted(name)),
+		rerender: async (props) => {
+			await wrapper.setProps(props);
+			return markThenable(renderResult.locator, "vue.rerender", renderResult.rerender, void 0);
+		},
+		...getElementLocatorSelectors(baseElement)
+	};
+	return {
+		...renderResult,
+		...markThenable(renderResult.locator, "vue.render", render, renderResult)
+	};
+}
+function markThenable(locator, name, fn, value) {
+	if (!locator.mark) return Promise.resolve(value);
+	const error = new Error(name);
+	if ("captureStackTrace" in Error) Error.captureStackTrace(error, fn);
+	return { async then(onfulfilled, onrejected) {
+		try {
+			await locator.mark(name, error);
+			return Promise.resolve(value).then(onfulfilled, onrejected);
+		} catch (e) {
+			return Promise.reject(e).then(onfulfilled, onrejected);
+		}
+	} };
+}
+function cleanup() {
+	mountedWrappers.forEach((wrapper) => {
+		if (wrapper.element?.parentNode?.parentNode === document.body) document.body.removeChild(wrapper.element.parentNode);
+		wrapper.unmount();
+		mountedWrappers.delete(wrapper);
+	});
+}
+function unwrapNode(node) {
+	node.replaceWith(...node.childNodes);
+}
+
+//#endregion
+export { config as n, render as r, cleanup as t };

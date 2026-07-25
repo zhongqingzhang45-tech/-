@@ -1,0 +1,17 @@
+import { n as getRuntimeExpect, t as installVievalExpectMatchers } from "./expect-extensions-QLXESWjn.mjs";
+//#region src/expect.ts
+let isInstalled = false;
+function ensureExpectMatchersInstalled() {
+	if (isInstalled) return;
+	installVievalExpectMatchers();
+	isInstalled = true;
+}
+ensureExpectMatchersInstalled();
+/**
+* Re-exported expect with vieval custom matchers pre-installed.
+*/
+const expect = getRuntimeExpect();
+//#endregion
+export { expect };
+
+//# sourceMappingURL=expect.mjs.map

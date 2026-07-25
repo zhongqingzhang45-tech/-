@@ -1,0 +1,43 @@
+{
+  "name": "ts-macro",
+  "version": "0.3.6",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/ts-macro/ts-macro#readme",
+  "bugs": {
+    "url": "https://github.com/ts-macro/ts-macro/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ts-macro/ts-macro.git",
+    "directory": "packages/ts-macro"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "tsm-dev": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": [
+      "./*",
+      "./*.d.ts"
+    ]
+  },
+  "dependencies": {
+    "muggle-string": "^0.4.1"
+  },
+  "devDependencies": {
+    "@volar/language-core": "^2.4.23"
+  },
+  "scripts": {
+    "dev": "DEV=true tsdown",
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  }
+}

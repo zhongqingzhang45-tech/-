@@ -1,0 +1,289 @@
+import { defineEventa, nanoid } from "./context-C35Qku9U.mjs";
+
+//#region src/invoke-shared.ts
+let InvokeEventType = /* @__PURE__ */ function(InvokeEventType$1) {
+	InvokeEventType$1[InvokeEventType$1["SendEvent"] = 0] = "SendEvent";
+	InvokeEventType$1[InvokeEventType$1["SendEventError"] = 1] = "SendEventError";
+	InvokeEventType$1[InvokeEventType$1["ReceiveEvent"] = 2] = "ReceiveEvent";
+	InvokeEventType$1[InvokeEventType$1["ReceiveEventError"] = 3] = "ReceiveEventError";
+	InvokeEventType$1[InvokeEventType$1["ReceiveEventStreamEnd"] = 4] = "ReceiveEventStreamEnd";
+	return InvokeEventType$1;
+}({});
+function defineInvokeEventa(tag) {
+	if (!tag) tag = nanoid();
+	const sendEvent = {
+		...defineEventa(`${tag}-send`),
+		invokeType: InvokeEventType.SendEvent
+	};
+	const sendEventError = {
+		...defineEventa(`${tag}-send-error`),
+		invokeType: InvokeEventType.SendEventError
+	};
+	const receiveEvent = {
+		...defineEventa(`${tag}-receive`),
+		invokeType: InvokeEventType.ReceiveEvent
+	};
+	const receiveEventError = {
+		...defineEventa(`${tag}-receive-error`),
+		invokeType: InvokeEventType.ReceiveEventError
+	};
+	const receiveEventStreamEnd = {
+		...defineEventa(`${tag}-receive-stream-end`),
+		invokeType: InvokeEventType.ReceiveEventStreamEnd
+	};
+	return {
+		sendEvent,
+		sendEventError,
+		receiveEvent,
+		receiveEventError,
+		receiveEventStreamEnd
+	};
+}
+function isInvokeEventa(event) {
+	if (typeof event !== "object") return false;
+	if ("invokeType" in event) return true;
+	return false;
+}
+function isSendEvent(event) {
+	if (!isInvokeEventa(event)) return false;
+	return event.invokeType === InvokeEventType.SendEvent || event.invokeType === InvokeEventType.SendEventError;
+}
+function isReceiveEvent(event) {
+	if (!isInvokeEventa(event)) return false;
+	return event.invokeType === InvokeEventType.ReceiveEvent || event.invokeType === InvokeEventType.ReceiveEventError || event.invokeType === InvokeEventType.ReceiveEventStreamEnd;
+}
+
+//#endregion
+//#region src/invoke.ts
+function isExtendableInvokeResponseLike(value) {
+	if (!isReceiveEvent(value)) return false;
+	return typeof value.body?.content === "object" && value.body?.content != null && "response" in value.body.content && (!("invokeResponse" in value.body.content) || "invokeResponse" in value.body.content && (typeof value.body.content.invokeResponse === "object" || typeof value.body.content.invokeResponse === "undefined"));
+}
+function defineInvoke(ctx, event) {
+	const mInvokeIdPromiseResolvers = /* @__PURE__ */ new Map();
+	const mInvokeIdPromiseRejectors = /* @__PURE__ */ new Map();
+	function _invoke(req, options) {
+		return new Promise((resolve, reject) => {
+			const invokeId = nanoid();
+			mInvokeIdPromiseResolvers.set(invokeId, resolve);
+			mInvokeIdPromiseRejectors.set(invokeId, reject);
+			const invokeReceiveEvent = defineEventa(`${event.receiveEvent.id}-${invokeId}`);
+			const invokeReceiveEventError = defineEventa(`${event.receiveEventError.id}-${invokeId}`);
+			ctx.on(invokeReceiveEvent, (payload) => {
+				if (!payload.body) return;
+				if (payload.body.invokeId !== invokeId) return;
+				const { content } = payload.body;
+				mInvokeIdPromiseResolvers.get(invokeId)?.(content);
+				mInvokeIdPromiseResolvers.delete(invokeId);
+				mInvokeIdPromiseRejectors.delete(invokeId);
+				ctx.off(invokeReceiveEvent);
+				ctx.off(invokeReceiveEventError);
+			});
+			ctx.on(invokeReceiveEventError, (payload) => {
+				if (!payload.body) return;
+				if (payload.body.invokeId !== invokeId) return;
+				const { error } = payload.body.content;
+				mInvokeIdPromiseRejectors.get(invokeId)?.(error);
+				mInvokeIdPromiseRejectors.delete(invokeId);
+				mInvokeIdPromiseResolvers.delete(invokeId);
+				ctx.off(invokeReceiveEvent);
+				ctx.off(invokeReceiveEventError);
+			});
+			ctx.emit(event.sendEvent, {
+				invokeId,
+				content: req
+			}, options);
+		});
+	}
+	return _invoke;
+}
+function defineInvokes(ctx, events) {
+	return Object.keys(events).reduce((invokes, key) => {
+		invokes[key] = defineInvoke(ctx, events[key]);
+		return invokes;
+	}, {});
+}
+/**
+* Define an invoke handler for a specific invoke event.
+*
+* @param ctx The event context in which to define the invoke handler.
+* @param event The invoke event for which the handler is to be defined.
+* @param handler The handler function to be invoked when the event is triggered.
+* @returns A function that can be called to remove the invoke handler.
+*/
+function defineInvokeHandler(ctx, event, handler) {
+	if (!ctx.invokeHandlers) ctx.invokeHandlers = /* @__PURE__ */ new Map();
+	let handlers = ctx.invokeHandlers?.get(event.sendEvent.id);
+	if (!handlers) {
+		handlers = /* @__PURE__ */ new Map();
+		ctx.invokeHandlers?.set(event.sendEvent.id, handlers);
+	}
+	let internalHandler = handlers.get(handler);
+	if (!internalHandler) {
+		internalHandler = async (payload, options) => {
+			if (!payload.body) return;
+			if (!payload.body.invokeId) return;
+			try {
+				const response = await handler(payload.body?.content, options);
+				ctx.emit({
+					...defineEventa(`${event.receiveEvent.id}-${payload.body.invokeId}`),
+					invokeType: event.receiveEvent.invokeType
+				}, {
+					...payload.body,
+					content: response
+				}, options);
+			} catch (error) {
+				ctx.emit({
+					...defineEventa(`${event.receiveEventError.id}-${payload.body.invokeId}`),
+					invokeType: event.receiveEventError.invokeType
+				}, {
+					...payload.body,
+					content: error
+				}, options);
+			}
+		};
+		handlers.set(handler, internalHandler);
+		ctx.on(event.sendEvent, internalHandler);
+	}
+	return () => ctx.off(event.sendEvent, internalHandler);
+}
+function defineInvokeHandlers(ctx, events, handlers) {
+	const eventKeys = Object.keys(events);
+	const handlerKeys = new Set(Object.keys(handlers));
+	if (eventKeys.length !== handlerKeys.size || !eventKeys.every((key) => handlerKeys.has(key))) throw new Error("The keys of events and handlers must match.");
+	return eventKeys.reduce((returnValues, key) => {
+		returnValues[key] = defineInvokeHandler(ctx, events[key], handlers[key]);
+		return returnValues;
+	}, {});
+}
+/**
+* Remove one or all invoke handlers for a specific invoke event.
+*
+* @param ctx The event context from which to remove the invoke handler(s).
+* @param event The invoke event whose handlers are to be removed.
+* @param handler The specific handler to remove. If not omitted, all handlers for the event will be removed.
+* @returns `true` if at least one handler was removed, `false` otherwise
+*/
+function undefineInvokeHandler(ctx, event, handler) {
+	if (!ctx.invokeHandlers) return false;
+	const handlers = ctx.invokeHandlers?.get(event.sendEvent.id);
+	if (!handlers) return false;
+	if (handler) {
+		const internalHandler = handlers.get(handler);
+		if (!internalHandler) return false;
+		ctx.off(event.sendEvent, internalHandler);
+		ctx.invokeHandlers.delete(event.sendEvent.id);
+		return true;
+	}
+	let returnValue = false;
+	for (const internalHandlers of handlers.values()) {
+		ctx.off(event.sendEvent, internalHandlers);
+		returnValue = true;
+	}
+	ctx.invokeHandlers.delete(event.sendEvent.id);
+	return returnValue;
+}
+
+//#endregion
+//#region src/stream.ts
+function defineStreamInvoke(clientCtx, event) {
+	return (req) => {
+		const invokeId = nanoid();
+		const invokeReceiveEvent = defineEventa(`${event.receiveEvent.id}-${invokeId}`);
+		const invokeReceiveEventError = defineEventa(`${event.receiveEventError.id}-${invokeId}`);
+		const invokeReceiveEventStreamEnd = defineEventa(`${event.receiveEventStreamEnd.id}-${invokeId}`);
+		const stream = new ReadableStream({
+			start(controller) {
+				clientCtx.on(invokeReceiveEvent, (payload) => {
+					if (!payload.body) return;
+					if (payload.body.invokeId !== invokeId) return;
+					controller.enqueue(payload.body.content);
+				});
+				clientCtx.on(invokeReceiveEventError, (payload) => {
+					if (!payload.body) return;
+					if (payload.body.invokeId !== invokeId) return;
+					controller.error(payload.body.content);
+				});
+				clientCtx.on(invokeReceiveEventStreamEnd, (payload) => {
+					if (!payload.body) return;
+					if (payload.body.invokeId !== invokeId) return;
+					controller.close();
+				});
+			},
+			cancel() {
+				clientCtx.off(invokeReceiveEvent);
+				clientCtx.off(invokeReceiveEventError);
+				clientCtx.off(invokeReceiveEventStreamEnd);
+			}
+		});
+		clientCtx.emit(event.sendEvent, {
+			invokeId,
+			content: req
+		});
+		return stream;
+	};
+}
+function defineStreamInvokeHandler(serverCtx, event, fn) {
+	serverCtx.on(event.sendEvent, async (payload, options) => {
+		if (!payload.body) return;
+		if (!payload.body.invokeId) return;
+		const invokeReceiveEvent = defineEventa(`${event.receiveEvent.id}-${payload.body.invokeId}`);
+		const invokeReceiveEventError = defineEventa(`${event.receiveEventError.id}-${payload.body.invokeId}`);
+		const invokeReceiveEventStreamEnd = defineEventa(`${event.receiveEventStreamEnd.id}-${payload.body.invokeId}`);
+		try {
+			const generator = fn(payload.body.content, options);
+			for await (const res of generator) serverCtx.emit(invokeReceiveEvent, {
+				...payload.body,
+				content: res
+			}, options);
+			serverCtx.emit(invokeReceiveEventStreamEnd, {
+				...payload.body,
+				content: void 0
+			}, options);
+		} catch (error) {
+			serverCtx.emit(invokeReceiveEventError, {
+				...payload.body,
+				content: error
+			}, options);
+		}
+	});
+}
+function toStreamHandler(handler) {
+	return (payload, options) => {
+		const values = [];
+		let resolve;
+		let handlerError = null;
+		values.push(new Promise((r) => {
+			resolve = r;
+		}));
+		const emit = (data) => {
+			resolve([data, false]);
+			values.push(new Promise((r) => {
+				resolve = r;
+			}));
+		};
+		handler({
+			payload,
+			options,
+			emit
+		}).then(() => {
+			resolve([void 0, true]);
+		}).catch((err) => {
+			handlerError = err;
+			resolve([void 0, true]);
+		});
+		return async function* () {
+			let val;
+			for (let i = 0, done = false; !done; i++) {
+				[val, done] = await values[i];
+				delete values[i];
+				if (handlerError) throw handlerError;
+				if (!done) yield val;
+			}
+		}();
+	};
+}
+
+//#endregion
+export { InvokeEventType, defineInvoke, defineInvokeEventa, defineInvokeHandler, defineInvokeHandlers, defineInvokes, defineStreamInvoke, defineStreamInvokeHandler, isExtendableInvokeResponseLike, isInvokeEventa, isReceiveEvent, isSendEvent, toStreamHandler, undefineInvokeHandler };
+//# sourceMappingURL=src-Bb-vxm5k.mjs.map

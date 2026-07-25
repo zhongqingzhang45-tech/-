@@ -1,0 +1,66 @@
+import { S as SpeechProvider, C as ChatProvider, E as EmbedProvider, T as TranscriptionProvider, M as ModelProvider } from '../types-DW1hvH0W.js';
+import { a as AzureModels, C as CloudflareWorkersAiModels } from '../types-B2HZyaCH.js';
+import '@xsai/shared';
+
+interface CreateAzureOptions {
+    /**
+     * The static API key or AD access token fetcher for authorization.
+     *
+     * If passed in as a function, it is treated as an accessTokenFetcher.
+     *
+     * @see {@link https://learn.microsoft.com/en-us/azure/api-management/api-management-authenticate-authorize-azure-openai}
+     */
+    apiKey: (() => Promise<string> | string) | string;
+    /**
+     * The Azure API version to use (`api-version` param).
+     *
+     * Notice: Different deployment over different time may have different API versions, please
+     * follow the exact prompt from either [Azure AI Foundry](https://ai.azure.com/) or Azure OpenAI service
+     * to get the correct API version from the Azure OpenAI Service endpoint.
+     *
+     * On Azure AI Foundry portal, you can go to https://ai.azure.com/build/overview > Choose the project >
+     * Overview > Endpoints and keys > Included capabilities > Azure OpenAI Service to get the correct endpoint.
+     *
+     * @see {@link https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning}
+     */
+    apiVersion?: string;
+    /**
+     * Azure resource name.
+     *
+     * On Azure AI Foundry portal, you can go to https://ai.azure.com/build/overview > Choose the project >
+     * Overview > Endpoints and keys > Included capabilities > Azure OpenAI Service to get the correct endpoint.
+     *
+     * @see {@link https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#uri-parameters}
+     */
+    resourceName: string;
+}
+/**
+ * Create a Azure Provider
+ * @see {@link https://ai.azure.com/explore/models}
+ * @see {@link https://learn.microsoft.com/en-us/azure/ai-foundry/model-inference/concepts/endpoints?tabs=rest#routing}
+ * @remarks
+ * For Azure AI services, you can have multiple deployments of the same model with different names.
+ *
+ * Please pass your deployment name as the `model` parameter. By default, Azure will use the model name
+ * as the deployment name when deploying a model.
+ */
+declare const createAzure: (options: CreateAzureOptions) => Promise<SpeechProvider<string> & ChatProvider<AzureModels> & EmbedProvider<string> & TranscriptionProvider<string> & ModelProvider>;
+
+declare global {
+    interface Uint8ArrayConstructor {
+        fromBase64: (base64: string) => Uint8Array;
+    }
+}
+/**
+ * Create a Player2 Provider
+ * @see {@link https://player2.game}
+ */
+declare const createPlayer2: (baseURL?: string, gameKey?: string) => ChatProvider<string> & SpeechProvider<string>;
+
+/**
+ * Create a Workers AI Provider
+ * @see {@link https://developers.cloudflare.com/workers-ai}
+ */
+declare const createWorkersAI: (apiKey: string, accountId: string) => EmbedProvider<string> & ChatProvider<CloudflareWorkersAiModels>;
+
+export { createAzure, createPlayer2, createWorkersAI };

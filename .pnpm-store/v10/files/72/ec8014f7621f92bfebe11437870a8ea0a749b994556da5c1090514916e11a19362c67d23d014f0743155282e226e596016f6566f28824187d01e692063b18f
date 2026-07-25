@@ -1,0 +1,65 @@
+import { _ as Awaitable, a as ResourceServerMetadata, c as OAuthConsent, d as OAuthRefreshToken, f as Prompt, g as VerificationValue, h as StoreTokenType, i as OIDCMetadata, l as OAuthOpaqueAccessToken, m as Scope, n as GrantType, o as AuthorizePrompt, p as SchemaClient, r as OAuthClient, s as OAuthAuthorizationQuery, t as AuthServerMetadata, u as OAuthOptions } from "./oauth-4vgZlF-I.mjs";
+import { n as oauthProvider, t as getOAuthProviderState } from "./oauth-E89Dh-ZC.mjs";
+import { verifyAccessToken } from "better-auth/oauth2";
+import { JWSAlgorithms, JwtOptions } from "better-auth/plugins";
+import { JWTPayload } from "jose";
+import { GenericEndpointContext } from "@better-auth/core";
+
+//#region src/mcp.d.ts
+/**
+ * A request middleware handler that checks and responds with
+ * a WWW-Authenticate header for unauthenticated responses.
+ *
+ * @external
+ */
+declare const mcpHandler: (/** Resource is the same url as the audience */
+
+verifyOptions: Parameters<typeof verifyAccessToken>[1], handler: (req: Request, jwt: JWTPayload) => Awaitable<Response>, opts?: {
+  /** Maps non-url (ie urn, client) resources to resource_metadata */resourceMetadataMappings: Record<string, string>;
+}) => (req: Request) => Promise<Response>;
+//#endregion
+//#region src/metadata.d.ts
+declare function authServerMetadata(ctx: GenericEndpointContext, opts?: JwtOptions, overrides?: {
+  scopes_supported?: AuthServerMetadata["scopes_supported"];
+  public_client_supported?: boolean;
+  grant_types_supported?: GrantType[];
+  jwt_disabled?: boolean;
+}): AuthServerMetadata;
+declare function oidcServerMetadata(ctx: GenericEndpointContext, opts: OAuthOptions<Scope[]> & {
+  claims?: string[];
+}): Omit<OIDCMetadata, "id_token_signing_alg_values_supported"> & {
+  id_token_signing_alg_values_supported: JWSAlgorithms[] | ["HS256"];
+};
+/**
+ * Provides an exportable `/.well-known/oauth-authorization-server`.
+ *
+ * Useful when basePath prevents the endpoint from being located at the root
+ * and must be provided manually.
+ *
+ * @external
+ */
+declare const oauthProviderAuthServerMetadata: <Auth extends {
+  api: {
+    getOAuthServerConfig: (...args: any) => any;
+  };
+}>(auth: Auth, opts?: {
+  headers?: HeadersInit;
+}) => (_request: Request) => Promise<Response>;
+/**
+ * Provides an exportable `/.well-known/openid-configuration`.
+ *
+ * Useful when basePath prevents the endpoint from being located at the root
+ * and must be provided manually.
+ *
+ * @external
+ */
+declare const oauthProviderOpenIdConfigMetadata: <Auth extends {
+  api: {
+    getOpenIdConfig: (...args: any) => any;
+  };
+}>(auth: Auth, opts?: {
+  headers?: HeadersInit;
+}) => (_request: Request) => Promise<Response>;
+//#endregion
+export { AuthServerMetadata, AuthorizePrompt, OAuthAuthorizationQuery, OAuthClient, OAuthConsent, OAuthOpaqueAccessToken, OAuthOptions, OAuthRefreshToken, OIDCMetadata, Prompt, ResourceServerMetadata, SchemaClient, Scope, StoreTokenType, VerificationValue, authServerMetadata, getOAuthProviderState, mcpHandler, oauthProvider, oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata, oidcServerMetadata };
+//# sourceMappingURL=index.d.mts.map

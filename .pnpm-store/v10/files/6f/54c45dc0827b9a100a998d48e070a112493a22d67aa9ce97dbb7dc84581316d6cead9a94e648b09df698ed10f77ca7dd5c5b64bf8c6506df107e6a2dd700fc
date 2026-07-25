@@ -1,0 +1,24 @@
+import { Unused } from "./index.mjs";
+
+//#region src/webpack.ts
+/**
+* This entry file is for webpack plugin.
+*
+* @module
+*/
+/**
+* Webpack plugin
+*
+* @example
+* ```ts
+* // webpack.config.js
+* module.exports = {
+*  plugins: [require('unplugin-unused/webpack')()],
+* }
+* ```
+*/
+const webpack = Unused.webpack;
+var webpack_default = webpack;
+
+//#endregion
+export { webpack_default as default, webpack as "module.exports" };

@@ -1,0 +1,2 @@
+import { PluginContext, REGEX_DEFINE_COMPONENT, VueMacrosPlugin, addCode, addEmits, addProps, getVolarOptions, patchSFC } from "./common-BKyMWl83.js";
+export { PluginContext, REGEX_DEFINE_COMPONENT, VueMacrosPlugin, addCode, addEmits, addProps, getVolarOptions, patchSFC };

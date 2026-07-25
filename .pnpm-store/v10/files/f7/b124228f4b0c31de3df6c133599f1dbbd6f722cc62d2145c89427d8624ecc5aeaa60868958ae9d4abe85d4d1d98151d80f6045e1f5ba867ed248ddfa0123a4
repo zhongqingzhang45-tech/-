@@ -1,0 +1,130 @@
+import { defineComponent as S, inject as F, useAttrs as _, ref as x, shallowRef as z, computed as w, onMounted as T, nextTick as R, watch as L, onBeforeUnmount as O, openBlock as d, createElementBlock as f, mergeProps as P, createElementVNode as r, normalizeClass as a, toDisplayString as V, createCommentVNode as v, renderSlot as M } from "vue";
+import { injectPlatformLayout as U } from "../../constants.js";
+import { computeElementAnchorStyle as W, createWorkAreaRect as j, createContainerAnchorStyle as q } from "./window-anchor.js";
+const G = {
+  key: 0,
+  class: /* @__PURE__ */ a([
+    "flex gap-2 px-2.5 py-2",
+    "bg-white"
+  ])
+}, H = { key: 0 }, N = {
+  key: 1,
+  class: /* @__PURE__ */ a([
+    "bg-[#E6E6E6] h-0.25 w-full"
+  ])
+}, J = /* @__PURE__ */ S({
+  inheritAttrs: !1,
+  __name: "WindowRoot",
+  props: {
+    title: {},
+    focus: { type: Boolean, default: !0 },
+    frame: { type: Boolean, default: !0 },
+    transparent: { type: Boolean, default: !1 },
+    titleBarStyle: { default: "default" },
+    hasShadow: { type: Boolean, default: !0 },
+    anchorTo: {},
+    anchorEl: {},
+    anchorBounds: { default: "platform" }
+  },
+  setup(k) {
+    const e = k, t = F(U, null), m = _(), i = x(null), u = z(), E = w(() => m.style), b = w(() => {
+      const { style: l, ...n } = m;
+      return n;
+    });
+    let o = null, c = null;
+    function p() {
+      c !== null && (cancelAnimationFrame(c), c = null);
+    }
+    function B() {
+      if (!e.anchorTo) {
+        u.value = void 0;
+        return;
+      }
+      const l = t?.root.value ?? null, n = i.value, y = e.anchorEl instanceof HTMLElement || e.anchorEl instanceof SVGElement ? e.anchorEl : null;
+      if (y && l && n) {
+        u.value = W({
+          anchor: e.anchorTo,
+          anchorRect: y.getBoundingClientRect(),
+          platformRect: l.getBoundingClientRect(),
+          windowRect: n.getBoundingClientRect()
+        });
+        return;
+      }
+      const s = l?.getBoundingClientRect(), A = t?.dock.value ? t.dock.value.getBoundingClientRect() : null, C = s ? j({
+        dockRect: e.anchorBounds === "workarea" ? A : null,
+        platformRect: s
+      }) : void 0;
+      u.value = q(
+        e.anchorTo,
+        C,
+        s ? {
+          width: s.width,
+          height: s.height
+        } : void 0
+      );
+    }
+    function h() {
+      p(), c = requestAnimationFrame(() => {
+        c = null, B();
+      });
+    }
+    function g() {
+      o?.disconnect(), !(typeof ResizeObserver > "u") && (o = new ResizeObserver(() => {
+        h();
+      }), t?.root.value && o.observe(t.root.value), t?.dock.value && o.observe(t.dock.value), i.value && o.observe(i.value), (e.anchorEl instanceof HTMLElement || e.anchorEl instanceof SVGElement) && o.observe(e.anchorEl));
+    }
+    return T(async () => {
+      await R(), h(), g();
+    }), L(() => [
+      e.anchorBounds,
+      e.anchorTo,
+      e.anchorEl,
+      t?.uiScale.value,
+      t?.dock.value,
+      t?.root.value
+    ], async () => {
+      await R(), h(), g();
+    }), O(() => {
+      p(), o?.disconnect();
+    }), (l, n) => (d(), f("div", P({
+      ref_key: "windowRoot",
+      ref: i
+    }, b.value, {
+      class: [
+        "absolute",
+        "flex flex-col",
+        "rounded-2xl overflow-hidden",
+        e.hasShadow ? "shadow-xl" : ""
+      ],
+      style: [E.value, u.value]
+    }), [
+      e.frame ? (d(), f("div", G, [
+        n[0] || (n[0] = r("div", {
+          class: a([
+            "flex gap-2"
+          ])
+        }, [
+          r("div", {
+            class: a(["bg-[#FF5C5F] dark:bg-[#FF5C5F]", "size-3.5", "rounded-full"])
+          }),
+          r("div", {
+            class: a(["bg-[#FAC800] dark:bg-[#FAC800]", "size-3.5", "rounded-full"])
+          }),
+          r("div", {
+            class: a(["bg-[#34C759] dark:bg-[#34C759]", "size-3.5", "rounded-full"])
+          })
+        ], -1)),
+        e.title ? (d(), f("div", H, [
+          r("span", null, V(e.title), 1)
+        ])) : v("", !0)
+      ])) : v("", !0),
+      e.frame ? (d(), f("div", N)) : v("", !0),
+      r("div", null, [
+        M(l.$slots, "default")
+      ])
+    ], 16));
+  }
+});
+export {
+  J as default
+};

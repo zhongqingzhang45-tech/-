@@ -1,0 +1,34 @@
+const messages = (...messages2) => messages2;
+const system = (content) => ({ content, role: "system" });
+const user = (content) => ({ content, role: "user" });
+const textPart = (text) => ({ text, type: "text" });
+const imagePart = (url) => ({ image_url: { url }, type: "image_url" });
+const isToolCall = (content) => {
+  const isElementToolCallLike = (c) => typeof c === "object" && ("type" in c && c.type === "function" && "id" in c && "function" in c && typeof c.function === "object");
+  return isElementToolCallLike(content) || Array.isArray(content) && content.every((part) => isElementToolCallLike(part));
+};
+const assistant = (content) => {
+  if (isToolCall(content)) {
+    return Array.isArray(content) ? { role: "assistant", tool_calls: content } : { role: "assistant", tool_calls: [content] };
+  }
+  return { content, role: "assistant" };
+};
+const tool = (content, toolCall) => ({
+  content,
+  role: "tool",
+  tool_call_id: toolCall.id
+});
+
+var message = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  assistant: assistant,
+  imagePart: imagePart,
+  isToolCall: isToolCall,
+  messages: messages,
+  system: system,
+  textPart: textPart,
+  tool: tool,
+  user: user
+});
+
+export { message };

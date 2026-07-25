@@ -1,0 +1,4 @@
+//#region src/rollup.ts
+var rollup_default = require("./core-CEOGw--w.cjs").UnpluginInfo.rollup;
+//#endregion
+module.exports = rollup_default;

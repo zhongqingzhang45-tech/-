@@ -1,0 +1,20 @@
+import { a as defineEventa, l as nanoid } from "./context-SiKOMx8N.mjs";
+import "./index.mjs";
+//#region src/adapters/electron/internal.ts
+function generatePayload(type, payload) {
+	return {
+		id: nanoid(),
+		type,
+		payload
+	};
+}
+function parsePayload(data) {
+	return data;
+}
+//#endregion
+//#region src/adapters/electron/shared.ts
+const errorEvent = { ...defineEventa() };
+//#endregion
+export { generatePayload as n, parsePayload as r, errorEvent as t };
+
+//# sourceMappingURL=shared-CWXMTZIH.mjs.map

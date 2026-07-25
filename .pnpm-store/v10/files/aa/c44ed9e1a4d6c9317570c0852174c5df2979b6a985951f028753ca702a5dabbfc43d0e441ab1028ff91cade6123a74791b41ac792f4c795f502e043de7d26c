@@ -1,0 +1,4 @@
+import f from "./filter.vue.js";
+export {
+  f as default
+};

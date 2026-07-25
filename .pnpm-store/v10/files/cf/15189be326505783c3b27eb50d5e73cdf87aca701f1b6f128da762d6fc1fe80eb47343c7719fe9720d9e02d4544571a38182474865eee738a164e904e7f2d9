@@ -1,0 +1,19 @@
+import { unpluginFactory } from "./index.mjs";
+import { createEsbuildPlugin } from "unplugin";
+//#region src/esbuild.ts
+/**
+* Esbuild plugin
+*
+* @example
+* ```ts
+* // esbuild.config.js
+* import { build } from "esbuild";
+*
+* build({
+*   plugins: [require("unplugin-yaml/esbuild")()],
+* })
+* ```
+*/
+var esbuild_default = createEsbuildPlugin(unpluginFactory);
+//#endregion
+export { esbuild_default as default };

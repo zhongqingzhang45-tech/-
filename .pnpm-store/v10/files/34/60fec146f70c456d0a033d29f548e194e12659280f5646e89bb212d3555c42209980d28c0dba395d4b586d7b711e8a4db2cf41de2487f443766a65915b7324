@@ -1,0 +1,42 @@
+import "cac";
+//#region src/cli/types.d.ts
+interface CliIo {
+  cwd: string;
+  stderr: CliWritable;
+  stdout: CliWritable;
+}
+interface CliWritable {
+  write: (message: string) => void;
+}
+//#endregion
+//#region src/cli/capture-options.d.ts
+interface AvifCaptureOptions {
+  maxWidth: number;
+  quality: number;
+  speed: number;
+}
+interface CaptureBrowserCliArguments {
+  outputDir: string;
+  renderEntry: string;
+  rootNames: string[];
+}
+interface CaptureElectronCliArguments {
+  appEntrypoint: string;
+  avif?: AvifCaptureOptions;
+  cwd?: string;
+  format: CaptureFormat;
+  outputDir: string;
+  scenarioPath: string;
+}
+type CaptureFormat = 'avif' | 'png';
+//#endregion
+//#region src/cli/commands/capture.d.ts
+declare function parseCaptureElectronCliArguments(argv: string[]): CaptureElectronCliArguments;
+//#endregion
+//#region src/cli/commands/render.d.ts
+declare function parseCaptureBrowserCliArguments(argv: string[]): CaptureBrowserCliArguments;
+//#endregion
+//#region src/cli/cli.d.ts
+declare function executeCli(argv: string[], io: CliIo): Promise<number>;
+//#endregion
+export { type CliIo, executeCli, parseCaptureBrowserCliArguments, parseCaptureElectronCliArguments };

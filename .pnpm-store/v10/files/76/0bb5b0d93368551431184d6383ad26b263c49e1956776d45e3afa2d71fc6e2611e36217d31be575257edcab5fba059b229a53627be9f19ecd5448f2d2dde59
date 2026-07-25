@@ -1,0 +1,89 @@
+{
+  "name": "@masknet/eslint-plugin",
+  "type": "module",
+  "version": "0.4.1",
+  "description": "eslint plugin for masknet",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "eslint",
+    "eslint-plugin"
+  ],
+  "homepage": "https://dimensiondev.github.io/eslint-plugin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DimensionDev/eslint-plugin"
+  },
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    "./schema.json": "./lib/schema.json",
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./configs/": "./lib/configs/",
+    "./rules/": "./lib/rules/"
+  },
+  "files": [
+    "src/",
+    "lib/",
+    "!src/scripts",
+    "!lib/scripts",
+    "!scripts",
+    "!src/spec.ts",
+    "!lib/spec.*",
+    "!lib/**/*.spec.js",
+    "!lib/**/*.spec.d.ts"
+  ],
+  "lint-staged": {
+    "*": [
+      "prettier --write --ignore-unknown",
+      "cspell"
+    ]
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@eslint/js": "^9.39.1",
+    "@masknet/config": "^0.2.1",
+    "@types/node": "^24.10.0",
+    "@typescript-eslint/parser": "^8.46.3",
+    "@typescript-eslint/rule-tester": "^8.46.3",
+    "@typescript-eslint/scope-manager": "^8.46.3",
+    "@typescript-eslint/types": "^8.46.3",
+    "@typescript-eslint/utils": "^8.46.3",
+    "commitlint": "^20.1.0",
+    "cspell": "^9.2.2",
+    "eslint": "^9.39.1",
+    "eslint-plugin-eslint-plugin": "^7.2.0",
+    "eslint-plugin-import": "^2.32.0",
+    "glob": "^11.0.3",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "json-schema-to-typescript": "^15.0.4",
+    "lint-staged": "^16.2.6",
+    "markdownlint-cli": "^0.45.0",
+    "prettier": "^3.6.2",
+    "ts-dedent": "^2.2.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.3",
+    "vitest": "^4.0.7"
+  },
+  "peerDependencies": {
+    "eslint": ">= 9"
+  },
+  "engines": {
+    "node": ">= 22"
+  },
+  "scripts": {
+    "generate": "node ./scripts/index.ts",
+    "lint": "eslint . --fix",
+    "markdownlint": "markdownlint .",
+    "spellcheck": "cspell lint --relative --no-progress '**'",
+    "test": "vitest",
+    "tsc": "tsc -p ."
+  }
+}

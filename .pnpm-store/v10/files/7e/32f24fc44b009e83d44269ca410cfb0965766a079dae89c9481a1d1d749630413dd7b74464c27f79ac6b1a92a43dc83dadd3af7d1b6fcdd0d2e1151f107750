@@ -1,0 +1,51 @@
+import { Locator, LocatorSelectors, PrettyDOMOptions } from "vitest/browser";
+import { ComponentMountingOptions, config } from "@vue/test-utils";
+import { DefineComponent } from "vue";
+
+//#region src/pure.d.ts
+type ComponentProps<T$1> = T$1 extends (new (...args: any) => {
+  $props: infer P;
+}) ? NonNullable<P> : T$1 extends ((props: infer P, ...args: any) => any) ? P : {};
+interface RenderResult<Props$1> extends LocatorSelectors {
+  container: HTMLElement;
+  baseElement: HTMLElement;
+  locator: Locator;
+  debug(el?: HTMLElement | HTMLElement[] | Locator | Locator[], maxLength?: number, options?: PrettyDOMOptions): void;
+  /**
+  * Unmount the component. Also records a `vue.unmount` trace mark.
+  *
+  * Synchronous usage is deprecated and will be removed in the next major version.
+  * Please use `await unmount()` instead of `unmount()`.
+  */
+  unmount(): Promise<void>;
+  emitted<T = unknown>(): Record<string, T[]>;
+  emitted<T = unknown[]>(eventName: string): undefined | T[];
+  /**
+  * Update the component props. Also records a `vue.rerender` trace mark.
+  *
+  * Synchronous usage is deprecated and will be removed in the next major version.
+  * Please use `await rerender(props)` instead of `rerender(props)`.
+  */
+  rerender(props: Partial<Props$1>): Promise<void>;
+}
+interface ComponentRenderOptions<C, P$1 extends ComponentProps<C>> extends ComponentMountingOptions<C, P$1> {
+  container?: HTMLElement;
+  baseElement?: HTMLElement;
+}
+/**
+* Render a Vue component into the document.
+* Also records a `vue.render` trace mark.
+*
+* Synchronous usage is deprecated and will be removed in the next major version.
+* Please use `await render(Component)` instead of `render(Component)`.
+*/
+declare function render<T$1, C = (T$1 extends ((...args: any) => any) | (new (...args: any) => any) ? T$1 : T$1 extends {
+  props?: infer Props;
+} ? DefineComponent<Props extends Readonly<(infer PropNames)[]> | (infer PropNames)[] ? { [key in PropNames extends string ? PropNames : string]?: any } : Props> : DefineComponent), P$1 extends ComponentProps<C> = ComponentProps<C>>(Component: T$1, {
+  container: customContainer,
+  baseElement: customBaseElement,
+  ...mountOptions
+}?: ComponentRenderOptions<C, P$1>): RenderResult<P$1> & PromiseLike<RenderResult<P$1>>;
+declare function cleanup(): void;
+//#endregion
+export { render as a, config as i, RenderResult as n, cleanup as r, ComponentRenderOptions as t };

@@ -1,0 +1,31 @@
+import { openBlock as l, createElementBlock as o, createElementVNode as s, normalizeClass as e } from "vue";
+import r from "../../../../../_virtual/_plugin-vue_export-helper.js";
+const i = {}, n = {
+  class: /* @__PURE__ */ e([
+    "inline-flex flex-col justify-center items-center",
+    "relative",
+    "size-4 m-1 translate-y--0.8"
+  ])
+};
+function c(a, t) {
+  return l(), o("div", n, [...t[0] || (t[0] = [
+    s("div", {
+      class: e([
+        "absolute order-1",
+        "text-base scale-75",
+        "i-mdi:toggle-switch"
+      ])
+    }, null, -1),
+    s("div", {
+      class: e([
+        "translate-y-1.75 absolute order-2",
+        "text-base scale-67",
+        "i-mdi:toggle-switch-off-outline"
+      ])
+    }, null, -1)
+  ])]);
+}
+const m = /* @__PURE__ */ r(i, [["render", c]]);
+export {
+  m as default
+};

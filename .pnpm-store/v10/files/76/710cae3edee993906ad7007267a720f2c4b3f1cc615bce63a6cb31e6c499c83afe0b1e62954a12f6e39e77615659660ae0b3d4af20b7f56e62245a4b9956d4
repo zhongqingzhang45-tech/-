@@ -1,0 +1,129 @@
+import { defineComponent as m, computed as a, openBlock as f, createElementBlock as g, createElementVNode as i, createVNode as s } from "vue";
+import r from "./composite-parts.vue.js";
+import { calculateDisplacementMapRadius as x, calculateDisplacementMap as v } from "../maps/displacement-map.js";
+import { calculateSpecularImage as w } from "../maps/specular.js";
+const b = {
+  "color-interpolation-filters": "sRGB",
+  style: { display: "none" }
+}, y = ["id"], R = ["stdDeviation"], B = ["scale"], M = {
+  in: "specular_alpha",
+  result: "specular_with_opacity"
+}, D = ["slope"], W = /* @__PURE__ */ m({
+  name: "LiquidGlassFilter",
+  __name: "filter",
+  props: {
+    id: {},
+    scaleRatio: {},
+    blur: {},
+    width: {},
+    height: {},
+    radius: {},
+    glassThickness: {},
+    bezelWidth: {},
+    refractiveIndex: {},
+    specularOpacity: {},
+    specularAngle: {},
+    bezelHeightFn: { type: Function },
+    pixelRatio: {},
+    hideTop: { type: Boolean },
+    hideBottom: { type: Boolean },
+    hideLeft: { type: Boolean },
+    hideRight: { type: Boolean }
+  },
+  setup(e) {
+    const t = e, d = a(() => Math.max(t.radius, t.bezelWidth)), o = a(() => d.value * 2 + 1), n = a(() => x(
+      t.glassThickness,
+      t.bezelWidth,
+      t.bezelHeightFn,
+      t.refractiveIndex
+    )), h = a(
+      () => Math.max(...n.value.map(Math.abs))
+    ), u = a(() => v({
+      width: o.value,
+      height: o.value,
+      radius: t.radius,
+      bezelWidth: t.bezelWidth,
+      precomputedDisplacementMap: n.value,
+      maximumDisplacement: h.value,
+      pixelRatio: t.pixelRatio
+    })), c = a(() => w({
+      width: o.value,
+      height: o.value,
+      radius: t.radius,
+      specularAngle: t.specularAngle,
+      pixelRatio: t.pixelRatio
+    })), p = a(() => h.value * t.scaleRatio);
+    return (z, l) => (f(), g("svg", b, [
+      i("defs", null, [
+        i("filter", { id: e.id }, [
+          i("feGaussianBlur", {
+            in: "SourceGraphic",
+            stdDeviation: e.blur,
+            result: "blurred_source"
+          }, null, 8, R),
+          s(r, {
+            "image-data": u.value,
+            width: e.width,
+            height: e.height,
+            "corner-width": d.value,
+            "pixel-ratio": e.pixelRatio,
+            result: "displacement_map",
+            "hide-top": e.hideTop,
+            "hide-bottom": e.hideBottom,
+            "hide-left": e.hideLeft,
+            "hide-right": e.hideRight
+          }, null, 8, ["image-data", "width", "height", "corner-width", "pixel-ratio", "hide-top", "hide-bottom", "hide-left", "hide-right"]),
+          s(r, {
+            "image-data": c.value,
+            width: e.width,
+            height: e.height,
+            "corner-width": d.value,
+            "pixel-ratio": e.pixelRatio,
+            result: "specular_map",
+            "hide-top": e.hideTop,
+            "hide-bottom": e.hideBottom,
+            "hide-left": e.hideLeft,
+            "hide-right": e.hideRight
+          }, null, 8, ["image-data", "width", "height", "corner-width", "pixel-ratio", "hide-top", "hide-bottom", "hide-left", "hide-right"]),
+          i("feDisplacementMap", {
+            in: "blurred_source",
+            in2: "displacement_map",
+            scale: p.value,
+            xChannelSelector: "R",
+            yChannelSelector: "G",
+            result: "displaced_source"
+          }, null, 8, B),
+          l[0] || (l[0] = i("feColorMatrix", {
+            in: "specular_map",
+            type: "luminanceToAlpha",
+            result: "specular_alpha"
+          }, null, -1)),
+          i("feComponentTransfer", M, [
+            i("feFuncA", {
+              type: "linear",
+              slope: e.specularOpacity
+            }, null, 8, D)
+          ]),
+          l[1] || (l[1] = i("feFlood", {
+            "flood-color": "white",
+            result: "white_layer"
+          }, null, -1)),
+          l[2] || (l[2] = i("feComposite", {
+            in: "white_layer",
+            in2: "specular_with_opacity",
+            operator: "in",
+            result: "masked_specular"
+          }, null, -1)),
+          l[3] || (l[3] = i("feComposite", {
+            in: "masked_specular",
+            in2: "displaced_source",
+            operator: "over"
+          }, null, -1))
+        ], 8, y)
+      ])
+    ]));
+  }
+});
+export {
+  W as default
+};

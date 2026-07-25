@@ -1,0 +1,20 @@
+import { pipeline } from '@huggingface/transformers';
+import { CreateProviderOptions, TranscriptionProviderWithExtraOptions } from '@xsai-ext/shared-providers';
+import { LoadOptions, PipelineOptionsFrom } from '@xsai-transformers/shared/types';
+import { CommonRequestOptions } from '@xsai/shared';
+
+interface TranscriptionProviderOptions extends Omit<CreateProviderOptions, 'baseURL'> {
+    baseURL?: string;
+    worker?: Worker;
+}
+
+type LoadableTranscriptionProvider<P, T = string, T2 = undefined> = P & {
+    loadTranscribe: (model: (string & {}) | T, options?: T2) => Promise<void>;
+    terminateTranscribe: () => void;
+};
+declare const createTranscriptionProvider: <T extends string, T2 extends LoadOptions<PipelineOptionsFrom<typeof pipeline<"automatic-speech-recognition">>> & Omit<CommonRequestOptions, "baseURL" | "model"> & {
+    language?: string;
+}>(createOptions: TranscriptionProviderOptions) => LoadableTranscriptionProvider<TranscriptionProviderWithExtraOptions<T, T2>, T, T2>;
+
+export { createTranscriptionProvider };
+export type { LoadableTranscriptionProvider };

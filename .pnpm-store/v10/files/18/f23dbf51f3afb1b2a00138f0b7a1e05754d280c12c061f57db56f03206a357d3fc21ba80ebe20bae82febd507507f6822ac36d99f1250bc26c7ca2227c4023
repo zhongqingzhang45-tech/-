@@ -1,0 +1,17 @@
+import { l as nanoid } from "./context-SiKOMx8N.mjs";
+//#region src/adapters/websocket/internal.ts
+function generateWebsocketPayload(type, payload) {
+	return {
+		id: nanoid(),
+		type,
+		payload,
+		timestamp: Date.now()
+	};
+}
+function parseWebsocketPayload(data) {
+	return JSON.parse(data);
+}
+//#endregion
+export { parseWebsocketPayload as n, generateWebsocketPayload as t };
+
+//# sourceMappingURL=internal-CxS5mCc0.mjs.map

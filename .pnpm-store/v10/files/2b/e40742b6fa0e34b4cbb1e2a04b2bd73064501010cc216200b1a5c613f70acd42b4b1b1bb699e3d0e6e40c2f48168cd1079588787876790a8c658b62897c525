@@ -1,0 +1,22 @@
+interface FilterProps {
+    id: string;
+    scaleRatio: number;
+    blur: number;
+    width: number;
+    height: number;
+    radius: number;
+    glassThickness: number;
+    bezelWidth: number;
+    refractiveIndex: number;
+    specularOpacity: number;
+    specularAngle: number;
+    bezelHeightFn: (x: number) => number;
+    pixelRatio: number;
+    hideTop?: boolean;
+    hideBottom?: boolean;
+    hideLeft?: boolean;
+    hideRight?: boolean;
+}
+declare const __VLS_export: import("vue").DefineComponent<FilterProps, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<FilterProps> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const _default: typeof __VLS_export;
+export default _default;

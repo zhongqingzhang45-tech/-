@@ -1,0 +1,26 @@
+import "../../eventa-B2HPBK4S.mjs";
+import { EventContext } from "../../context-C_-MRU46.mjs";
+import "../../invoke-LTUFMmHi.mjs";
+import "../../index-BgaYNgPh.mjs";
+import { Payload, errorEvent } from "../../shared-DllZ3RPS.mjs";
+import { BrowserWindow, IpcMain, IpcMainEvent } from "electron";
+
+//#region src/adapters/electron/main.d.ts
+declare function createContext(ipcMain: IpcMain, window?: BrowserWindow, options?: {
+  onlySameWindow?: boolean;
+  messageEventName?: string | false;
+  errorEventName?: string | false;
+  extraListeners?: Record<string, (_: any, event: Event) => void | Promise<void>>;
+  throwIfFailedToSend?: boolean;
+}): {
+  context: EventContext<any, {
+    raw: {
+      ipcMainEvent: IpcMainEvent;
+      event: Event | unknown;
+    };
+  }>;
+  dispose: () => void;
+};
+//#endregion
+export { Payload, createContext, errorEvent };
+//# sourceMappingURL=main.d.mts.map

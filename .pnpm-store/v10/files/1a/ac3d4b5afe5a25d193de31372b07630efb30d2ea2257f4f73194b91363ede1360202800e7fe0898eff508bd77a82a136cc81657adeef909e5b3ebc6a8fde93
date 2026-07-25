@@ -1,0 +1,2593 @@
+import { c as loadRawVievalConfig, l as loadVievalCliConfig, n as consumeModuleRegistrations, o as detectCliConfigMode, r as endModuleRegistration, t as beginModuleRegistration } from "./registry-CwcMMjnZ.mjs";
+import { RunnerExecutionError, collectEvalEntries, createFilesystemTaskCacheRuntime, createRunnerRuntimeContext, createRunnerSchedule, createTaskExecutionContext, runScheduledTasks } from "./core/runner/index.mjs";
+import process from "node:process";
+import { errorMessageFrom } from "@moeru/std";
+import meow from "meow";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { access, mkdir, writeFile } from "node:fs/promises";
+import { glob } from "tinyglobby";
+import { pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
+import c from "tinyrainbow";
+import { existsSync, readFileSync } from "node:fs";
+import { uniq } from "es-toolkit";
+import { createVitest } from "vitest/node";
+import { stripVTControlCharacters } from "node:util";
+import stringWidth from "fast-string-width";
+//#region src/cli/comparison-config.ts
+const supportedWorkspaceConfigFileNames = [
+	"vieval.config.ts",
+	"vieval.config.mts",
+	"vieval.config.cts",
+	"vieval.config.js",
+	"vieval.config.mjs",
+	"vieval.config.cjs",
+	"vieval.config.json"
+];
+async function isReadableFile(filePath) {
+	try {
+		await access(filePath);
+		return true;
+	} catch {
+		return false;
+	}
+}
+function normalizeGlobInput(patterns) {
+	if (patterns == null) return [];
+	return (typeof patterns === "string" ? [patterns] : patterns).map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
+}
+function normalizeMethodShape(method, configDirectory, index) {
+	const id = method.id.trim();
+	const workspace = method.workspace.trim();
+	const project = method.project.trim();
+	const configFilePath = method.configFilePath?.trim();
+	if (id.length === 0) throw new Error(`Comparison method #${index + 1} is missing id.`);
+	if (workspace.length === 0) throw new Error(`Comparison method "${id}" is missing workspace.`);
+	if (project.length === 0) throw new Error(`Comparison method "${id}" is missing project.`);
+	const resolvedWorkspace = isAbsolute(workspace) ? workspace : resolve(configDirectory, workspace);
+	return {
+		configFilePath: configFilePath == null || configFilePath.length === 0 ? void 0 : isAbsolute(configFilePath) ? configFilePath : resolve(configDirectory, configFilePath),
+		id,
+		project,
+		workspace: resolvedWorkspace
+	};
+}
+async function findWorkspaceConfigFile(workspaceDirectory) {
+	for (const fileName of supportedWorkspaceConfigFileNames) {
+		const candidate = join(workspaceDirectory, fileName);
+		if (await isReadableFile(candidate)) return candidate;
+	}
+	return null;
+}
+function createDiscoveredMethodId(configDirectory, workspace, projectName) {
+	const relativeWorkspace = relative(configDirectory, workspace);
+	return `${(relativeWorkspace.length > 0 ? relativeWorkspace : basename(workspace)).replaceAll("\\", "/")}:${projectName}`;
+}
+async function discoverMethodsFromWorkspaceGlobs(args) {
+	const includes = normalizeGlobInput(args.comparison.includesWorkspaces);
+	if (includes.length === 0) return [];
+	const discoveredWorkspaceDirectories = await glob(includes, {
+		absolute: true,
+		cwd: args.configDirectory,
+		ignore: normalizeGlobInput(args.comparison.excludesWorkspaces),
+		onlyDirectories: true
+	});
+	const methods = [];
+	for (const workspaceDirectory of discoveredWorkspaceDirectories.sort((left, right) => left.localeCompare(right))) {
+		const configFilePath = await findWorkspaceConfigFile(workspaceDirectory);
+		if (configFilePath == null) continue;
+		const loadedWorkspaceConfig = await loadVievalCliConfig({
+			configFilePath,
+			cwd: workspaceDirectory
+		});
+		for (const project of loadedWorkspaceConfig.projects) methods.push({
+			configFilePath,
+			id: createDiscoveredMethodId(args.configDirectory, workspaceDirectory, project.name),
+			project: project.name,
+			workspace: workspaceDirectory
+		});
+	}
+	return methods;
+}
+function validateMethodIdsAreUnique(methods) {
+	const methodIds = methods.map((method) => method.id);
+	const duplicatedMethodId = methodIds.find((methodId, index) => methodIds.indexOf(methodId) !== index);
+	if (duplicatedMethodId != null) throw new Error(`Duplicate comparison method id "${duplicatedMethodId}".`);
+}
+function assertComparisonMode(config) {
+	const mode = detectCliConfigMode(config);
+	if (mode !== "comparisons") throw new Error(`Expected comparison-mode config, but received ${mode}-mode config.`);
+}
+function selectComparisonConfig(comparisons, comparisonId) {
+	if (comparisons.length === 0) throw new Error("Comparison config requires at least one comparisons entry.");
+	if (comparisonId == null || comparisonId.trim().length === 0) {
+		if (comparisons.length > 1) throw new Error(`Multiple comparisons found. Provide --comparison. Available ids: ${comparisons.map((item) => item.id).join(", ")}`);
+		return comparisons[0];
+	}
+	const selected = comparisons.find((item) => item.id === comparisonId);
+	if (selected == null) throw new Error(`Unknown comparison id "${comparisonId}".`);
+	return selected;
+}
+function normalizeBenchmark(comparison) {
+	const benchmarkId = comparison.benchmark.id.trim();
+	const sharedCaseNamespace = comparison.benchmark.sharedCaseNamespace.trim();
+	if (benchmarkId.length === 0) throw new Error("Comparison config requires benchmark.id.");
+	if (sharedCaseNamespace.length === 0) throw new Error("Comparison config requires benchmark.sharedCaseNamespace.");
+	return {
+		id: benchmarkId,
+		sharedCaseNamespace
+	};
+}
+/**
+* Loads and validates comparison-mode data from `vieval.config.*`.
+*/
+async function loadVievalComparisonConfig(options = {}) {
+	const cwd = options.cwd ?? process.cwd();
+	try {
+		const loaded = await loadRawVievalConfig({
+			configFilePath: options.configFilePath,
+			cwd
+		});
+		if (loaded.configFilePath == null || loaded.config == null) throw new Error("Failed to find vieval config. Expected vieval.config.*");
+		assertComparisonMode(loaded.config);
+		const selectedComparison = selectComparisonConfig(loaded.config.comparisons, options.comparisonId);
+		const configDirectory = dirname(loaded.configFilePath);
+		const explicitMethods = (selectedComparison.methods ?? []).map((method, index) => normalizeMethodShape(method, configDirectory, index));
+		const discoveredMethods = await discoverMethodsFromWorkspaceGlobs({
+			comparison: selectedComparison,
+			configDirectory
+		});
+		const methods = [...explicitMethods, ...discoveredMethods];
+		if (methods.length === 0) throw new Error("Comparison config resolved zero methods. Configure methods or includesWorkspaces.");
+		validateMethodIdsAreUnique(methods);
+		return {
+			config: {
+				benchmark: normalizeBenchmark(selectedComparison),
+				methods
+			},
+			configFilePath: loaded.configFilePath
+		};
+	} catch (error) {
+		const errorMessage = errorMessageFrom(error) ?? "Unknown comparison config loading error.";
+		const resolvedPath = options.configFilePath ?? "vieval.config";
+		throw new Error(`Failed to load comparison config "${resolvedPath}": ${errorMessage}`);
+	}
+}
+//#endregion
+//#region src/cli/report-compare.ts
+/**
+* Builds a compact compare report sorted by hybrid/exact score.
+*/
+function buildCompareReportArtifact(args) {
+	const rows = args.methods.map((method) => {
+		const overall = method.output.projects[0]?.result?.overall;
+		return {
+			exactAverage: overall?.exactAverage ?? null,
+			hybridAverage: overall?.hybridAverage ?? null,
+			methodId: method.methodId,
+			runCount: overall?.runCount ?? 0
+		};
+	});
+	rows.sort((left, right) => {
+		const leftHybrid = left.hybridAverage ?? Number.NEGATIVE_INFINITY;
+		const rightHybrid = right.hybridAverage ?? Number.NEGATIVE_INFINITY;
+		if (leftHybrid !== rightHybrid) return rightHybrid - leftHybrid;
+		const leftExact = left.exactAverage ?? Number.NEGATIVE_INFINITY;
+		return (right.exactAverage ?? Number.NEGATIVE_INFINITY) - leftExact;
+	});
+	return {
+		benchmarkId: args.benchmarkId,
+		methods: rows,
+		reportPath: args.reportPath
+	};
+}
+/**
+* Writes compare report artifact as JSON.
+*/
+async function writeCompareReportArtifact(args) {
+	const outputPath = resolve(args.outputPath);
+	await mkdir(dirname(outputPath), { recursive: true });
+	await writeFile(outputPath, `${JSON.stringify(args.artifact, null, 2)}\n`, "utf-8");
+	return outputPath;
+}
+//#endregion
+//#region src/cli/discovery.ts
+/**
+* Discovers eval files using include/exclude globs relative to project root.
+*
+* Before:
+* - Absolute path file list from recursive filesystem walk
+*
+* After:
+* - Filtered absolute path list matching include/exclude rules
+*/
+async function discoverEvalFiles(options) {
+	return uniq(await glob([...options.include], {
+		absolute: true,
+		cwd: options.root,
+		ignore: [...options.exclude],
+		onlyFiles: true
+	})).sort((left, right) => left.localeCompare(right));
+}
+//#endregion
+//#region src/cli/module-runtime.ts
+/**
+* Loads eval modules and returns a normalized eval-module map.
+*
+* Use when:
+* - CLI collection needs Vite/Vitest-powered module resolution and transforms
+* - eval files should be imported with the same runtime semantics as Vitest
+*
+* Expects:
+* - `projectRoot` points at the project that owns the eval files
+* - each `evalFilePaths` entry is an absolute file path
+*
+* Returns:
+* - eval modules keyed by stable file href + optional registration suffixes
+*/
+async function loadEvalModulesWithVitestRuntime(evalFilePaths, projectRoot) {
+	const loadedModules = {};
+	const runtime = await createVitest("test", {
+		config: false,
+		root: projectRoot,
+		run: false,
+		silent: true,
+		watch: false
+	});
+	try {
+		for (const evalFilePath of evalFilePaths) {
+			const moduleHref = pathToFileURL(evalFilePath).href;
+			beginModuleRegistration(moduleHref);
+			try {
+				const moduleValue = await runtime.import(moduleHref);
+				const registeredDefinitions = consumeModuleRegistrations(moduleHref);
+				const defaultDefinition = moduleValue.default;
+				const definitions = [...registeredDefinitions, ...defaultDefinition == null ? [] : [defaultDefinition]];
+				const deduplicatedDefinitions = definitions.filter((definition, index) => {
+					const key = `${definition.name}::${definition.description}::${definition.task?.id ?? ""}`;
+					return definitions.findIndex((candidate) => `${candidate.name}::${candidate.description}::${candidate.task?.id ?? ""}` === key) === index;
+				});
+				if (deduplicatedDefinitions.length === 0) continue;
+				for (const [definitionIndex, definition] of deduplicatedDefinitions.entries()) {
+					const moduleKey = definitionIndex === 0 ? moduleHref : `${moduleHref}#registration-${definitionIndex + 1}`;
+					loadedModules[moduleKey] = { default: definition };
+				}
+			} finally {
+				endModuleRegistration();
+			}
+		}
+	} finally {
+		await runtime.close();
+	}
+	return loadedModules;
+}
+//#endregion
+//#region src/cli/reporters/noop-reporter.ts
+/**
+* Creates a reporter that intentionally does nothing.
+*
+* Use when:
+* - terminal output should stay silent
+* - reporter wiring needs a safe default for tests or non-interactive runs
+*
+* Expects:
+* - callers may invoke any lifecycle method in any order that matches the run
+*
+* Returns:
+* - a stable reporter implementation with no observable side effects
+*/
+function createNoopReporter() {
+	return {
+		onRunStart(_payload) {},
+		onTaskQueued(_payload) {},
+		onTaskStart(_payload) {},
+		onCaseStart(_payload) {},
+		onCaseEnd(_payload) {},
+		onTaskEnd(_payload) {},
+		onRunEnd(_payload) {},
+		dispose() {}
+	};
+}
+//#endregion
+//#region src/cli/reporters/summary-reporter.ts
+const POINTER = "❯";
+const TREE_NODE_END = "└";
+const TREE_NODE_MIDDLE = "├";
+var SummaryReporterStateMachine = class {
+	options;
+	taskCounters = createCounterState();
+	caseCounters = createCounterState();
+	tasks = /* @__PURE__ */ new Map();
+	queueOrderCounter = 0;
+	startedAtMs = 0;
+	startTime = "";
+	constructor(options) {
+		this.options = options;
+	}
+	/**
+	* Handles run startup.
+	*
+	* Use when:
+	* - a new CLI run is starting and the summary state must reset
+	*
+	* Expects:
+	* - `totalTasks` matches the scheduled task count for the run
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onRunStart(payload) {
+		this.tasks.clear();
+		this.queueOrderCounter = 0;
+		resetCounterState(this.taskCounters, payload.totalTasks);
+		resetCounterState(this.caseCounters, 0);
+		this.startedAtMs = this.options.getNow();
+		this.startTime = formatTimeString(new Date(this.options.getWallClockNow()));
+	}
+	/**
+	* Handles task queue events.
+	*
+	* Use when:
+	* - a scheduled task becomes visible in the live summary before it starts
+	*
+	* Expects:
+	* - `taskId` is stable across later lifecycle events
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onTaskQueued(payload) {
+		const task = this.getOrCreateTaskState(payload.taskId);
+		if (task.state === "finished") return;
+		task.displayName = payload.displayName ?? task.displayName;
+		task.projectName = payload.projectName ?? task.projectName;
+		this.syncTaskTotalCases(task, payload.totalCases);
+	}
+	/**
+	* Handles task start events.
+	*
+	* Use when:
+	* - a queued task begins executing
+	*
+	* Expects:
+	* - the task was previously queued or can be synthesized from its identifier
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onTaskStart(payload) {
+		const task = this.getOrCreateTaskState(payload.taskId);
+		if (task.state === "finished") return;
+		task.state = "running";
+		task.startedAt ??= this.options.getNow();
+	}
+	/**
+	* Handles case start events.
+	*
+	* Use when:
+	* - a running task starts one case and slow-case tracking may begin
+	*
+	* Expects:
+	* - `caseId` is stable for the lifetime of the running case
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onCaseStart(payload) {
+		const task = this.getOrCreateTaskState(payload.taskId);
+		if (task.state === "finished") return;
+		task.state = "running";
+		task.startedAt ??= this.options.getNow();
+		if (task.settledCaseIds.has(payload.caseId) || task.runningCases.has(payload.caseId)) return;
+		task.caseOrderCounter += 1;
+		task.runningCases.set(payload.caseId, {
+			caseId: payload.caseId,
+			caseName: payload.caseName ?? payload.caseId,
+			order: task.caseOrderCounter,
+			startedAt: this.options.getNow()
+		});
+		this.syncTaskTotalCases(task);
+	}
+	/**
+	* Handles case completion.
+	*
+	* Use when:
+	* - a running case settles and counters must advance
+	*
+	* Expects:
+	* - duplicate completion for the same `caseId` is ignored
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onCaseEnd(payload) {
+		const task = this.getOrCreateTaskState(payload.taskId);
+		if (task.state === "finished") return;
+		if (task.settledCaseIds.has(payload.caseId)) {
+			task.runningCases.delete(payload.caseId);
+			return;
+		}
+		task.settledCaseIds.add(payload.caseId);
+		task.runningCases.delete(payload.caseId);
+		task.completedCases += 1;
+		this.syncTaskTotalCases(task);
+		this.caseCounters.completed += 1;
+		if (payload.state === "passed") {
+			this.caseCounters.passed += 1;
+			return;
+		}
+		if (payload.state === "failed") {
+			this.caseCounters.failed += 1;
+			return;
+		}
+		this.caseCounters.skipped += 1;
+	}
+	/**
+	* Handles task completion.
+	*
+	* Use when:
+	* - a task leaves the active window and contributes to terminal totals
+	*
+	* Expects:
+	* - duplicate task completion for the same task is ignored
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onTaskEnd(payload) {
+		const task = this.getOrCreateTaskState(payload.taskId);
+		if (task.state === "finished") return;
+		this.syncTaskTotalCases(task);
+		task.state = "finished";
+		task.taskResult = payload.state;
+		task.runningCases.clear();
+		this.taskCounters.completed += 1;
+		if (payload.state === "passed") {
+			this.taskCounters.passed += 1;
+			return;
+		}
+		if (payload.state === "failed") {
+			this.taskCounters.failed += 1;
+			return;
+		}
+		this.taskCounters.skipped += 1;
+	}
+	/**
+	* Handles run completion.
+	*
+	* Use when:
+	* - the caller has final task totals and wants the footer normalized
+	*
+	* Expects:
+	* - payload counters are final terminal task totals
+	*
+	* Returns:
+	* - no direct value
+	*/
+	onRunEnd(payload) {
+		this.taskCounters.total = payload.totalTasks;
+		this.taskCounters.passed = payload.passedTasks;
+		this.taskCounters.failed = payload.failedTasks;
+		this.taskCounters.skipped = payload.skippedTasks;
+		this.taskCounters.completed = payload.passedTasks + payload.failedTasks + payload.skippedTasks;
+	}
+	/**
+	* Releases reporter resources.
+	*
+	* Use when:
+	* - CLI cleanup runs from a `finally` block
+	*
+	* Expects:
+	* - repeated calls are safe
+	*
+	* Returns:
+	* - no direct value
+	*/
+	dispose() {}
+	/**
+	* Builds the current live summary window rows.
+	*
+	* Use when:
+	* - the live reporter or tests need a snapshot of the active window
+	*
+	* Expects:
+	* - `maxRows`, when present, keeps footer rows visible
+	*
+	* Returns:
+	* - terminal rows in display order
+	*/
+	getWindowRows(options) {
+		const activeRows = this.createActiveRows();
+		const footerRows = this.createFooterRows();
+		const maxRows = options?.maxRows;
+		const activeBlock = [
+			"",
+			...activeRows,
+			...activeRows.length > 0 ? [""] : []
+		];
+		const footerBlock = [...footerRows, ""];
+		if (maxRows == null || maxRows <= 0) return [...activeBlock, ...footerBlock];
+		if (maxRows <= footerBlock.length) return footerBlock.slice(-maxRows);
+		const availableActiveRows = Math.max(0, maxRows - footerBlock.length);
+		return [...activeBlock.slice(0, availableActiveRows), ...footerBlock];
+	}
+	createActiveRows() {
+		const activeTasks = Array.from(this.tasks.values()).filter((task) => task.state !== "finished").sort(compareActiveTasks);
+		const rows = [];
+		for (const task of activeTasks) {
+			const suffix = task.state === "queued" ? c.dim(" [queued]") : ` ${task.completedCases}/${task.totalCases}`;
+			const badge = formatProjectBadge(task.projectName, this.options.isTTY);
+			rows.push(c.bold(c.yellow(` ${POINTER} `)) + badge + task.displayName + c.dim(suffix));
+			const slowCases = Array.from(task.runningCases.values()).filter((activeCase) => this.options.getNow() - activeCase.startedAt >= this.options.slowThresholdMs).sort((left, right) => left.order - right.order);
+			for (const [index, activeCase] of slowCases.entries()) {
+				const icon = index === slowCases.length - 1 ? TREE_NODE_END : TREE_NODE_MIDDLE;
+				const elapsed = Math.max(0, this.options.getNow() - activeCase.startedAt);
+				rows.push(c.bold(c.yellow(`   ${icon} `)) + activeCase.caseName + c.bold(c.yellow(` ${formatDuration$1(elapsed)}`)));
+			}
+		}
+		return rows;
+	}
+	createFooterRows() {
+		return [
+			padSummaryTitle("Tasks") + formatCounterState(this.taskCounters),
+			padSummaryTitle("Cases") + formatCounterState(this.caseCounters),
+			padSummaryTitle("Start at") + this.startTime,
+			padSummaryTitle("Duration") + formatDuration$1(Math.max(0, this.options.getNow() - this.startedAtMs))
+		];
+	}
+	getOrCreateTaskState(taskId) {
+		const existing = this.tasks.get(taskId);
+		if (existing != null) return existing;
+		const created = {
+			caseOrderCounter: 0,
+			completedCases: 0,
+			displayName: taskId,
+			projectName: void 0,
+			queueOrder: this.queueOrderCounter,
+			runningCases: /* @__PURE__ */ new Map(),
+			settledCaseIds: /* @__PURE__ */ new Set(),
+			startedAt: void 0,
+			state: "queued",
+			taskId,
+			taskResult: void 0,
+			totalCases: 0
+		};
+		this.queueOrderCounter += 1;
+		this.tasks.set(taskId, created);
+		return created;
+	}
+	syncTaskTotalCases(task, reportedTotalCases) {
+		const observedTotalCases = task.completedCases + task.runningCases.size;
+		task.totalCases = Math.max(task.totalCases, reportedTotalCases ?? 0, observedTotalCases);
+		this.caseCounters.total = sumTaskCaseTotals(this.tasks.values());
+	}
+};
+/**
+* Creates the live summary reporter state machine for `vieval` CLI runs.
+*
+* Use when:
+* - the CLI wants Vitest-style active rows and live counters
+* - tests need a deterministic reporter surface without touching the terminal
+*
+* Expects:
+* - queue/start/end events describe task lifecycle in order
+* - `getNow()` remains monotonic within one run
+* - `getWallClockNow()` returns the wall-clock run start timestamp
+*
+* Returns:
+* - a reporter compatible with the base CLI lifecycle plus `getWindowRows()`
+*
+* Call stack:
+*
+* {@link createSummaryReporter}
+*   -> {@link SummaryReporterStateMachine.onTaskQueued}
+*   -> {@link SummaryReporterStateMachine.onCaseStart}
+*   -> {@link SummaryReporterStateMachine.getWindowRows}
+*/
+function createSummaryReporter(options) {
+	return new SummaryReporterStateMachine(options);
+}
+function createCounterState() {
+	return {
+		completed: 0,
+		failed: 0,
+		passed: 0,
+		skipped: 0,
+		total: 0
+	};
+}
+function resetCounterState(counter, total) {
+	counter.completed = 0;
+	counter.failed = 0;
+	counter.passed = 0;
+	counter.skipped = 0;
+	counter.total = total;
+}
+function sumTaskCaseTotals(tasks) {
+	let total = 0;
+	for (const task of tasks) total += task.totalCases;
+	return total;
+}
+function compareActiveTasks(left, right) {
+	const leftProject = left.projectName ?? "";
+	const rightProject = right.projectName ?? "";
+	if (leftProject !== rightProject) return leftProject.localeCompare(rightProject);
+	const displayNameOrder = left.displayName.localeCompare(right.displayName);
+	if (displayNameOrder !== 0) return displayNameOrder;
+	return left.queueOrder - right.queueOrder;
+}
+function padSummaryTitle(label) {
+	return `${c.dim(label.padEnd(8))} `;
+}
+function formatCounterState(counter) {
+	return [
+		c.bold(c.green(`${counter.passed} passed`)),
+		counter.failed > 0 ? c.bold(c.red(`${counter.failed} failed`)) : c.dim(`${counter.failed} failed`),
+		counter.skipped > 0 ? c.yellow(`${counter.skipped} skipped`) : c.dim(`${counter.skipped} skipped`)
+	].join(c.dim(" | ")) + c.gray(` (${counter.total})`);
+}
+function formatTimeString(date) {
+	return date.toTimeString().split(" ")[0] ?? "";
+}
+function formatDuration$1(durationMs) {
+	if (durationMs >= 1e3) return `${(durationMs / 1e3).toFixed(2)}s`;
+	return `${Math.round(durationMs)}ms`;
+}
+function formatProjectBadge(projectName, isTTY) {
+	if (projectName == null || projectName.length === 0) return "";
+	if (!isTTY || !c.isColorSupported) return `|${projectName}| `;
+	const backgroundPool = [
+		c.bgYellow,
+		c.bgCyan,
+		c.bgGreen,
+		c.bgMagenta
+	];
+	const background = backgroundPool[projectName.split("").reduce((accumulator, character, index) => accumulator + character.charCodeAt(0) + index, 0) % backgroundPool.length];
+	return `${c.black(background(` ${projectName} `))} `;
+}
+//#endregion
+//#region src/cli/reporters/index.ts
+/**
+* Creates the default CLI reporter for the current output mode.
+*
+* Use when:
+* - interactive terminals should use the live summary reporter
+* - non-interactive environments should stay silent with the noop reporter
+*
+* Expects:
+* - `isTTY` decides whether the live summary reporter can be used
+*
+* Returns:
+* - a summary reporter for TTY runs, otherwise a noop reporter
+*/
+function createCliReporter(options) {
+	if (!options.isTTY) return createNoopReporter();
+	return createSummaryReporter(options);
+}
+//#endregion
+//#region src/cli/reporters/renderers/windowed-renderer.ts
+const DEFAULT_RENDER_INTERVAL_MS = 1e3;
+const ESC = "\x1B[";
+const CARRIAGE_RETURN = "\r";
+const CLEAR_LINE = `${ESC}K`;
+const MOVE_CURSOR_ONE_ROW_UP = `${ESC}1A`;
+const SYNC_START = `${ESC}?2026h`;
+const SYNC_END = `${ESC}?2026l`;
+/**
+* Renders a dynamic window at the bottom of the terminal.
+*
+* Use when:
+* - a reporter needs in-place TTY updates without leaking terminal control codes into tests
+* - callers want Vitest-style redraw behavior with injected output/timer dependencies
+*
+* Expects:
+* - `start()` runs before `schedule()`
+* - `finish()` or `dispose()` may be called multiple times safely
+*
+* Returns:
+* - no direct value; all effects are emitted through the injected callbacks
+*
+* Call stack:
+*
+* {@link WindowRenderer.start}
+*   -> periodic schedule callback
+*     -> {@link WindowRenderer.schedule}
+*       -> {@link WindowRenderer.renderWindow}
+*/
+var WindowRenderer = class {
+	options;
+	renderInterval;
+	renderScheduled = false;
+	renderScheduleVersion = 0;
+	windowHeight = 0;
+	started = false;
+	finished = false;
+	bufferedOutput = "";
+	constructor(options) {
+		if (options.createInterval && options.clearInterval) {
+			this.options = {
+				createInterval: (callback, intervalMs) => {
+					const timer = options.createInterval(callback, intervalMs);
+					return {
+						clear: () => options.clearInterval(timer),
+						unref: timer.unref?.bind(timer)
+					};
+				},
+				getColumns: options.getColumns,
+				getWindow: options.getWindow,
+				intervalMs: options.intervalMs ?? DEFAULT_RENDER_INTERVAL_MS,
+				queueRenderReset: options.queueRenderReset ?? defaultQueueRenderReset,
+				supportsAnsiWindowing: options.supportsAnsiWindowing ?? true,
+				writeOutput: options.writeOutput
+			};
+			return;
+		}
+		this.options = {
+			createInterval: defaultCreateInterval,
+			getColumns: options.getColumns,
+			getWindow: options.getWindow,
+			intervalMs: options.intervalMs ?? DEFAULT_RENDER_INTERVAL_MS,
+			queueRenderReset: options.queueRenderReset ?? defaultQueueRenderReset,
+			supportsAnsiWindowing: options.supportsAnsiWindowing ?? true,
+			writeOutput: options.writeOutput
+		};
+	}
+	/**
+	* Starts the periodic refresh loop.
+	*
+	* Use when:
+	* - the live reporter is about to emit in-place updates
+	*
+	* Expects:
+	* - repeated calls are harmless and keep the existing timer
+	*
+	* Returns:
+	* - no direct value
+	*/
+	start() {
+		if (this.started && !this.finished) return;
+		this.started = true;
+		this.finished = false;
+		this.renderScheduleVersion += 1;
+		if (!this.renderInterval) {
+			this.renderInterval = this.options.createInterval(() => this.schedule(), this.options.intervalMs);
+			this.renderInterval.unref?.();
+		}
+	}
+	/**
+	* Queues a render if one is not already in flight.
+	*
+	* Use when:
+	* - reporter state changes and the bottom window should refresh
+	*
+	* Expects:
+	* - the renderer has been started
+	*
+	* Returns:
+	* - no direct value
+	*/
+	schedule() {
+		if (!this.started || this.finished || this.renderScheduled) return;
+		const renderScheduleVersion = this.renderScheduleVersion;
+		this.renderScheduled = true;
+		this.renderWindow();
+		this.options.queueRenderReset(() => {
+			if (this.renderScheduleVersion !== renderScheduleVersion) return;
+			this.renderScheduled = false;
+		});
+	}
+	/**
+	* Clears the rendered window and stops the refresh loop.
+	*
+	* Use when:
+	* - the live reporter is transitioning to final static output
+	*
+	* Expects:
+	* - repeated calls are safe
+	*
+	* Returns:
+	* - no direct value
+	*/
+	finish() {
+		if (this.finished) return;
+		this.finished = true;
+		this.started = false;
+		this.renderScheduleVersion += 1;
+		this.renderScheduled = false;
+		this.stopInterval();
+		this.clearWindow();
+		this.flushBufferedOutput();
+	}
+	/**
+	* Stops the renderer and clears any visible window state.
+	*
+	* Use when:
+	* - cleanup needs to happen from a `finally` block or interrupted run
+	*
+	* Expects:
+	* - callers may invoke it more than once
+	*
+	* Returns:
+	* - no direct value
+	*/
+	dispose() {
+		this.finish();
+	}
+	/**
+	* Alias for disposal to match Vitest's renderer lifecycle naming.
+	*
+	* Use when:
+	* - adapting code that expects `stop()`
+	*
+	* Expects:
+	* - callers want the same semantics as `dispose()`
+	*
+	* Returns:
+	* - no direct value
+	*/
+	stop() {
+		this.dispose();
+	}
+	/**
+	* Writes reporter output through the renderer lifecycle.
+	*
+	* Use when:
+	* - emitting log lines that must appear above the live ANSI window
+	* - callers need deterministic buffering behavior in tests
+	*
+	* Expects:
+	* - active ANSI window mode buffers until `schedule()` or `finish()`
+	* - inactive or non-windowed mode writes directly
+	*
+	* Returns:
+	* - no direct value
+	*/
+	write(message) {
+		if (!this.isActiveWindowMode()) {
+			this.writeOutput(message);
+			return;
+		}
+		this.bufferedOutput += message;
+	}
+	renderWindow() {
+		const windowContent = this.options.getWindow();
+		const rowCount = getRenderedRowCount(windowContent, this.options.getColumns());
+		if (this.options.supportsAnsiWindowing) {
+			this.writeOutput(SYNC_START);
+			this.clearWindow();
+		}
+		this.flushBufferedOutput();
+		this.writeOutput(windowContent.join("\n"));
+		if (this.options.supportsAnsiWindowing) {
+			this.writeOutput(SYNC_END);
+			this.windowHeight = rowCount;
+			return;
+		}
+		this.writeOutput("\n");
+		this.windowHeight = 0;
+	}
+	clearWindow() {
+		if (!this.options.supportsAnsiWindowing || this.windowHeight === 0) return;
+		this.writeOutput(`${CARRIAGE_RETURN}${CLEAR_LINE}`);
+		for (let rowIndex = 1; rowIndex < this.windowHeight; rowIndex += 1) this.writeOutput(`${CARRIAGE_RETURN}${MOVE_CURSOR_ONE_ROW_UP}${CLEAR_LINE}`);
+		this.windowHeight = 0;
+	}
+	stopInterval() {
+		if (!this.renderInterval) return;
+		this.renderInterval.clear();
+		this.renderInterval = void 0;
+	}
+	writeOutput(message) {
+		this.options.writeOutput(message);
+	}
+	flushBufferedOutput() {
+		if (this.bufferedOutput.length === 0) return;
+		this.writeOutput(this.bufferedOutput);
+		this.bufferedOutput = "";
+	}
+	isActiveWindowMode() {
+		return this.started && !this.finished && this.options.supportsAnsiWindowing;
+	}
+};
+function defaultCreateInterval(callback, intervalMs) {
+	const timer = globalThis.setInterval(callback, intervalMs);
+	return {
+		clear: () => globalThis.clearInterval(timer),
+		unref: timer.unref?.bind(timer)
+	};
+}
+function defaultQueueRenderReset(callback) {
+	setTimeout(callback, 100).unref();
+}
+/** Calculate the rendered row count for the supplied rows and terminal width. */
+function getRenderedRowCount(rows, columns) {
+	const safeColumns = Math.max(1, columns);
+	let count = 0;
+	for (const row of rows) {
+		const text = stripVTControlCharacters(row);
+		count += Math.max(1, Math.ceil(getTextDisplayWidth(text) / safeColumns));
+	}
+	return count;
+}
+function getTextDisplayWidth(text) {
+	return stringWidth(stripVTControlCharacters(text));
+}
+//#endregion
+//#region src/cli/reporters/vitest-compat-reporter.ts
+function isReporterReferenceTuple(reference) {
+	return Array.isArray(reference);
+}
+function isAbsoluteLikePath(value) {
+	return value.startsWith("/") || value.startsWith("./") || value.startsWith("../") || /^[A-Z]:[\\/]/i.test(value);
+}
+async function loadReporterModule(path) {
+	if (isAbsoluteLikePath(path)) return import(pathToFileURL(path).href);
+	return import(path);
+}
+function normalizeReporterReference(reference) {
+	if (isReporterReferenceTuple(reference)) return {
+		options: reference[1],
+		value: reference[0]
+	};
+	return {
+		options: void 0,
+		value: reference
+	};
+}
+function createReporterInstance(moduleValue, options) {
+	const value = moduleValue.default ?? moduleValue;
+	if (value == null) return null;
+	if (typeof value === "function") return new value(options);
+	if (typeof value === "object") return value;
+	return null;
+}
+async function emitToReporters(reporters, callback) {
+	await Promise.all(reporters.map(async (reporter) => {
+		try {
+			await callback(reporter);
+		} catch {}
+	}));
+}
+/**
+* Creates a project-level vitest-compatible reporter bridge.
+*
+* Use when:
+* - `vieval` should reuse vitest-like reporter callbacks without changing CLI output contracts
+*
+* Expects:
+* - references point to modules whose default export is a reporter instance or constructor
+*
+* Returns:
+* - `null` when no reporter references are configured
+*/
+async function createVievalVitestCompatReporterBridge(options) {
+	if (options.references.length === 0) return null;
+	const loadedReporters = [];
+	for (const reference of options.references) {
+		const normalized = normalizeReporterReference(reference);
+		try {
+			const instance = createReporterInstance(typeof normalized.value === "string" ? await loadReporterModule(normalized.value) : normalized.value, normalized.options);
+			if (instance != null) loadedReporters.push(instance);
+		} catch {}
+	}
+	if (loadedReporters.length === 0) return null;
+	const modulesByTaskId = /* @__PURE__ */ new Map();
+	const casesByCompositeId = /* @__PURE__ */ new Map();
+	function getOrCreateModule(taskId) {
+		const existing = modulesByTaskId.get(taskId);
+		if (existing != null) return existing;
+		const created = {
+			id: taskId,
+			name: taskId,
+			projectName: options.projectName
+		};
+		modulesByTaskId.set(taskId, created);
+		return created;
+	}
+	function getOrCreateCase(taskId, caseId) {
+		const compositeId = `${taskId}::${caseId}`;
+		const existing = casesByCompositeId.get(compositeId);
+		if (existing != null) return existing;
+		const created = {
+			id: caseId,
+			module: getOrCreateModule(taskId),
+			name: caseId,
+			state: "pending"
+		};
+		casesByCompositeId.set(compositeId, created);
+		return created;
+	}
+	return {
+		async onCaseEnd(payload) {
+			const taskCase = getOrCreateCase(payload.taskId, payload.caseId);
+			taskCase.state = payload.state;
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestCaseResult?.(taskCase));
+		},
+		async onCaseStart(payload) {
+			const taskCase = getOrCreateCase(payload.taskId, payload.caseId);
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestCaseReady?.(taskCase));
+		},
+		async onRunEnd(run) {
+			const modules = [...modulesByTaskId.values()];
+			const errors = run.failed ? [{ message: "vieval run failed" }] : [];
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestRunEnd?.(modules, errors, run.failed ? "failed" : "passed"));
+		},
+		async onRunStart() {
+			const specifications = [...modulesByTaskId.values()].map((module) => ({
+				moduleId: module.id,
+				projectName: module.projectName
+			}));
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestRunStart?.(specifications));
+		},
+		async onTaskEnd(payload) {
+			const module = getOrCreateModule(payload.taskId);
+			if (payload.state === "failed") {
+				const syntheticCase = getOrCreateCase(payload.taskId, `${payload.taskId}:task`);
+				syntheticCase.state = "failed";
+				await emitToReporters(loadedReporters, (reporter) => reporter.onTestCaseResult?.(syntheticCase));
+			}
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestModuleEnd?.(module));
+		},
+		async onTaskQueued(payload) {
+			const module = getOrCreateModule(payload.taskId);
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestModuleQueued?.(module));
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestModuleCollected?.(module));
+		},
+		async onTaskStart(payload) {
+			const module = getOrCreateModule(payload.taskId);
+			await emitToReporters(loadedReporters, (reporter) => reporter.onTestModuleStart?.(module));
+		}
+	};
+}
+//#endregion
+//#region src/cli/run.ts
+/**
+* Returns true when output contains at least one failing project/task/case outcome.
+*/
+function hasRunFailures(output) {
+	return output.projects.some((project) => {
+		if (project.errorMessage != null) return true;
+		if (project.caseSummary != null && project.caseSummary.failed > 0) return true;
+		return (project.caseFailures?.length ?? 0) > 0;
+	});
+}
+function shouldUseColor() {
+	if (process.env.NO_COLOR != null) return false;
+	const forceColor = process.env.FORCE_COLOR;
+	if (forceColor != null) return forceColor !== "0";
+	return process.stdout.isTTY === true;
+}
+function createColorPalette(enabled) {
+	if (!enabled) return {
+		black: (value) => value,
+		bgCyan: (value) => value,
+		bgGreen: (value) => value,
+		bgMagenta: (value) => value,
+		bgYellow: (value) => value,
+		dim: (value) => value,
+		gray: (value) => value,
+		green: (value) => value,
+		red: (value) => value,
+		yellow: (value) => value
+	};
+	return {
+		black: (value) => c.black(value),
+		bgCyan: (value) => c.bgCyan(value),
+		bgGreen: (value) => c.bgGreen(value),
+		bgMagenta: (value) => c.bgMagenta(value),
+		bgYellow: (value) => c.bgYellow(value),
+		dim: (value) => c.dim(value),
+		gray: (value) => c.gray(value),
+		green: (value) => c.green(value),
+		red: (value) => c.red(value),
+		yellow: (value) => c.yellow(value)
+	};
+}
+function createProjectBadge(name, colors, colorEnabled) {
+	if (!colorEnabled || !c.isColorSupported) return `|${name}| `;
+	const labelColorPool = [
+		colors.bgYellow,
+		colors.bgCyan,
+		colors.bgGreen,
+		colors.bgMagenta
+	];
+	const background = labelColorPool[name.split("").reduce((accumulator, char, index) => accumulator + char.charCodeAt(0) + index, 0) % labelColorPool.length];
+	return `${colors.black(background(` ${name} `))} `;
+}
+function formatDuration(durationMs, colors) {
+	if (durationMs == null) return "";
+	const rounded = Math.round(durationMs);
+	return (rounded > 1e3 ? colors.yellow : colors.green)(` ${rounded}${colors.dim("ms")}`);
+}
+function filterProjectsByName(projects, names) {
+	if (names.length === 0) return [...projects];
+	const nameSet = new Set(names);
+	return projects.filter((project) => nameSet.has(project.name));
+}
+function sanitizeIdentitySegment(value) {
+	const normalized = value.trim();
+	if (normalized.length === 0) return "default";
+	return normalized.replace(/[^\w.-]+/g, "-");
+}
+function createRunIdentity(options) {
+	const workspaceId = sanitizeIdentitySegment(options.workspace ?? "default-workspace");
+	const experimentId = sanitizeIdentitySegment(options.experiment ?? "default-experiment");
+	return {
+		attemptId: sanitizeIdentitySegment(options.attempt ?? `attempt-${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}`),
+		experimentId,
+		runId: `run-${Date.now()}-${randomUUID().slice(0, 8)}`,
+		workspaceId
+	};
+}
+function deriveReportProjectId(output) {
+	const uniqueProjectNames = [...new Set(output.projects.map((project) => project.name))];
+	if (uniqueProjectNames.length === 1) return sanitizeIdentitySegment(uniqueProjectNames[0] ?? "default-project");
+	return "multi-project";
+}
+function createEventRecorder(identity) {
+	const events = [];
+	const taskProjectMap = /* @__PURE__ */ new Map();
+	return {
+		events,
+		record(event, payload, metadata) {
+			const maybeTaskPayload = payload;
+			const taskId = metadata?.taskId ?? maybeTaskPayload?.taskId;
+			const caseId = metadata?.caseId ?? payload?.caseId;
+			const projectName = metadata?.projectName ?? maybeTaskPayload?.projectName;
+			if (taskId != null && projectName != null) taskProjectMap.set(taskId, projectName);
+			events.push({
+				attemptId: identity.attemptId,
+				caseId,
+				data: payload,
+				event,
+				experimentId: identity.experimentId,
+				projectId: taskId == null ? void 0 : taskProjectMap.get(taskId),
+				runId: identity.runId,
+				schemaVersion: 1,
+				taskId,
+				timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+				version: 1,
+				workspaceId: identity.workspaceId
+			});
+		}
+	};
+}
+function createReporterWithEventCapture(reporter, recordEvent) {
+	return {
+		dispose() {
+			reporter.dispose();
+		},
+		onCaseEnd(payload) {
+			recordEvent("CaseEnded", payload);
+			reporter.onCaseEnd(payload);
+		},
+		onCaseStart(payload) {
+			recordEvent("CaseStarted", payload);
+			reporter.onCaseStart(payload);
+		},
+		onRunEnd(payload) {
+			recordEvent("RunEnded", payload);
+			reporter.onRunEnd(payload);
+		},
+		onRunStart(payload) {
+			recordEvent("RunStarted", payload);
+			reporter.onRunStart(payload);
+		},
+		onTaskEnd(payload) {
+			recordEvent("TaskEnded", payload);
+			reporter.onTaskEnd(payload);
+		},
+		onTaskQueued(payload) {
+			recordEvent("TaskQueued", payload);
+			reporter.onTaskQueued(payload);
+		},
+		onTaskStart(payload) {
+			recordEvent("TaskStarted", payload);
+			reporter.onTaskStart(payload);
+		}
+	};
+}
+function applyRunEnvironment(env) {
+	const envEntries = Object.entries(env);
+	if (envEntries.length === 0) return () => {};
+	const snapshot = /* @__PURE__ */ new Map();
+	for (const [key, value] of envEntries) {
+		snapshot.set(key, {
+			existed: Object.hasOwn(process.env, key),
+			value: process.env[key]
+		});
+		if (value == null) {
+			delete process.env[key];
+			continue;
+		}
+		process.env[key] = value;
+	}
+	return () => {
+		for (const [key, previous] of snapshot.entries()) {
+			if (previous.existed) {
+				if (previous.value == null) {
+					delete process.env[key];
+					continue;
+				}
+				process.env[key] = previous.value;
+				continue;
+			}
+			delete process.env[key];
+		}
+	};
+}
+function isSummaryReporter(reporter) {
+	return "getWindowRows" in reporter;
+}
+function createRunReporter(options) {
+	const reporter = createCliReporter({
+		getColumns: options?.getColumns ?? (() => process.stdout.columns ?? 80),
+		getNow: options?.getNow ?? (() => Date.now()),
+		getWallClockNow: options?.getWallClockNow ?? (() => Date.now()),
+		isTTY: options?.isTTY ?? process.stdout.isTTY === true,
+		slowThresholdMs: options?.slowThresholdMs ?? 300,
+		writeError: options?.writeError ?? ((value) => process.stderr.write(value)),
+		writeOutput: options?.writeOutput ?? ((value) => process.stdout.write(value))
+	});
+	if (!isSummaryReporter(reporter)) return {
+		...reporter,
+		onCaseStart(payload) {
+			reporter.onCaseStart(payload);
+		},
+		onTaskQueued(payload) {
+			reporter.onTaskQueued(payload);
+		}
+	};
+	const rendererBaseOptions = {
+		getColumns: options?.getColumns ?? (() => process.stdout.columns ?? 80),
+		getWindow: () => reporter.getWindowRows(),
+		queueRenderReset: options?.queueRenderReset,
+		supportsAnsiWindowing: options?.supportsAnsiWindowing,
+		writeOutput: options?.writeOutput ?? ((value) => process.stdout.write(value))
+	};
+	const renderer = options?.clearInterval != null && options.createInterval != null ? new WindowRenderer({
+		...rendererBaseOptions,
+		clearInterval: options.clearInterval,
+		createInterval: options.createInterval
+	}) : new WindowRenderer(rendererBaseOptions);
+	renderer.start();
+	function scheduleRender() {
+		renderer.schedule();
+	}
+	return {
+		dispose() {
+			reporter.dispose();
+			renderer.dispose();
+		},
+		onCaseEnd(payload) {
+			reporter.onCaseEnd(payload);
+			scheduleRender();
+		},
+		onCaseStart(payload) {
+			reporter.onCaseStart(payload);
+			scheduleRender();
+		},
+		onRunEnd(payload) {
+			reporter.onRunEnd(payload);
+			scheduleRender();
+		},
+		onRunStart(payload) {
+			reporter.onRunStart(payload);
+			scheduleRender();
+		},
+		onTaskEnd(payload) {
+			reporter.onTaskEnd(payload);
+			scheduleRender();
+		},
+		onTaskQueued(payload) {
+			reporter.onTaskQueued(payload);
+			scheduleRender();
+		},
+		onTaskStart(payload) {
+			reporter.onTaskStart(payload);
+			scheduleRender();
+		}
+	};
+}
+function createTaskQueuePayload(task, projectName) {
+	return {
+		displayName: task.entry.name,
+		projectName,
+		taskId: task.id
+	};
+}
+function createTaskCaseReporterId(payload) {
+	return `${payload.index}:${encodeURIComponent(payload.name)}`;
+}
+function createTaskReporterHooks(task, reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter) {
+	function syncCaseTotal(total) {
+		reporter.onTaskQueued({
+			taskId: task.id,
+			totalCases: total
+		});
+	}
+	return {
+		onCaseEnd(payload) {
+			const caseId = createTaskCaseReporterId(payload);
+			if (projectCaseCounters != null) {
+				const projectCaseId = `${task.id}:${caseId}`;
+				if (!projectCaseCounters.seenCaseIds.has(projectCaseId)) {
+					projectCaseCounters.seenCaseIds.add(projectCaseId);
+					if (payload.state === "passed") projectCaseCounters.passed += 1;
+					else if (payload.state === "failed") projectCaseCounters.failed += 1;
+					else projectCaseCounters.skipped += 1;
+				}
+			}
+			syncCaseTotal(payload.total);
+			if (payload.state === "failed" && payload.errorMessage != null && projectCaseFailures != null) projectCaseFailures.push({
+				caseId,
+				caseName: payload.name,
+				errorMessage: payload.errorMessage,
+				taskId: task.id
+			});
+			reporter.onCaseEnd({
+				caseId,
+				errorMessage: payload.errorMessage,
+				state: payload.state,
+				taskId: task.id
+			});
+			vitestCompatReporter?.onCaseEnd({
+				caseId,
+				errorMessage: payload.errorMessage,
+				state: payload.state,
+				taskId: task.id
+			});
+		},
+		onCaseStart(payload) {
+			const caseId = createTaskCaseReporterId(payload);
+			syncCaseTotal(payload.total);
+			reporter.onCaseStart({
+				caseId,
+				caseName: payload.name,
+				taskId: task.id
+			});
+			vitestCompatReporter?.onCaseStart({
+				caseId,
+				taskId: task.id
+			});
+		},
+		onEvent(payload) {
+			recordEvent(payload.event, payload.data, {
+				caseId: payload.caseId,
+				projectName,
+				taskId: task.id
+			});
+		}
+	};
+}
+function createCliTaskExecutionContext(task, models, cacheRootDirectory, cacheProjectName, workspaceId, reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter) {
+	return {
+		...createTaskExecutionContext({
+			cache: createFilesystemTaskCacheRuntime({
+				cacheRootDirectory,
+				projectName: cacheProjectName,
+				workspaceId
+			}),
+			models,
+			task
+		}),
+		reporterHooks: createTaskReporterHooks(task, reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter)
+	};
+}
+function resolveTaskReporterHooks(task, context, reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter) {
+	return context.reporterHooks ?? createTaskReporterHooks(task, reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter);
+}
+function getFailedTaskId(error) {
+	if (error instanceof RunnerExecutionError) return error.taskId;
+	return null;
+}
+function createAutoTaskExecutor(reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter) {
+	return async (task, context) => {
+		const taskDefinition = task.entry.task;
+		if (taskDefinition == null) throw new Error(`Missing eval task definition for entry "${task.entry.id}".`);
+		const output = await taskDefinition.run({
+			cache: context.cache,
+			model: context.model,
+			reporterHooks: resolveTaskReporterHooks(task, context, reporter, projectName, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter),
+			task
+		});
+		return {
+			entryId: task.entry.id,
+			id: task.id,
+			matrix: task.matrix,
+			inferenceExecutorId: task.inferenceExecutor.id,
+			scores: [...output.scores]
+		};
+	};
+}
+function cloneScheduledTaskMatrix(task) {
+	return {
+		eval: { ...task.matrix.eval },
+		meta: { ...task.matrix.meta },
+		run: { ...task.matrix.run }
+	};
+}
+function createProjectMatrixSummary(tasks) {
+	if (tasks.length === 0) return null;
+	const runAxes = /* @__PURE__ */ new Set();
+	const evalAxes = /* @__PURE__ */ new Set();
+	const runRows = /* @__PURE__ */ new Set();
+	const evalRows = /* @__PURE__ */ new Set();
+	for (const task of tasks) {
+		Object.keys(task.matrix.run).forEach((axis) => runAxes.add(axis));
+		Object.keys(task.matrix.eval).forEach((axis) => evalAxes.add(axis));
+		runRows.add(task.matrix.meta.runRowId);
+		evalRows.add(task.matrix.meta.evalRowId);
+	}
+	return {
+		evalAxes: [...evalAxes].sort(),
+		evalRows: evalRows.size,
+		runAxes: [...runAxes].sort(),
+		runRows: runRows.size
+	};
+}
+async function prepareProject(project) {
+	const startedAt = Date.now();
+	try {
+		const runtimeContext = await createRunnerRuntimeContext({
+			cwd: project.root,
+			fallbackProjectRootDirectory: project.root
+		});
+		const evalFilePaths = await discoverEvalFiles({
+			exclude: project.exclude,
+			include: project.include,
+			root: project.root
+		});
+		const entries = collectEvalEntries(await loadEvalModulesWithVitestRuntime(evalFilePaths, project.root), runtimeContext);
+		const tasks = createRunnerSchedule({
+			evalMatrix: project.evalMatrix,
+			entries,
+			inferenceExecutors: project.inferenceExecutors,
+			runMatrix: project.runMatrix
+		});
+		const canAutoExecuteEntryTasks = entries.some((entry) => entry.task != null) && project.models.length > 0;
+		if (project.executor == null && !canAutoExecuteEntryTasks) return {
+			kind: "summary",
+			summary: {
+				caseSummary: null,
+				caseFailures: [],
+				discoveredEvalFileCount: evalFilePaths.length,
+				durationMs: Date.now() - startedAt,
+				entryCount: entries.length,
+				errorMessage: null,
+				executed: false,
+				matrixSummary: createProjectMatrixSummary(tasks),
+				name: project.name,
+				result: null,
+				taskCount: tasks.length
+			}
+		};
+		return {
+			kind: "prepared",
+			prepared: {
+				discoveredEvalFileCount: evalFilePaths.length,
+				entryCount: entries.length,
+				name: project.name,
+				project,
+				startedAt,
+				tasks
+			}
+		};
+	} catch (error) {
+		return {
+			kind: "summary",
+			summary: {
+				caseSummary: null,
+				caseFailures: [],
+				discoveredEvalFileCount: 0,
+				durationMs: Date.now() - startedAt,
+				entryCount: 0,
+				errorMessage: errorMessageFrom(error) ?? "Unknown project execution error.",
+				executed: false,
+				matrixSummary: null,
+				name: project.name,
+				result: null,
+				taskCount: 0
+			}
+		};
+	}
+}
+async function executePreparedProject(prepared, identity, cacheProjectName, reporter, counters, recordEvent) {
+	const settledTaskIds = /* @__PURE__ */ new Set();
+	const projectCaseCounters = {
+		failed: 0,
+		passed: 0,
+		seenCaseIds: /* @__PURE__ */ new Set(),
+		skipped: 0
+	};
+	const projectCaseFailures = [];
+	const vitestCompatReporter = await createVievalVitestCompatReporterBridge({
+		projectName: prepared.name,
+		references: prepared.project.reporters
+	});
+	const rawTaskExecutor = prepared.project.executor ?? createAutoTaskExecutor(reporter, prepared.name, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter);
+	const taskExecutor = async (task, context) => {
+		return {
+			...await rawTaskExecutor(task, context),
+			matrix: cloneScheduledTaskMatrix(task)
+		};
+	};
+	for (const task of prepared.tasks) await vitestCompatReporter?.onTaskQueued({ taskId: task.id });
+	await vitestCompatReporter?.onRunStart();
+	try {
+		const aggregated = await runScheduledTasks(prepared.tasks, taskExecutor, {
+			createExecutionContext(task) {
+				return createCliTaskExecutionContext(task, prepared.project.models, resolve(prepared.project.root, ".vieval", "cache"), cacheProjectName ?? prepared.name, identity.workspaceId, reporter, prepared.name, recordEvent, projectCaseCounters, projectCaseFailures, vitestCompatReporter);
+			},
+			onTaskEnd(task, state) {
+				settledTaskIds.add(task.id);
+				reporter.onTaskEnd({
+					state,
+					taskId: task.id
+				});
+				vitestCompatReporter?.onTaskEnd({
+					state,
+					taskId: task.id
+				});
+				if (state === "passed") {
+					counters.passedTasks += 1;
+					return;
+				}
+				counters.failedTasks += 1;
+			},
+			onTaskStart(task) {
+				reporter.onTaskStart({ taskId: task.id });
+				vitestCompatReporter?.onTaskStart({ taskId: task.id });
+			}
+		});
+		await vitestCompatReporter?.onRunEnd({ failed: false });
+		return {
+			caseSummary: {
+				failed: projectCaseCounters.failed,
+				passed: projectCaseCounters.passed,
+				skipped: projectCaseCounters.skipped,
+				total: projectCaseCounters.seenCaseIds.size
+			},
+			caseFailures: projectCaseFailures,
+			discoveredEvalFileCount: prepared.discoveredEvalFileCount,
+			durationMs: Date.now() - prepared.startedAt,
+			entryCount: prepared.entryCount,
+			errorMessage: null,
+			executed: true,
+			matrixSummary: createProjectMatrixSummary(prepared.tasks),
+			name: prepared.name,
+			result: aggregated,
+			taskCount: prepared.tasks.length
+		};
+	} catch (error) {
+		const failedTaskId = getFailedTaskId(error);
+		if (failedTaskId != null && !settledTaskIds.has(failedTaskId)) {
+			counters.failedTasks += 1;
+			settledTaskIds.add(failedTaskId);
+			reporter.onTaskEnd({
+				state: "failed",
+				taskId: failedTaskId
+			});
+			await vitestCompatReporter?.onTaskEnd({
+				state: "failed",
+				taskId: failedTaskId
+			});
+		}
+		for (const task of prepared.tasks) {
+			if (settledTaskIds.has(task.id)) continue;
+			counters.skippedTasks += 1;
+			settledTaskIds.add(task.id);
+			reporter.onTaskEnd({
+				state: "skipped",
+				taskId: task.id
+			});
+			await vitestCompatReporter?.onTaskEnd({
+				state: "skipped",
+				taskId: task.id
+			});
+		}
+		await vitestCompatReporter?.onRunEnd({ failed: true });
+		return {
+			caseSummary: {
+				failed: projectCaseCounters.failed,
+				passed: projectCaseCounters.passed,
+				skipped: projectCaseCounters.skipped,
+				total: projectCaseCounters.seenCaseIds.size
+			},
+			caseFailures: projectCaseFailures,
+			discoveredEvalFileCount: prepared.discoveredEvalFileCount,
+			durationMs: Date.now() - prepared.startedAt,
+			entryCount: prepared.entryCount,
+			errorMessage: errorMessageFrom(error) ?? "Unknown project execution error.",
+			executed: false,
+			matrixSummary: createProjectMatrixSummary(prepared.tasks),
+			name: prepared.name,
+			result: null,
+			taskCount: prepared.tasks.length
+		};
+	}
+}
+async function writeRunReportArtifacts(output, events, identity, reportOut) {
+	const projectId = deriveReportProjectId(output);
+	const reportDirectory = resolve(reportOut, identity.workspaceId, projectId, identity.experimentId, identity.attemptId, identity.runId);
+	await mkdir(reportDirectory, { recursive: true });
+	await writeFile(resolve(reportDirectory, "run-summary.json"), `${JSON.stringify(output, null, 2)}\n`, "utf-8");
+	await writeFile(resolve(reportDirectory, "events.jsonl"), events.map((event) => JSON.stringify(event)).join("\n").concat(events.length > 0 ? "\n" : ""), "utf-8");
+	return reportDirectory;
+}
+/**
+* Runs vieval orchestration from config and returns project-level summaries.
+*
+* Call stack:
+*
+* {@link runVievalCli}
+*   -> {@link loadVievalCliConfig}
+*   -> {@link discoverEvalFiles}
+*   -> {@link collectEvalEntries}
+*   -> {@link createRunnerSchedule}
+*   -> {@link runScheduledTasks} (optional)
+*
+* Use when:
+* - running eval collection and scheduling from a single command
+* - keeping business-agent eval files near their implementation packages
+*/
+async function runVievalCli(options = {}) {
+	const identity = createRunIdentity(options);
+	const loadedConfig = await loadVievalCliConfig({
+		configFilePath: options.configFilePath,
+		cwd: options.cwd
+	});
+	const restoreEnvironment = applyRunEnvironment(loadedConfig.env);
+	const eventRecorder = createEventRecorder(identity);
+	const reporter = createReporterWithEventCapture(createRunReporter(options.reporter), eventRecorder.record);
+	try {
+		const selectedProjects = filterProjectsByName(loadedConfig.projects, options.project ?? []);
+		const preparedProjects = await Promise.all(selectedProjects.map(async (project) => prepareProject(project)));
+		const executableProjects = preparedProjects.filter((project) => project.kind === "prepared").map((project) => project.prepared);
+		const totalTasks = preparedProjects.reduce((sum, project) => {
+			if (project.kind === "prepared") return sum + project.prepared.tasks.length;
+			return sum + project.summary.taskCount;
+		}, 0);
+		const skippedSummaryTasks = preparedProjects.reduce((sum, project) => {
+			if (project.kind === "summary") return sum + project.summary.taskCount;
+			return sum;
+		}, 0);
+		const reporterCounters = {
+			failedTasks: 0,
+			passedTasks: 0,
+			skippedTasks: 0
+		};
+		reporter.onRunStart({ totalTasks });
+		for (const project of executableProjects) for (const task of project.tasks) reporter.onTaskQueued(createTaskQueuePayload(task, project.name));
+		const projectSummaries = [];
+		for (const preparedProject of preparedProjects) {
+			if (preparedProject.kind === "summary") {
+				projectSummaries.push(preparedProject.summary);
+				continue;
+			}
+			projectSummaries.push(await executePreparedProject(preparedProject.prepared, identity, options.cacheProjectName, reporter, reporterCounters, eventRecorder.record));
+		}
+		reporter.onRunEnd({
+			failedTasks: reporterCounters.failedTasks,
+			passedTasks: reporterCounters.passedTasks,
+			skippedTasks: reporterCounters.skippedTasks + skippedSummaryTasks,
+			totalTasks
+		});
+		const output = {
+			attemptId: identity.attemptId,
+			configFilePath: loadedConfig.configFilePath,
+			experimentId: identity.experimentId,
+			projects: projectSummaries,
+			reportDirectory: null,
+			runId: identity.runId,
+			workspaceId: identity.workspaceId
+		};
+		if (options.reportOut != null) output.reportDirectory = await writeRunReportArtifacts(output, eventRecorder.events, identity, options.reportOut);
+		return output;
+	} finally {
+		reporter.dispose();
+		restoreEnvironment();
+	}
+}
+/**
+* Formats CLI run output as human-readable lines.
+*/
+function formatVievalCliRunOutput(output) {
+	const colorEnabled = shouldUseColor();
+	const colors = createColorPalette(colorEnabled);
+	const lines = [];
+	lines.push(` ${colors.dim("RUN")}  ${colors.yellow("vieval")}`);
+	lines.push(` ${colors.dim("Config")}  ${output.configFilePath ?? "(not found, using defaults)"}`);
+	lines.push("");
+	let passedProjects = 0;
+	let skippedProjects = 0;
+	let failedProjects = 0;
+	let totalTasks = 0;
+	let executedTasks = 0;
+	function formatMatrixSummary(summary) {
+		if (summary == null) return null;
+		const runAxesLabel = summary.runAxes.length === 0 ? "-" : summary.runAxes.join("|");
+		const evalAxesLabel = summary.evalAxes.length === 0 ? "-" : summary.evalAxes.join("|");
+		return `matrix run ${summary.runRows} [${runAxesLabel}] / eval ${summary.evalRows} [${evalAxesLabel}]`;
+	}
+	function formatScheduleBreakdown(project) {
+		const summary = project.matrixSummary;
+		if (summary == null) return null;
+		if (project.taskCount <= 0 || project.entryCount <= 0 || summary.runRows <= 0 || summary.evalRows <= 0) return null;
+		const denominator = project.entryCount * summary.runRows * summary.evalRows;
+		if (denominator <= 0 || project.taskCount % denominator !== 0) return null;
+		const providerCount = project.taskCount / denominator;
+		return [
+			colors.dim("schedule "),
+			colors.yellow(String(project.entryCount)),
+			colors.dim(" entries × "),
+			colors.yellow(String(providerCount)),
+			colors.dim(" inferenceExecutors × "),
+			colors.yellow(String(summary.runRows)),
+			colors.dim(" run rows × "),
+			colors.yellow(String(summary.evalRows)),
+			colors.dim(" eval rows = "),
+			colors.green(String(project.taskCount)),
+			colors.dim(" tasks")
+		].join("");
+	}
+	for (const project of output.projects) {
+		totalTasks += project.taskCount;
+		executedTasks += project.result?.overall.runCount ?? 0;
+		const badge = createProjectBadge(project.name, colors, colorEnabled);
+		const isFailed = project.errorMessage != null;
+		const hasFailedCases = (project.caseSummary?.failed ?? 0) > 0 || (project.caseFailures?.length ?? 0) > 0;
+		if (isFailed) {
+			failedProjects += 1;
+			lines.push(` ${colors.red("❯")} ${badge}${formatDuration(project.durationMs, colors)}`);
+			lines.push(`   ${project.errorMessage}`);
+			continue;
+		}
+		if (!project.executed) {
+			skippedProjects += 1;
+			const countLabel = colors.dim(`(${project.taskCount} tasks)`);
+			const detailsLabel = colors.dim(` ${project.discoveredEvalFileCount} files, ${project.entryCount} entries, 0 runs, hybrid n/a`);
+			const matrixSummary = formatMatrixSummary(project.matrixSummary);
+			lines.push(` ${colors.dim("○")} ${badge}${countLabel}${detailsLabel}${formatDuration(project.durationMs, colors)}`);
+			if (matrixSummary != null) lines.push(`   ${colors.dim(matrixSummary)}`);
+			const scheduleBreakdown = formatScheduleBreakdown(project);
+			if (scheduleBreakdown != null) lines.push(`   ${scheduleBreakdown}`);
+			continue;
+		}
+		if (hasFailedCases) failedProjects += 1;
+		else passedProjects += 1;
+		const hybridAverage = project.result?.overall.hybridAverage;
+		const hybridAverageLabel = hybridAverage == null ? "n/a" : String(hybridAverage);
+		const runCount = project.result?.overall.runCount ?? 0;
+		const countLabel = colors.dim(`(${project.taskCount} tasks)`);
+		const caseSummaryLabel = project.caseSummary == null ? "" : `, cases ${project.caseSummary.passed} passed | ${project.caseSummary.failed} failed`;
+		const detailsLabel = colors.dim(` ${project.discoveredEvalFileCount} files, ${project.entryCount} entries, ${runCount} runs${caseSummaryLabel}, hybrid ${hybridAverageLabel}`);
+		const matrixSummary = formatMatrixSummary(project.matrixSummary);
+		lines.push(` ${hasFailedCases ? colors.red("❯") : colors.green("✓")} ${badge}${countLabel}${detailsLabel}${formatDuration(project.durationMs, colors)}`);
+		if (matrixSummary != null) lines.push(`   ${colors.dim(matrixSummary)}`);
+		const scheduleBreakdown = formatScheduleBreakdown(project);
+		if (scheduleBreakdown != null) lines.push(`   ${scheduleBreakdown}`);
+		if ((project.caseFailures?.length ?? 0) > 0) {
+			lines.push(`   ${colors.red("Failed cases:")}`);
+			for (const failure of project.caseFailures.slice(0, 5)) {
+				lines.push(`   ${colors.red(`- ${failure.caseName} (${failure.taskId})`)}`);
+				for (const line of failure.errorMessage.split("\n")) lines.push(`     ${colors.red(line)}`);
+			}
+			if (project.caseFailures.length > 5) lines.push(`   ${colors.dim(`... ${project.caseFailures.length - 5} more failed cases`)}`);
+		}
+	}
+	lines.push("");
+	if (failedProjects > 0 || skippedProjects > 0) {
+		const summarySegments = [`${colors.green(String(passedProjects))} passed`];
+		if (skippedProjects > 0) summarySegments.push(`${colors.dim(String(skippedProjects))} skipped`);
+		if (failedProjects > 0) summarySegments.push(`${colors.red(String(failedProjects))} failed`);
+		lines.push(` ${colors.dim("Projects")}  ${summarySegments.join(" | ")} (${output.projects.length})`);
+	} else lines.push(` ${colors.dim("Projects")}  ${colors.green(String(passedProjects))} passed (${output.projects.length})`);
+	lines.push(` ${colors.dim("Tasks")}     ${executedTasks} executed / ${totalTasks} scheduled`);
+	return lines.join("\n");
+}
+//#endregion
+//#region src/cli/compare.ts
+const compareHelpText = `
+  Compare multiple methods on one benchmark.
+
+  Usage
+    $ vieval compare [--config <path>] [--comparison <id>] [--output <path>] [--format <format>]
+
+  Options
+    --config      Config file path (default: nearest vieval.config.*)
+    --comparison  Comparison entry id from config.comparisons
+    --output      Optional output artifact path
+    --format      Console output format: table | json (default: table)
+`;
+function normalizeCliArgv$4(argv) {
+	const normalizedArgv = argv[0] === "--" ? argv.slice(1) : [...argv];
+	if (normalizedArgv[0] === "compare") return normalizedArgv.slice(1);
+	return normalizedArgv;
+}
+function parseCompareCliArguments(argv) {
+	const cli = meow(compareHelpText, {
+		argv: normalizeCliArgv$4(argv),
+		flags: {
+			config: { type: "string" },
+			comparison: { type: "string" },
+			format: {
+				default: "table",
+				type: "string"
+			},
+			output: { type: "string" }
+		},
+		importMeta: import.meta
+	});
+	return {
+		comparisonId: cli.flags.comparison,
+		configFilePath: cli.flags.config,
+		format: cli.flags.format === "json" ? "json" : "table",
+		output: cli.flags.output
+	};
+}
+/**
+* Runs one compare session from `vieval.config.*` comparison-mode config.
+*/
+async function runCompareCli(argv) {
+	const parsed = parseCompareCliArguments(argv);
+	const loaded = await loadVievalComparisonConfig({
+		comparisonId: parsed.comparisonId,
+		configFilePath: parsed.configFilePath,
+		cwd: parsed.cwd
+	});
+	const methodResults = [];
+	for (const method of loaded.config.methods) {
+		const methodWorkspace = resolve(method.workspace);
+		const output = await runVievalCli({
+			cacheProjectName: loaded.config.benchmark.sharedCaseNamespace,
+			configFilePath: method.configFilePath ?? resolve(methodWorkspace, "vieval.config.ts"),
+			cwd: methodWorkspace,
+			project: [method.project],
+			workspace: loaded.config.benchmark.id
+		});
+		const failedProject = output.projects.find((project) => project.errorMessage != null);
+		if (failedProject != null) throw new Error(`Comparison method "${method.id}" failed: ${failedProject.errorMessage}`);
+		methodResults.push({
+			methodId: method.id,
+			output
+		});
+	}
+	const runOutput = {
+		benchmarkId: loaded.config.benchmark.id,
+		methods: methodResults
+	};
+	const artifact = buildCompareReportArtifact({
+		benchmarkId: runOutput.benchmarkId,
+		methods: runOutput.methods,
+		reportPath: loaded.configFilePath
+	});
+	if (parsed.output != null) await writeCompareReportArtifact({
+		artifact,
+		outputPath: parsed.output
+	});
+	if (parsed.format === "json") process.stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+	else process.stdout.write([
+		"COMPARE  vieval",
+		`Benchmark  ${artifact.benchmarkId}`,
+		...artifact.methods.map((method, index) => {
+			const hybrid = method.hybridAverage == null ? "n/a" : method.hybridAverage.toFixed(3);
+			const exact = method.exactAverage == null ? "n/a" : method.exactAverage.toFixed(3);
+			return `${index + 1}. ${method.methodId}  hybrid=${hybrid} exact=${exact} runs=${method.runCount}`;
+		})
+	].join("\n").concat("\n"));
+	return runOutput;
+}
+async function runCompareCliOrExit(argv) {
+	try {
+		await runCompareCli(argv);
+	} catch (error) {
+		const errorMessage = errorMessageFrom(error) ?? "Unknown compare command failure.";
+		process.stderr.write(`[vieval compare] ${errorMessage}\n`);
+		process.exitCode = 1;
+	}
+}
+//#endregion
+//#region package.json
+var name = "vieval";
+//#endregion
+//#region src/cli/eval-run.ts
+const evalRunHelpText = `
+  Execute vieval projects from discovered or explicit config.
+
+  Usage
+    $ vieval run [--config <path>] [--project <name>] [--json] [--report-out <path>]
+
+  Options
+    --config     Config file path
+    --project    Project name to execute; may be repeated
+    --workspace  Workspace id used in report artifacts
+    --experiment Experiment id used in report artifacts
+    --attempt    Attempt id used in report artifacts
+    --report-out Report output root directory
+    --json       Print machine-readable JSON output
+`;
+function normalizeCliArgv$3(argv) {
+	const normalizedArgv = argv[0] === "--" ? argv.slice(1) : [...argv];
+	return normalizedArgv[0] === "run" ? normalizedArgv.slice(1) : normalizedArgv;
+}
+function normalizeProjectNames(projectNames) {
+	if (typeof projectNames === "string") return [projectNames];
+	return projectNames ?? [];
+}
+/**
+* Parses `vieval run` CLI arguments into one normalized execution payload.
+*
+* Use when:
+* - the top-level CLI forwards `run` subcommand arguments
+* - tests need stable flag normalization without executing the runner
+*
+* Expects:
+* - argv in either direct `run` form or forwarded `-- ...` form
+*
+* Returns:
+* - normalized run options ready for {@link runVievalCli}
+*/
+function parseCliArguments(argv) {
+	const cli = meow(evalRunHelpText, {
+		argv: normalizeCliArgv$3(argv),
+		importMeta: import.meta,
+		flags: {
+			config: { type: "string" },
+			json: {
+				default: false,
+				type: "boolean"
+			},
+			project: {
+				isMultiple: true,
+				type: "string"
+			},
+			workspace: { type: "string" },
+			experiment: { type: "string" },
+			attempt: { type: "string" },
+			reportOut: { type: "string" }
+		}
+	});
+	return {
+		attempt: cli.flags.attempt,
+		configFilePath: cli.flags.config,
+		experiment: cli.flags.experiment,
+		json: cli.flags.json === true,
+		project: normalizeProjectNames(cli.flags.project),
+		reportOut: cli.flags.reportOut,
+		workspace: cli.flags.workspace
+	};
+}
+/**
+* Executes the `vieval run` subcommand.
+*
+* Call stack:
+*
+* top-level `vieval` CLI
+*   -> {@link runTopLevelCli} (`./index`)
+*     -> {@link runEvalRunCli}
+*       -> {@link parseCliArguments}
+*       -> {@link runVievalCli}
+*       -> `process.stdout.write(...)` / `process.stderr.write(...)`
+*       -> `process.exitCode`
+*
+* Use when:
+* - the published `vieval` binary needs to execute the `run` subcommand
+* - callers want one reusable implementation without a second bundled entrypoint
+*
+* Expects:
+* - argv that belongs to the `run` subcommand only
+*
+* Returns:
+* - resolves after writing CLI output and updating `process.exitCode`
+*
+* NOTICE:
+* - `src/cli/index.ts` is the only direct-execution entrypoint for the bundled
+*   CLI artifact. Keeping `eval-run.ts` reusable avoids duplicate top-level
+*   await guards once tsdown inlines both modules into `dist/cli/index.mjs`.
+*/
+async function runEvalRunCli(argv) {
+	const parsed = parseCliArguments(argv);
+	try {
+		const output = await runVievalCli({
+			attempt: parsed.attempt,
+			configFilePath: parsed.configFilePath,
+			experiment: parsed.experiment,
+			project: parsed.project,
+			reportOut: parsed.reportOut,
+			workspace: parsed.workspace
+		});
+		if (parsed.json) {
+			process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+			if (hasRunFailures(output)) process.exitCode = 1;
+			return;
+		}
+		process.stdout.write(`${formatVievalCliRunOutput(output)}\n`);
+		if (hasRunFailures(output)) process.exitCode = 1;
+	} catch (error) {
+		const errorMessage = errorMessageFrom(error) ?? "Unknown CLI failure.";
+		process.stderr.write(`[${name}] ${errorMessage}\n`);
+		process.exitCode = 1;
+	}
+}
+//#endregion
+//#region src/cli/report-artifacts.ts
+/**
+* Resolves one or more `run-summary.json` paths from a report location.
+*
+* Use when:
+* - callers may pass a run directory, summary file path, or a report root
+*
+* Returns:
+* - sorted absolute summary file paths
+*/
+async function resolveRunSummaryPaths(reportPath) {
+	const absoluteReportPath = resolve(reportPath);
+	const directSummaryPath = resolve(absoluteReportPath, "run-summary.json");
+	if (existsSync(absoluteReportPath) && absoluteReportPath.endsWith(".json")) return [absoluteReportPath];
+	if (existsSync(directSummaryPath)) return [directSummaryPath];
+	return (await glob("**/run-summary.json", {
+		absolute: true,
+		cwd: absoluteReportPath
+	})).sort((left, right) => left.localeCompare(right));
+}
+/**
+* Reads one run report artifact set from `run-summary.json` and sibling `events.jsonl`.
+*
+* Use when:
+* - report analysis needs both run aggregate output and event count metadata
+*/
+function readReportRunArtifact(summaryFilePath) {
+	const reportDirectory = resolve(summaryFilePath, "..");
+	const summary = JSON.parse(readFileSync(summaryFilePath, "utf-8"));
+	const eventsFilePath = resolve(reportDirectory, "events.jsonl");
+	const events = existsSync(eventsFilePath) ? readFileSync(eventsFilePath, "utf-8").split("\n").filter((line) => line.trim().length > 0).map((line) => {
+		const event = JSON.parse(line);
+		return {
+			caseId: event.caseId,
+			data: event.data,
+			event: event.event,
+			taskId: event.taskId
+		};
+	}) : [];
+	return {
+		events,
+		eventsCount: events.length,
+		reportDirectory,
+		summary,
+		summaryFilePath
+	};
+}
+/**
+* Reads all run artifacts found under `reportPath`.
+*
+* Use when:
+* - callers need multi-run analysis from a directory root
+*/
+async function readReportArtifacts(reportPath) {
+	return (await resolveRunSummaryPaths(reportPath)).map((summaryFilePath) => readReportRunArtifact(summaryFilePath));
+}
+/**
+* Creates a compact summary row for one run artifact.
+*
+* Use when:
+* - table/csv/jsonl exports should stay stable and cheap to parse
+*/
+function summarizeReportRunArtifact(artifact) {
+	const totalProjects = artifact.summary.projects.length;
+	const failedProjects = artifact.summary.projects.filter((project) => project.errorMessage != null).length;
+	const executedProjects = artifact.summary.projects.filter((project) => project.executed).length;
+	const totalTasks = artifact.summary.projects.reduce((sum, project) => sum + project.taskCount, 0);
+	const projectNames = artifact.summary.projects.map((project) => project.name);
+	return {
+		attemptId: artifact.summary.attemptId ?? null,
+		eventsCount: artifact.eventsCount,
+		executedProjects,
+		experimentId: artifact.summary.experimentId ?? null,
+		failedProjects,
+		projectNames,
+		reportDirectory: artifact.reportDirectory,
+		runId: artifact.summary.runId ?? null,
+		totalProjects,
+		totalTasks,
+		workspaceId: artifact.summary.workspaceId ?? null
+	};
+}
+//#endregion
+//#region src/cli/report-analyze.ts
+const reportAnalyzeHelpText = `
+  Analyze generated vieval report artifacts.
+
+  Usage
+    $ vieval report analyze <reportPath> [options]
+
+  Options
+    --format       Output format: table | json | jsonl | csv (default: table)
+    --workspace    Workspace id filter
+    --project      Project name filter (exact)
+    --experiment   Experiment id filter
+    --attempt      Attempt id filter
+    --run          Run id filter
+    --task-state   Keep runs containing at least one task in this state
+    --case-state   Keep runs containing at least one case in this state
+    --contains     Keep runs containing this text in event name or payload
+    --error-contains Keep runs containing this text in project errors or event payload
+    --run-matrix   Keep runs matching run-matrix selector "key=value[,key=value]"
+    --eval-matrix  Keep runs matching eval-matrix selector "key=value[,key=value]"
+`;
+function normalizeCliArgv$2(argv) {
+	const normalizedArgv = argv[0] === "--" ? argv.slice(1) : [...argv];
+	if (normalizedArgv[0] === "report" && normalizedArgv[1] === "analyze") return normalizedArgv.slice(2);
+	if (normalizedArgv[0] === "analyze") return normalizedArgv.slice(1);
+	return normalizedArgv;
+}
+function parseReportAnalyzeCliArguments(argv) {
+	const cli = meow(reportAnalyzeHelpText, {
+		argv: normalizeCliArgv$2(argv),
+		flags: {
+			attempt: { type: "string" },
+			caseState: { type: "string" },
+			contains: { type: "string" },
+			evalMatrix: { type: "string" },
+			errorContains: { type: "string" },
+			experiment: { type: "string" },
+			format: {
+				default: "table",
+				type: "string"
+			},
+			project: { type: "string" },
+			runMatrix: { type: "string" },
+			run: { type: "string" },
+			taskState: { type: "string" },
+			workspace: { type: "string" }
+		},
+		importMeta: import.meta
+	});
+	const reportPath = cli.input[0];
+	if (reportPath == null || reportPath.length === 0) throw new Error("Missing required <reportPath> argument.");
+	const normalizedFormat = cli.flags.format.toLowerCase();
+	const format = normalizedFormat === "json" ? "json" : normalizedFormat === "jsonl" ? "jsonl" : normalizedFormat === "csv" ? "csv" : "table";
+	return {
+		attempt: cli.flags.attempt,
+		caseState: normalizeStateFilter(cli.flags.caseState),
+		contains: cli.flags.contains,
+		evalMatrix: parseMatrixSelector(cli.flags.evalMatrix),
+		errorContains: cli.flags.errorContains,
+		experiment: cli.flags.experiment,
+		format,
+		project: cli.flags.project,
+		reportPath,
+		runMatrix: parseMatrixSelector(cli.flags.runMatrix),
+		run: cli.flags.run,
+		taskState: normalizeStateFilter(cli.flags.taskState),
+		workspace: cli.flags.workspace
+	};
+}
+function normalizeStateFilter(value) {
+	if (value == null) return;
+	const normalized = value.trim().toLowerCase();
+	if (normalized === "passed" || normalized === "failed" || normalized === "skipped") return normalized;
+	throw new Error(`Unsupported state filter "${value}". Expected "passed", "failed", or "skipped".`);
+}
+function parseMatrixSelector(value) {
+	if (value == null) return;
+	const selector = {};
+	const segments = value.split(",").map((segment) => segment.trim()).filter((segment) => segment.length > 0);
+	for (const segment of segments) {
+		const separatorIndex = segment.indexOf("=");
+		if (separatorIndex <= 0 || separatorIndex === segment.length - 1) throw new Error(`Invalid matrix selector segment "${segment}". Expected "key=value".`);
+		const key = segment.slice(0, separatorIndex).trim();
+		const parsedValue = segment.slice(separatorIndex + 1).trim();
+		if (key.length === 0 || parsedValue.length === 0) throw new Error(`Invalid matrix selector segment "${segment}". Expected "key=value".`);
+		selector[key] = parsedValue;
+	}
+	return selector;
+}
+function filterAnalyzeRows(rows, parsed) {
+	return rows.filter((row) => {
+		if (parsed.workspace != null && row.workspaceId !== parsed.workspace) return false;
+		if (parsed.experiment != null && row.experimentId !== parsed.experiment) return false;
+		if (parsed.attempt != null && row.attemptId !== parsed.attempt) return false;
+		if (parsed.run != null && row.runId !== parsed.run) return false;
+		if (parsed.project != null && !row.projectNames.includes(parsed.project)) return false;
+		return true;
+	});
+}
+function includesNeedle(value, needle) {
+	const normalizedNeedle = needle.trim().toLowerCase();
+	if (normalizedNeedle.length === 0) return true;
+	return JSON.stringify(value).toLowerCase().includes(normalizedNeedle);
+}
+function hasTaskState(artifact, targetState) {
+	return artifact.events.some((event) => {
+		if (event.event !== "TaskEnded") return false;
+		return event.data?.state === targetState;
+	});
+}
+function hasCaseState(artifact, targetState) {
+	return artifact.events.some((event) => {
+		if (event.event !== "CaseEnded") return false;
+		return event.data?.state === targetState;
+	});
+}
+function matchesMatrixSelector(matrix, selector) {
+	return Object.entries(selector).every(([key, expectedValue]) => String(matrix[key]) === expectedValue);
+}
+function hasRunMatrixMatch(artifact, selector) {
+	return artifact.summary.projects.some((project) => project.result?.runs.some((run) => matchesMatrixSelector(run.matrix.run, selector)) === true);
+}
+function hasEvalMatrixMatch(artifact, selector) {
+	return artifact.summary.projects.some((project) => project.result?.runs.some((run) => matchesMatrixSelector(run.matrix.eval, selector)) === true);
+}
+function matchesOutcomeFilters(artifact, parsed) {
+	if (parsed.runMatrix != null && !hasRunMatrixMatch(artifact, parsed.runMatrix)) return false;
+	if (parsed.evalMatrix != null && !hasEvalMatrixMatch(artifact, parsed.evalMatrix)) return false;
+	if (parsed.taskState != null && !hasTaskState(artifact, parsed.taskState)) return false;
+	if (parsed.caseState != null && !hasCaseState(artifact, parsed.caseState)) return false;
+	if (parsed.contains != null) {
+		if (!artifact.events.some((event) => includesNeedle({
+			data: event.data,
+			event: event.event
+		}, parsed.contains))) return false;
+	}
+	if (parsed.errorContains != null) {
+		if (!(artifact.summary.projects.map((project) => project.errorMessage).filter((errorMessage) => errorMessage != null).some((errorMessage) => includesNeedle(errorMessage, parsed.errorContains)) || artifact.events.some((event) => includesNeedle(event.data, parsed.errorContains)))) return false;
+	}
+	return true;
+}
+async function readReportAnalyzeOutput(parsed) {
+	const artifacts = await readReportArtifacts(parsed.reportPath);
+	const rows = artifacts.map((artifact) => summarizeReportRunArtifact(artifact));
+	const identityFilteredRows = filterAnalyzeRows(rows, parsed);
+	const rowByDirectory = new Map(identityFilteredRows.map((row) => [row.reportDirectory, row]));
+	const filteredRows = artifacts.filter((artifact) => rowByDirectory.has(artifact.reportDirectory)).filter((artifact) => matchesOutcomeFilters(artifact, parsed)).map((artifact) => rowByDirectory.get(artifact.reportDirectory)).filter((row) => row != null);
+	return {
+		experimentSummaries: buildExperimentSummaries(filteredRows),
+		filteredRunCount: filteredRows.length,
+		runs: filteredRows,
+		totalRunCount: rows.length
+	};
+}
+function roundMetric(value) {
+	return Number(value.toFixed(6));
+}
+function computeAverage(values) {
+	if (values.length === 0) return 0;
+	return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+function computeStandardDeviation(values) {
+	if (values.length === 0) return 0;
+	const average = computeAverage(values);
+	const variance = computeAverage(values.map((value) => (value - average) ** 2));
+	return Math.sqrt(variance);
+}
+function createExperimentGroupKey(row) {
+	return `${row.workspaceId ?? "unknown-workspace"}::${row.experimentId ?? "unknown-experiment"}`;
+}
+/**
+* Builds experiment-level rollups from filtered run rows.
+*
+* Use when:
+* - CLI consumers need stability and reliability summaries above per-run data
+*
+* Returns:
+* - one summary row per `workspaceId + experimentId` group
+*/
+function buildExperimentSummaries(rows) {
+	const grouped = /* @__PURE__ */ new Map();
+	for (const row of rows) {
+		const groupKey = createExperimentGroupKey(row);
+		const existing = grouped.get(groupKey);
+		if (existing == null) {
+			grouped.set(groupKey, [row]);
+			continue;
+		}
+		existing.push(row);
+	}
+	return [...grouped.entries()].map(([groupKey, groupRows]) => {
+		const [workspaceId, experimentId] = groupKey.split("::");
+		const failedProjects = groupRows.reduce((sum, row) => sum + row.failedProjects, 0);
+		const totalTasks = groupRows.reduce((sum, row) => sum + row.totalTasks, 0);
+		const totalEvents = groupRows.reduce((sum, row) => sum + row.eventsCount, 0);
+		const successfulRunCount = groupRows.filter((row) => row.failedProjects === 0).length;
+		const successRate = groupRows.length === 0 ? 0 : successfulRunCount / groupRows.length;
+		const attemptToRuns = /* @__PURE__ */ new Map();
+		for (const row of groupRows) {
+			const attemptId = row.attemptId ?? "unknown-attempt";
+			const attemptRows = attemptToRuns.get(attemptId);
+			if (attemptRows == null) {
+				attemptToRuns.set(attemptId, [row]);
+				continue;
+			}
+			attemptRows.push(row);
+		}
+		const attemptSummaries = [...attemptToRuns.entries()].map(([attemptId, attemptRows]) => {
+			const successCount = attemptRows.filter((row) => row.failedProjects === 0).length;
+			const runCount = attemptRows.length;
+			const failedProjectCount = attemptRows.reduce((sum, row) => sum + row.failedProjects, 0);
+			const totalTaskCount = attemptRows.reduce((sum, row) => sum + row.totalTasks, 0);
+			const totalEventCount = attemptRows.reduce((sum, row) => sum + row.eventsCount, 0);
+			return {
+				attemptId,
+				failedProjects: failedProjectCount,
+				runCount,
+				runIds: attemptRows.map((row) => row.runId).filter((runId) => runId != null).sort((left, right) => left.localeCompare(right)),
+				successRate: roundMetric(runCount === 0 ? 0 : successCount / runCount),
+				totalEvents: totalEventCount,
+				totalTasks: totalTaskCount
+			};
+		}).sort((left, right) => left.attemptId.localeCompare(right.attemptId));
+		const attemptSuccessRates = attemptSummaries.map((summary) => summary.successRate);
+		const minAttemptSuccessRate = attemptSuccessRates.length === 0 ? 0 : Math.min(...attemptSuccessRates);
+		const maxAttemptSuccessRate = attemptSuccessRates.length === 0 ? 0 : Math.max(...attemptSuccessRates);
+		const avgAttemptSuccessRate = computeAverage(attemptSuccessRates);
+		const stdevAttemptSuccessRate = computeStandardDeviation(attemptSuccessRates);
+		return {
+			attemptCount: attemptToRuns.size,
+			attemptSummaries,
+			attemptSuccessRateStats: {
+				avg: roundMetric(avgAttemptSuccessRate),
+				max: roundMetric(maxAttemptSuccessRate),
+				min: roundMetric(minAttemptSuccessRate),
+				stdev: roundMetric(stdevAttemptSuccessRate)
+			},
+			experimentId,
+			failedProjects,
+			runCount: groupRows.length,
+			successRate: roundMetric(successRate),
+			totalEvents,
+			totalTasks,
+			workspaceId
+		};
+	}).sort((left, right) => {
+		const workspaceCompare = left.workspaceId.localeCompare(right.workspaceId);
+		if (workspaceCompare !== 0) return workspaceCompare;
+		return left.experimentId.localeCompare(right.experimentId);
+	});
+}
+function formatTableOutput$1(output) {
+	const header = "Run ID | Workspace | Experiment | Attempt | Projects(executed/total) | FailedProjects | Tasks | Events";
+	const lines = output.runs.map((row) => {
+		return `${row.runId ?? "n/a"} | ${row.workspaceId ?? "n/a"} | ${row.experimentId ?? "n/a"} | ${row.attemptId ?? "n/a"} | ${`${row.executedProjects}/${row.totalProjects}`} | ${row.failedProjects} | ${row.totalTasks} | ${row.eventsCount}`;
+	});
+	return [
+		`ANALYZE vieval report: ${output.filteredRunCount}/${output.totalRunCount} runs (${output.experimentSummaries.length} experiment groups)`,
+		header,
+		...lines
+	].join("\n");
+}
+function formatCsvOutput(output) {
+	return [[
+		"runId",
+		"workspaceId",
+		"experimentId",
+		"attemptId",
+		"totalProjects",
+		"executedProjects",
+		"failedProjects",
+		"totalTasks",
+		"eventsCount",
+		"reportDirectory",
+		"projectNames"
+	].join(","), ...output.runs.map((row) => {
+		const escapedProjectNames = `"${row.projectNames.join("|").replaceAll("\"", "\"\"")}"`;
+		const escapedDirectory = `"${row.reportDirectory.replaceAll("\"", "\"\"")}"`;
+		return [
+			row.runId ?? "",
+			row.workspaceId ?? "",
+			row.experimentId ?? "",
+			row.attemptId ?? "",
+			row.totalProjects.toString(),
+			row.executedProjects.toString(),
+			row.failedProjects.toString(),
+			row.totalTasks.toString(),
+			row.eventsCount.toString(),
+			escapedDirectory,
+			escapedProjectNames
+		].join(",");
+	})].join("\n");
+}
+async function runReportAnalyzeCli(argv) {
+	try {
+		const parsed = parseReportAnalyzeCliArguments(argv);
+		const output = await readReportAnalyzeOutput(parsed);
+		if (parsed.format === "json") {
+			process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+			return;
+		}
+		if (parsed.format === "jsonl") {
+			const jsonl = output.runs.map((run) => JSON.stringify(run)).join("\n");
+			process.stdout.write(`${jsonl}${jsonl.length > 0 ? "\n" : ""}`);
+			return;
+		}
+		if (parsed.format === "csv") {
+			process.stdout.write(`${formatCsvOutput(output)}\n`);
+			return;
+		}
+		process.stdout.write(`${formatTableOutput$1(output)}\n`);
+	} catch (error) {
+		const errorMessage = errorMessageFrom(error) ?? "Unknown report analyze failure.";
+		process.stderr.write(`[vieval report analyze] ${errorMessage}\n`);
+		process.exitCode = 1;
+	}
+}
+//#endregion
+//#region src/cli/report-index.ts
+const reportIndexHelpText = `
+  Build report indexes from generated vieval artifacts.
+
+  Usage
+    $ vieval report index <reportPath> [--output <path>] [--format <format>]
+
+  Options
+    --output      Output file path (default: <reportPath>/index/runs.jsonl)
+    --format      Console output format: table | json | jsonl (default: table)
+`;
+function normalizeCliArgv$1(argv) {
+	const normalizedArgv = argv[0] === "--" ? argv.slice(1) : [...argv];
+	if (normalizedArgv[0] === "report" && normalizedArgv[1] === "index") return normalizedArgv.slice(2);
+	if (normalizedArgv[0] === "index") return normalizedArgv.slice(1);
+	return normalizedArgv;
+}
+function parseReportIndexCliArguments(argv) {
+	const cli = meow(reportIndexHelpText, {
+		argv: normalizeCliArgv$1(argv),
+		flags: {
+			format: {
+				default: "table",
+				type: "string"
+			},
+			output: { type: "string" }
+		},
+		importMeta: import.meta
+	});
+	const reportPath = cli.input[0];
+	if (reportPath == null || reportPath.length === 0) throw new Error("Missing required <reportPath> argument.");
+	const normalizedFormat = cli.flags.format.toLowerCase();
+	return {
+		format: normalizedFormat === "json" ? "json" : normalizedFormat === "jsonl" ? "jsonl" : "table",
+		output: cli.flags.output,
+		reportPath
+	};
+}
+async function writeIndexFile(parsed) {
+	const rows = (await readReportArtifacts(parsed.reportPath)).map((artifact) => summarizeReportRunArtifact(artifact));
+	const indexFilePath = resolve(parsed.output ?? resolve(parsed.reportPath, "index", "runs.jsonl"));
+	await mkdir(dirname(indexFilePath), { recursive: true });
+	const indexContents = rows.map((row) => JSON.stringify(row)).join("\n");
+	await writeFile(indexFilePath, `${indexContents}${indexContents.length > 0 ? "\n" : ""}`, "utf-8");
+	return {
+		indexFilePath,
+		indexedRunCount: rows.length,
+		rows
+	};
+}
+function formatTableOutput(output) {
+	return [
+		"INDEX  vieval report",
+		`Path      ${output.indexFilePath}`,
+		`Run count ${output.indexedRunCount}`
+	].join("\n");
+}
+async function runReportIndexCli(argv) {
+	try {
+		const parsed = parseReportIndexCliArguments(argv);
+		const output = await writeIndexFile(parsed);
+		if (parsed.format === "json") {
+			process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+			return;
+		}
+		if (parsed.format === "jsonl") {
+			const jsonl = output.rows.map((row) => JSON.stringify(row)).join("\n");
+			process.stdout.write(`${jsonl}${jsonl.length > 0 ? "\n" : ""}`);
+			return;
+		}
+		process.stdout.write(`${formatTableOutput(output)}\n`);
+	} catch (error) {
+		const errorMessage = errorMessageFrom(error) ?? "Unknown report index failure.";
+		process.stderr.write(`[vieval report index] ${errorMessage}\n`);
+		process.exitCode = 1;
+	}
+}
+//#endregion
+//#region src/cli/index.ts
+const topLevelHelpText = `
+  Execute and report evaluation projects.
+
+  Usage
+    $ vieval <command> [options]
+
+  Commands
+    run            Discover and execute eval projects
+    compare        Compare multiple workspaces/methods on one benchmark
+    report         Analyze and index generated report artifacts
+
+  Examples
+    $ vieval run
+    $ vieval run --config vieval.config.ts --project chess --json --report-out .vieval/reports
+    $ vieval compare --config vieval.config.ts --comparison agent-memory
+    $ vieval report analyze .vieval/reports/my-run
+    $ vieval report index .vieval/reports --output .vieval/reports/index/runs.jsonl
+`;
+function normalizeCliArgv(argv) {
+	return argv[0] === "--" ? argv.slice(1) : [...argv];
+}
+/**
+* Parses top-level `vieval` CLI arguments into one command dispatch payload.
+*
+* Use when:
+* - the executable needs to resolve which subcommand should run
+* - tests need stable top-level argv normalization without invoking subcommands
+*
+* Expects:
+* - argv excludes the node executable and script path
+*
+* Returns:
+* - the normalized top-level command plus subcommand argv
+*/
+function parseTopLevelCliArguments(argv) {
+	const normalizedArgv = normalizeCliArgv(argv);
+	const command = normalizedArgv[0];
+	meow(topLevelHelpText, {
+		autoHelp: false,
+		autoVersion: false,
+		argv: normalizedArgv,
+		importMeta: import.meta
+	});
+	if (command == null || command === "help" || command === "--help" || command === "-h") return {
+		command: "help",
+		commandArgv: []
+	};
+	if (command !== "run" && command !== "report" && command !== "compare") throw new Error(`Unsupported vieval command "${command ?? "(none)"}". Expected "run", "compare", or "report".`);
+	return {
+		command,
+		commandArgv: normalizedArgv.slice(1)
+	};
+}
+/**
+* Dispatches the top-level `vieval` command to one concrete subcommand module.
+*
+* Call stack:
+*
+* published executable (`../bin/vieval`)
+*   -> {@link runTopLevelCli}
+*     -> {@link runEvalRunCli} / report CLI / compare CLI
+*
+* Use when:
+* - the executable or tests need import-safe CLI orchestration
+* - subcommands should remain reusable without process-bound startup code
+*
+* Expects:
+* - argv excludes the node executable and script path
+*
+* Returns:
+* - resolves after the selected subcommand completes
+*/
+async function runTopLevelCli(argv) {
+	const parsed = parseTopLevelCliArguments(argv);
+	if (parsed.command === "help") {
+		process.stdout.write(`${topLevelHelpText.trim()}\n`);
+		return;
+	}
+	if (parsed.command === "report") {
+		const reportSubcommand = parsed.commandArgv[0];
+		if (reportSubcommand === "analyze") {
+			await runReportAnalyzeCli(parsed.commandArgv);
+			return;
+		}
+		if (reportSubcommand === "index") {
+			await runReportIndexCli(parsed.commandArgv);
+			return;
+		}
+		throw new Error(`Unsupported vieval report command "${reportSubcommand ?? "(none)"}". Expected "analyze" or "index".`);
+	}
+	if (parsed.command === "compare") {
+		await runCompareCliOrExit(parsed.commandArgv);
+		return;
+	}
+	await runEvalRunCli(parsed.commandArgv);
+}
+//#endregion
+export { runTopLevelCli as n, parseTopLevelCliArguments as t };
+
+//# sourceMappingURL=cli-DayPXzHX.mjs.map

@@ -1,0 +1,30 @@
+import type { Component } from 'vue';
+import type { SurfaceFnDef } from '../helpers/surface-equations';
+interface RefractionOptions {
+    radius: number;
+    blur?: number;
+    glassThickness?: number;
+    bezelWidth?: number;
+    refractiveIndex?: number;
+    specularOpacity?: number;
+    specularAngle?: number;
+    bezelHeightFn?: SurfaceFnDef;
+}
+interface RefractiveProps {
+    as?: string | Component;
+    refraction: RefractionOptions;
+}
+type __VLS_Slots = {
+    default?: () => unknown;
+};
+declare const __VLS_base: import("vue").DefineComponent<RefractiveProps, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<RefractiveProps> & Readonly<{}>, {
+    as: string | Component;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const __VLS_export: __VLS_WithSlots<typeof __VLS_base, __VLS_Slots>;
+declare const _default: typeof __VLS_export;
+export default _default;
+type __VLS_WithSlots<T, S> = T & {
+    new (): {
+        $slots: S;
+    };
+};

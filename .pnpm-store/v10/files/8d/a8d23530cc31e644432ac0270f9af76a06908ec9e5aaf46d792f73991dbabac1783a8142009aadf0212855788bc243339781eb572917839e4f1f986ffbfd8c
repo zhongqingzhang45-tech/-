@@ -1,0 +1,94 @@
+{
+  "name": "taze",
+  "type": "module",
+  "version": "19.11.0",
+  "description": "A modern CLI tool that keeps your dependencies fresh in any repo and monorepo",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/antfu-collective/taze#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antfu-collective/taze.git"
+  },
+  "bugs": {
+    "url": "https://github.com/antfu-collective/taze/issues"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./cli": "./dist/cli.mjs",
+    "./package.json": "./package.json"
+  },
+  "types": "dist/index.d.mts",
+  "bin": {
+    "taze": "bin/taze.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@antfu/ni": "^30.0.0",
+    "@henrygd/queue": "^1.2.0",
+    "cac": "^7.0.0",
+    "find-up-simple": "^1.0.1",
+    "ofetch": "^1.5.1",
+    "package-manager-detector": "^1.6.0",
+    "pathe": "^2.0.3",
+    "pnpm-workspace-yaml": "^1.6.0",
+    "restore-cursor": "^5.1.0",
+    "tinyexec": "^1.0.4",
+    "tinyglobby": "^0.2.15",
+    "unconfig": "^7.5.0",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^8.0.0",
+    "@antfu/utils": "^9.3.0",
+    "@posva/prompts": "^2.4.4",
+    "@types/cli-progress": "^3.11.6",
+    "@types/debug": "^4.1.13",
+    "@types/node": "^25.5.0",
+    "ansis": "^4.2.0",
+    "bumpp": "^11.0.1",
+    "cli-progress": "^3.12.0",
+    "debug": "^4.4.3",
+    "deepmerge": "^4.3.1",
+    "detect-indent": "^7.0.2",
+    "eslint": "^10.1.0",
+    "get-npm-meta": "^0.1.1",
+    "semver-es": "^0.1.0",
+    "tsdown": "^0.21.7",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2",
+    "taze": "19.11.0"
+  },
+  "inlinedDependencies": {
+    "@antfu/utils": "9.3.0",
+    "@posva/prompts": "2.4.4",
+    "ansi-regex": "5.0.1",
+    "ansis": "4.2.0",
+    "cli-progress": "3.12.0",
+    "debug": "4.4.3",
+    "deepmerge": "4.3.1",
+    "detect-indent": "7.0.2",
+    "emoji-regex": "8.0.0",
+    "fast-npm-meta": "1.4.2",
+    "get-npm-meta": "0.1.1",
+    "is-fullwidth-code-point": "3.0.0",
+    "kleur": "4.1.5",
+    "ms": "2.1.3",
+    "semver-es": "0.1.0",
+    "sisteransi": "1.0.5",
+    "string-width": "4.2.3",
+    "strip-ansi": "6.0.1"
+  },
+  "scripts": {
+    "lint": "eslint",
+    "dev": "DEBUG=taze:* tsx ./src/cli.ts",
+    "start": "tsx ./src/cli.ts",
+    "build": "tsdown",
+    "typecheck": "tsc",
+    "release": "bumpp",
+    "test": "tsdown && vitest"
+  }
+}

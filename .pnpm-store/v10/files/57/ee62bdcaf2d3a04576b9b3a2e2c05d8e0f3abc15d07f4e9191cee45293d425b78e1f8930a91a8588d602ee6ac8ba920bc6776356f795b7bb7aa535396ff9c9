@@ -1,0 +1,33 @@
+import { Message, SystemMessage, UserMessage, TextContentPart, ImageContentPart, AssistantMessage, ToolCall, ToolMessage } from '@xsai/shared-chat';
+
+declare const messages: (...messages: Message[]) => Message[];
+declare const system: <C extends SystemMessage["content"]>(content: C) => SystemMessage;
+declare const user: <C extends UserMessage["content"]>(content: C) => UserMessage;
+declare const textPart: (text: string) => TextContentPart;
+declare const imagePart: (url: string) => ImageContentPart;
+declare const isToolCall: (content: AssistantMessage["content"] | ToolCall | ToolCall[]) => content is ToolCall | ToolCall[];
+declare const assistant: <C extends AssistantMessage["content"] | ToolCall | ToolCall[]>(content: C) => AssistantMessage;
+declare const tool: <C extends ToolMessage["content"]>(content: C, toolCall: ToolCall) => ToolMessage;
+
+declare const message_assistant: typeof assistant;
+declare const message_imagePart: typeof imagePart;
+declare const message_isToolCall: typeof isToolCall;
+declare const message_messages: typeof messages;
+declare const message_system: typeof system;
+declare const message_textPart: typeof textPart;
+declare const message_tool: typeof tool;
+declare const message_user: typeof user;
+declare namespace message {
+  export {
+    message_assistant as assistant,
+    message_imagePart as imagePart,
+    message_isToolCall as isToolCall,
+    message_messages as messages,
+    message_system as system,
+    message_textPart as textPart,
+    message_tool as tool,
+    message_user as user,
+  };
+}
+
+export { message };

@@ -1,0 +1,32 @@
+/**
+* This entry file is for Rolldown plugin.
+*
+* @module
+*/
+import { ModelCard as ModelCardImported, SpaceCard as SpaceCardImported, LFS as LFSImported } from "./index.js";
+declare const SpaceCard: typeof SpaceCardImported.rolldown;
+declare const ModelCard: typeof ModelCardImported.rolldown;
+declare const LFS: typeof LFSImported.rolldown;
+/**
+* Rolldown plugin
+*
+* @example
+* ```ts
+* // rolldown.config.js
+* import { SpaceCard, LFS } from 'hfup/rolldown'
+*
+* export default {
+*   plugins: [SpaceCard({ options }), LFS()],
+* }
+* ```
+*/
+declare const exports: {
+	SpaceCard: typeof SpaceCardImported.rolldown;
+	ModelCard: typeof ModelCardImported.rolldown;
+	LFS: typeof LFSImported.rolldown;
+};
+export { SpaceCard, ModelCard, LFS };
+export { exports as "module.exports" };
+export type * from "./plugins/lfs/index.js";
+export type * from "./plugins/model-card/index.js";
+export type * from "./plugins/space-card/index.js";

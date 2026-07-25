@@ -1,0 +1,5 @@
+import { t as UnpluginInfo } from "./core-CXsJy3-3.mjs";
+//#region src/esbuild.ts
+var esbuild_default = UnpluginInfo.esbuild;
+//#endregion
+export { esbuild_default as default };

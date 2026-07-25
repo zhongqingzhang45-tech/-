@@ -1,0 +1,4 @@
+declare const setClockInterval: (func: (...args: any[]) => any, interval: number) => number;
+declare const clearClockInterval: (timerId: number) => void;
+
+export { clearClockInterval, setClockInterval };

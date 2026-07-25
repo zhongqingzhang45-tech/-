@@ -1,0 +1,24 @@
+import { Expression } from 'estree'
+import { Rule } from 'eslint'
+/**
+ * Determines if a logical expression is "pure" - meaning it doesn't mix
+ * different logical operators (&& and ||) at the same nesting level within its
+ * outermost parentheses.
+ *
+ * Examples:
+ *
+ * - `!(a && b)` → true (no mixed operators)
+ * - `((a && b) || c)` → true (operators at different nesting levels)
+ * - `(a && b || c)` → false (mixed operators at same level).
+ *
+ * The function traverses up the AST to find the outermost parenthesized
+ * expression, then analyzes the logical operators within that scope.
+ *
+ * @param node - The AST node to analyze.
+ * @param context - ESLint rule context, used to get source code.
+ * @returns True if the expression doesn't mix operators at the top level.
+ */
+export declare function isPureGroup(
+  node: Expression,
+  context: Rule.RuleContext,
+): boolean

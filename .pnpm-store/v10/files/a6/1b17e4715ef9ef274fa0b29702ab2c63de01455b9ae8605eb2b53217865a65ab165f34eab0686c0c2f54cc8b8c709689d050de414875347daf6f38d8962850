@@ -1,0 +1,32 @@
+/**
+* This entry file is for Vite plugin.
+*
+* @module
+*/
+import { ModelCard as ModelCardImported, SpaceCard as SpaceCardImported, LFS as LFSImported } from "./index.js";
+declare const SpaceCard: typeof SpaceCardImported.vite;
+declare const ModelCard: typeof ModelCardImported.vite;
+declare const LFS: typeof LFSImported.vite;
+/**
+* Vite plugin
+*
+* @example
+* ```ts
+* // vite.config.ts
+* import { SpaceCard, LFS } from 'hfup/vite'
+*
+* export default defineConfig({
+*   plugins: [SpaceCard({ options }), LFS()],
+* })
+* ```
+*/
+declare const exports: {
+	SpaceCard: typeof SpaceCardImported.vite;
+	ModelCard: typeof ModelCardImported.vite;
+	LFS: typeof LFSImported.vite;
+};
+export { SpaceCard, ModelCard, LFS };
+export { exports as "module.exports" };
+export type * from "./plugins/lfs/index.js";
+export type * from "./plugins/model-card/index.js";
+export type * from "./plugins/space-card/index.js";

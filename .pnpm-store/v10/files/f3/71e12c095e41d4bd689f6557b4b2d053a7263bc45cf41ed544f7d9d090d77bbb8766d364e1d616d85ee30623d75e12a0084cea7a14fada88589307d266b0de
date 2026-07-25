@@ -1,0 +1,67 @@
+import { EventaFlowDirection, EventaType, and, createContext as createContext$1, defineEventa, defineInboundEventa, defineOutboundEventa, matchBy, nanoid } from "../../context-C35Qku9U.mjs";
+import "../../src-Bb-vxm5k.mjs";
+
+//#region src/adapters/event-target/internal.ts
+function generateCustomEventDetail(type, payload) {
+	return {
+		id: nanoid(),
+		type,
+		payload
+	};
+}
+function parseCustomEventDetail(data) {
+	return data;
+}
+
+//#endregion
+//#region src/adapters/event-target/shared.ts
+const workerErrorEvent = { ...defineEventa() };
+
+//#endregion
+//#region src/adapters/event-target/index.ts
+function withRemoval(eventTarget, type, listener) {
+	eventTarget.addEventListener(type, listener);
+	return { remove: () => {
+		eventTarget.removeEventListener(type, listener);
+	} };
+}
+function createContext(eventTarget, options) {
+	const ctx = createContext$1();
+	const { messageEventName = "message", errorEventName = "error", extraListeners = {} } = options || {};
+	const cleanupRemoval = [];
+	ctx.on(and(matchBy((e) => e._flowDirection === EventaFlowDirection.Outbound || !e._flowDirection), matchBy("*")), (event) => {
+		const detail = generateCustomEventDetail(event.id, {
+			...defineOutboundEventa(event.type),
+			...event
+		});
+		const customEvent = new CustomEvent(messageEventName || EventaType.Event, {
+			detail,
+			bubbles: true,
+			cancelable: true
+		});
+		eventTarget.dispatchEvent(customEvent);
+	});
+	if (messageEventName) cleanupRemoval.push(withRemoval(eventTarget, messageEventName, (event) => {
+		try {
+			const { type, payload } = parseCustomEventDetail(event.detail);
+			ctx.emit(defineInboundEventa(type), payload.body, { raw: { event } });
+		} catch (error) {
+			console.error("Failed to parse WebSocket message:", error);
+			ctx.emit(workerErrorEvent, { error }, { raw: { event } });
+		}
+	}));
+	if (errorEventName) cleanupRemoval.push(withRemoval(eventTarget, errorEventName, (error) => {
+		ctx.emit(workerErrorEvent, { error }, { raw: { event: error } });
+	}));
+	for (const [eventName, listener] of Object.entries(extraListeners)) cleanupRemoval.push(withRemoval(eventTarget, eventName, listener));
+	return {
+		context: ctx,
+		dispose: () => {
+			cleanupRemoval.forEach((removal) => removal.remove());
+		}
+	};
+}
+
+//#endregion
+export { createContext };
+//# sourceMappingURL=index.mjs.map

@@ -1,0 +1,27 @@
+import * as unplugin0 from "unplugin";
+
+//#region src/rolldown.d.ts
+
+/**
+ * This entry file is for Rolldown plugin.
+ *
+ * @module
+ */
+/**
+ * Rolldown plugin
+ *
+ * @example
+ * ```ts
+ * // rolldown.config.js
+ * import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/rolldown'
+ *
+ * export default {
+ *   plugins: [DrizzleORMMigrations()],
+ * }
+ * ```
+ */
+declare const rolldown: (options?: {
+  root?: string;
+}) => unplugin0.RolldownPlugin<any>;
+//#endregion
+export { rolldown as default, rolldown as "module.exports" };

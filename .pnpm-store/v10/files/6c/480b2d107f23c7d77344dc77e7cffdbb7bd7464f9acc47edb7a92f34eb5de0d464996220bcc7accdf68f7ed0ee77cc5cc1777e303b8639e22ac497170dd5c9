@@ -1,0 +1,35 @@
+import { n as EventTag, r as Eventa } from "../../eventa-CCPqecvv.mjs";
+import { t as EventContext } from "../../context-CimstVCt.mjs";
+import { n as AdapterErrorPayload, t as AdapterErrorKind } from "../../errors-BKTILLCx.mjs";
+
+//#region src/adapters/event-target/shared.d.ts
+interface CustomEventDetail<T> {
+  id: string;
+  type: EventTag<any, any>;
+  payload: T;
+}
+/**
+ * Emitted by the EventTarget adapter when an inbound event fails to parse
+ * (`kind: 'parse'`) or the underlying target dispatches an `error`
+ * (`kind: 'fatal'`). This adapter is generic (it also backs WebSocket-style
+ * targets), so the event is named generically rather than worker-specific.
+ * Has a stable id so it can be subscribed to across module boundaries.
+ */
+declare const adapterErrorEvent: Eventa<AdapterErrorPayload, undefined, undefined>;
+//#endregion
+//#region src/adapters/event-target/index.d.ts
+declare function createContext(eventTarget: EventTarget, options?: {
+  messageEventName?: string | false;
+  errorEventName?: string | false;
+  extraListeners?: Record<string, (event: Event) => void | Promise<void>>;
+}): {
+  context: EventContext<any, {
+    raw: {
+      event: CustomEvent | Event | unknown;
+    };
+  }>;
+  dispose: (reason?: unknown) => void;
+};
+//#endregion
+export { type AdapterErrorKind, type AdapterErrorPayload, type CustomEventDetail, adapterErrorEvent, createContext };
+//# sourceMappingURL=index.d.mts.map

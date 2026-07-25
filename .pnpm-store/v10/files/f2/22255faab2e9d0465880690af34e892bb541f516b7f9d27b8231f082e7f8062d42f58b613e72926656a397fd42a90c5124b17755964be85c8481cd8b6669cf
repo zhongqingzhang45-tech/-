@@ -1,0 +1,307 @@
+import { n as EventTag, r as Eventa } from "./eventa-CCPqecvv.mjs";
+import { t as EventContext } from "./context-CimstVCt.mjs";
+
+//#region src/invoke-shared.d.ts
+declare enum InvokeEventType {
+  SendEvent = 0,
+  SendEventError = 1,
+  SendEventStreamEnd = 2,
+  SendEventAbort = 3,
+  ReceiveEvent = 4,
+  ReceiveEventError = 5,
+  ReceiveEventStreamEnd = 6
+}
+interface SendEvent<Res, Req = undefined, _ = undefined, __ = undefined, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content: Req;
+  isReqStream?: boolean;
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.SendEvent;
+}
+interface SendEventError<Res, Req = undefined, _ = undefined, ReqErr = Error, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content: ReqErr;
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.SendEventError;
+}
+interface SendEventStreamEnd<Res, Req = undefined, _ = undefined, __ = undefined, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content: undefined;
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.SendEventStreamEnd;
+}
+interface SendEventAbort<Res, Req = undefined, _ = undefined, __ = undefined, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content?: unknown;
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.SendEventAbort;
+}
+interface ReceiveEvent<Res, Req = undefined, _ = undefined, __ = undefined, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content: Res;
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.ReceiveEvent;
+}
+interface ReceiveEventError<Res, Req = undefined, ResErr = undefined, _ = undefined, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content: {
+    error: ResErr;
+  };
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.ReceiveEventError;
+}
+interface ReceiveEventStreamEnd<Res, Req = undefined, _ = undefined, __ = undefined, M = undefined, IM = undefined> extends Eventa<{
+  invokeId: string;
+  content: undefined;
+}, M, IM> {
+  id: EventTag<Res, Req>;
+  invokeType: InvokeEventType.ReceiveEventStreamEnd;
+}
+interface InvokeEventa<Res, Req = undefined, ResErr = Error, ReqErr = Error, M = undefined, IM = undefined> {
+  sendEvent: SendEvent<Res, Req, ResErr, ReqErr, M, IM>;
+  sendEventError: SendEventError<Res, Req, ResErr, ReqErr, M, IM>;
+  sendEventStreamEnd: SendEventStreamEnd<Res, Req, ResErr, ReqErr, M, IM>;
+  sendEventAbort: SendEventAbort<Res, Req, ResErr, ReqErr, M, IM>;
+  receiveEvent: ReceiveEvent<Res, Req, ResErr, ReqErr, M, IM>;
+  receiveEventError: ReceiveEventError<Res, Req, ResErr, ReqErr, M, IM>;
+  receiveEventStreamEnd: ReceiveEventStreamEnd<Res, Req, ResErr, ReqErr, M, IM>;
+}
+interface InvokeHandlerEventa<Res, Req = undefined, ResErr = Error, ReqErr = Error, M = undefined, _IM = undefined> extends InvokeEventa<Res, Req, ResErr, ReqErr, M, undefined> {
+  sendEvent: SendEvent<Res, Req, ResErr, ReqErr, M, undefined>;
+  sendEventError: SendEventError<Res, Req, ResErr, ReqErr, M, undefined>;
+  sendEventStreamEnd: SendEventStreamEnd<Res, Req, ResErr, ReqErr, M, undefined>;
+  sendEventAbort: SendEventAbort<Res, Req, ResErr, ReqErr, M, undefined>;
+  receiveEvent: ReceiveEvent<Res, Req, ResErr, ReqErr, M, undefined>;
+  receiveEventError: ReceiveEventError<Res, Req, ResErr, ReqErr, M, undefined>;
+  receiveEventStreamEnd: ReceiveEventStreamEnd<Res, Req, ResErr, ReqErr, M, undefined>;
+}
+type InferSendEvent<T> = T extends {
+  sendEvent: SendEvent<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? SendEvent<Res, Req, ResErr, ReqErr, M, IM> : never;
+type InferSendEventError<T> = T extends {
+  sendEventError: SendEventError<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? SendEventError<Res, Req, ResErr, ReqErr, M, IM> : never;
+type InferSendEventStreamEnd<T> = T extends {
+  sendEventStreamEnd: SendEventStreamEnd<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? SendEventStreamEnd<Res, Req, ResErr, ReqErr, M, IM> : never;
+type InferSendEventAbort<T> = T extends {
+  sendEventAbort: SendEventAbort<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? SendEventAbort<Res, Req, ResErr, ReqErr, M, IM> : never;
+type InferReceiveEvent<T> = T extends {
+  receiveEvent: ReceiveEvent<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? ReceiveEvent<Res, Req, ResErr, ReqErr, M, IM> : never;
+type InferReceiveEventError<T> = T extends {
+  receiveEventError: ReceiveEventError<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? ReceiveEventError<Res, Req, ResErr, ReqErr, M, IM> : never;
+type InferReceiveEventStreamEnd<T> = T extends {
+  receiveEventStreamEnd: ReceiveEventStreamEnd<infer Res, infer Req, infer ResErr, infer ReqErr, infer M, infer IM>;
+} ? ReceiveEventStreamEnd<Res, Req, ResErr, ReqErr, M, IM> : never;
+declare function defineInvokeEventa<Res, Req = undefined, ResErr = Error, ReqErr = Error, M = undefined, IM = undefined>(tag?: string, options?: {
+  metadata?: M;
+  invokeMetadata?: IM;
+}): {
+  sendEvent: SendEvent<Res, Req, ResErr, ReqErr, M, IM>;
+  sendEventError: SendEventError<Res, Req, ResErr, ReqErr, M, IM>;
+  sendEventStreamEnd: SendEventStreamEnd<Res, Req, ResErr, ReqErr, M, IM>;
+  sendEventAbort: SendEventAbort<Res, Req, ResErr, ReqErr, M, IM>;
+  receiveEvent: ReceiveEvent<Res, Req, ResErr, ReqErr, M, IM>;
+  receiveEventError: ReceiveEventError<Res, Req, ResErr, ReqErr, M, IM>;
+  receiveEventStreamEnd: ReceiveEventStreamEnd<Res, Req, ResErr, ReqErr, M, IM>;
+};
+declare function isInvokeEventa(event: Eventa<any>): event is SendEvent<any, any, any, any, any, any> | SendEventError<any, any, any, any, any, any> | SendEventStreamEnd<any, any, any, any, any, any> | ReceiveEvent<any, any, any, any, any, any> | ReceiveEventError<any, any, any, any, any, any> | ReceiveEventStreamEnd<any, any, any, any, any, any> | SendEventAbort<any, any, any, any, any, any>;
+declare function isSendEvent(event: Eventa<any>): event is SendEvent<any, any, any, any, any, any> | SendEventError<any, any, any, any, any, any> | SendEventStreamEnd<any, any, any, any, any, any> | SendEventAbort<any, any, any, any, any, any>;
+declare function isReceiveEvent(event: Eventa<any>): event is ReceiveEvent<any, any, any, any, any, any> | ReceiveEventError<any, any, any, any, any, any> | ReceiveEventStreamEnd<any, any, any, any, any, any>;
+//#endregion
+//#region src/invoke.d.ts
+type IsInvokeRequestOptional<EC extends EventContext<any, any>> = EC extends EventContext<infer E, any> ? E extends {
+  invokeRequest: any;
+} ? undefined extends E['invokeRequest'] ? true : false : E extends {
+  invokeRequest?: any;
+} ? undefined extends E['invokeRequest'] ? true : false : true : true;
+type ExtractInvokeRequestOptions<EC extends EventContext<any, any>> = EC extends EventContext<infer E, any> ? E extends {
+  invokeRequest: infer IR;
+} ? IR & {
+  signal?: AbortSignal;
+} : E extends {
+  invokeRequest?: infer IR;
+} ? IR & {
+  signal?: AbortSignal;
+} : {
+  signal?: AbortSignal;
+} : {
+  signal?: AbortSignal;
+};
+type ExtractInvokeResponseOptions<EC extends EventContext<any, any>> = EC extends EventContext<infer E, any> ? E extends {
+  invokeResponse: infer IR;
+} ? IR : E extends {
+  invokeResponse?: infer IR;
+} ? IR : undefined : undefined;
+type InvokeFunction<Res, Req, EC extends EventContext<any, any>> = [Req] extends [undefined] ? IsInvokeRequestOptional<EC> extends true ? (req?: Req, options?: ExtractInvokeRequestOptions<EC>) => Promise<Res> : (req: Req, options: ExtractInvokeRequestOptions<EC>) => Promise<Res> : IsInvokeRequestOptional<EC> extends true ? (req: Req, options?: ExtractInvokeRequestOptions<EC>) => Promise<Res> : (req: Req, options: ExtractInvokeRequestOptions<EC>) => Promise<Res>;
+type InvokeFunctionMap<EventMap extends Record<string, InvokeEventa<any, any, any, any>>, EC extends EventContext<any, any>> = { [K in keyof EventMap]: EventMap[K] extends InvokeEventa<infer Res, infer Req, any, any> ? InvokeFunction<Res, Req, EC> : never };
+type ExtendableInvokeResponse<Res, EC extends EventContext<any, any>> = Promise<Res> | Res | Promise<{
+  response: Res;
+  invokeResponse?: ExtractInvokeResponseOptions<EC>;
+}> | {
+  response: Res;
+  invokeResponse?: ExtractInvokeResponseOptions<EC>;
+};
+declare function isExtendableInvokeResponseLike<Res, EC extends EventContext<any, any>>(value: Eventa<unknown> | ReceiveEvent<{
+  response: Res;
+  invokeResponse?: unknown;
+}>): value is ReceiveEvent<{
+  response: Res;
+  invokeResponse?: ExtractInvokeResponseOptions<EC>;
+}>;
+type Handler<Res, Req = any, EC extends EventContext<any, any> = EventContext<any, any>, RawEventOptions = unknown> = (payload: Req, options?: {
+  abortController?: AbortController;
+} & RawEventOptions) => ExtendableInvokeResponse<Res, EC>;
+interface InternalInvokeHandler<Res, Req = any, ResErr = Error, ReqErr = Error, EO = any, M = undefined, IM = undefined> {
+  onSend: (params: InvokeEventa<Res, Req, ResErr, ReqErr, M, IM>['sendEvent'], eventOptions?: EO) => void;
+  onSendStreamEnd: (params: InvokeEventa<Res, Req, ResErr, ReqErr, M, IM>['sendEventStreamEnd'], eventOptions?: EO) => void;
+  onSendAbort: (params: InvokeEventa<Res, Req, ResErr, ReqErr, M, IM>['sendEventAbort'], eventOptions?: EO) => void;
+}
+type HandlerMap<EventMap extends Record<string, InvokeEventa<any, any, any, any, any, any>>, EO = any, EC extends EventContext<any, any> = EventContext<any, any>> = { [K in keyof EventMap]: EventMap[K] extends InvokeEventa<infer Res, infer Req, any, any, any, any> ? Handler<Res, Req, EC, EO> : never };
+interface InvocableEventContext<E, EO> extends EventContext<E, EO> {
+  invokeHandlers?: Map<string, Map<Handler<any>, InternalInvokeHandler<any, any, any, any, any, any, any>>>;
+}
+/**
+ * Create a unary invoke function (client side).
+ *
+ * It supports unary or streaming requests, but returns a single response.
+ * Use `defineStreamInvoke` when you expect a stream of responses.
+ *
+ * If you want stream input, set `Req` to `ReadableStream<T>` or `AsyncIterable<T>`
+ * (or a union type like `T | ReadableStream<T>` for optional streaming).
+ *
+ * @example
+ * ```ts
+ * // 1) Define eventa once (shared by client/server)
+ * const events = defineInvokeEventa<{ id: string }, { name: string }>()
+ *
+ * // 2) Client: define invoke function
+ * const invoke = defineInvoke(clientCtx, events)
+ *
+ * // 3) Call
+ * const res = await invoke({ name: 'alice' })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Stream request -> unary response
+ * const events = defineInvokeEventa<number, ReadableStream<number>>()
+ *
+ * defineInvokeHandler(serverCtx, events, async (payload) => {
+ *   let sum = 0
+ *   for await (const value of payload) {
+ *     sum += value
+ *   }
+ *
+ *   return sum
+ * })
+ *
+ * const invoke = defineInvoke(clientCtx, events)
+ * const input = new ReadableStream<number>({
+ *   start(controller) {
+ *     controller.enqueue(1)
+ *     controller.enqueue(2)
+ *     controller.close()
+ *   },
+ * })
+ *
+ * const total = await invoke(input)
+ * ```
+ *
+ * @param ctx Event context on the caller/client side.
+ * @param event Invoke event definition created by `defineInvokeEventa`.
+ */
+declare function defineInvoke<Res, Req = undefined, ResErr = Error, ReqErr = Error, M = undefined, IM = undefined, CtxExt = any, EOpts = any, ECtx extends EventContext<CtxExt, EOpts> = EventContext<CtxExt, EOpts>>(ctx: ECtx | (() => ECtx | Promise<ECtx>), event: InvokeEventa<Res, Req, ResErr, ReqErr, M, IM>): InvokeFunction<Res, Req, ECtx>;
+/**
+ * Create a map of invoke functions from a map of invoke events (client side).
+ *
+ * @example
+ * ```ts
+ * const events = {
+ *   double: defineInvokeEventa<number, number>(),
+ *   greet: defineInvokeEventa<string, { name: string }>(),
+ * }
+ *
+ * const invokes = defineInvokes(ctx, events)
+ * const result = await invokes.double(2)
+ * ```
+ *
+ * @param ctx Event context on the caller/client side.
+ * @param events Map of invoke events created by `defineInvokeEventa`.
+ */
+declare function defineInvokes<EK extends string, EventMap extends Record<EK, InvokeEventa<any, any, any, any, any, any>>, CtxExt = any, EOpts = any, ECtx extends EventContext<CtxExt, EOpts> = EventContext<CtxExt, EOpts>>(ctx: ECtx | (() => ECtx | Promise<ECtx>), events: EventMap): InvokeFunctionMap<EventMap, ECtx>;
+/**
+ * Define a unary invoke handler (server side).
+ *
+ * The handler can accept a unary or streaming request; it must return
+ * a single response (or an extendable response envelope).
+ *
+ * @example
+ * ```ts
+ * const events = defineInvokeEventa<{ id: string }, { name: string }>()
+ *
+ * defineInvokeHandler(serverCtx, events, ({ name }) => ({
+ *   id: `user-${name}`,
+ * }))
+ * ```
+ *
+ * @param ctx Event context on the handler/server side.
+ * @param event Invoke event definition created by `defineInvokeEventa`.
+ * @param handler Handler that returns a response (or response + metadata).
+ */
+declare function defineInvokeHandler<Res, Req = undefined, ResErr = Error, ReqErr = Error, M = undefined, IM = undefined, CtxExt = any, EOpts extends {
+  raw?: any;
+} = any>(ctx: InvocableEventContext<CtxExt, EOpts>, event: InvokeHandlerEventa<Res, Req, ResErr, ReqErr, M, IM>, handler: Handler<Res, Req, InvocableEventContext<CtxExt, EOpts>, EOpts>): () => void;
+/**
+ * Define multiple invoke handlers in batch (server side).
+ *
+ * @example
+ * ```ts
+ * const events = {
+ *   double: defineInvokeEventa<number, number>(),
+ *   greet: defineInvokeEventa<string, { name: string }>(),
+ * }
+ *
+ * defineInvokeHandlers(ctx, events, {
+ *   double: value => value * 2,
+ *   greet: ({ name }) => `hi ${name}`,
+ * })
+ * ```
+ *
+ * @param ctx Event context on the handler/server side.
+ * @param events Map of invoke events created by `defineInvokeEventa`.
+ * @param handlers Map of handlers keyed by event name.
+ */
+declare function defineInvokeHandlers<EK extends string, EventMap extends Record<EK, InvokeEventa<any, any, any, any>>, CtxExt = any, EOpts extends {
+  raw?: any;
+} = any>(ctx: InvocableEventContext<CtxExt, EOpts>, events: EventMap, handlers: HandlerMap<EventMap, EOpts>): Record<EK, () => void>;
+/**
+ * Remove one or all invoke handlers for a specific invoke event (server side).
+ *
+ * @example
+ * ```ts
+ * const off = defineInvokeHandler(ctx, events, handler)
+ * off() // remove one handler
+ *
+ * // or remove all handlers for the event:
+ * undefineInvokeHandler(ctx, events)
+ * ```
+ *
+ * @param ctx Event context on the handler/server side.
+ * @param event Invoke event definition created by `defineInvokeEventa`.
+ * @param handler Specific handler to remove (omit to remove all).
+ * @returns `true` if at least one handler was removed, `false` otherwise
+ */
+declare function undefineInvokeHandler<Res, Req = undefined, ResErr = Error, ReqErr = Error, CtxExt = any, EOpts = any>(ctx: InvocableEventContext<CtxExt, EOpts>, event: InvokeEventa<Res, Req, ResErr, ReqErr>, handler?: Handler<Res, Req, InvocableEventContext<CtxExt, EOpts>, EOpts>): boolean;
+//#endregion
+export { SendEventError as A, InvokeEventa as C, ReceiveEventStreamEnd as D, ReceiveEventError as E, isSendEvent as F, defineInvokeEventa as M, isInvokeEventa as N, SendEvent as O, isReceiveEvent as P, InvokeEventType as S, ReceiveEvent as T, InferReceiveEventStreamEnd as _, HandlerMap as a, InferSendEventError as b, InvokeFunctionMap as c, defineInvokeHandlers as d, defineInvokes as f, InferReceiveEventError as g, InferReceiveEvent as h, Handler as i, SendEventStreamEnd as j, SendEventAbort as k, defineInvoke as l, undefineInvokeHandler as m, ExtractInvokeRequestOptions as n, InvocableEventContext as o, isExtendableInvokeResponseLike as p, ExtractInvokeResponseOptions as r, InvokeFunction as s, ExtendableInvokeResponse as t, defineInvokeHandler as u, InferSendEvent as v, InvokeHandlerEventa as w, InferSendEventStreamEnd as x, InferSendEventAbort as y };
+//# sourceMappingURL=invoke-CwkePJ1X.d.mts.map

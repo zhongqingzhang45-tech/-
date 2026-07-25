@@ -1,0 +1,19 @@
+import unplugin from "./index.mjs";
+
+//#region src/vite.d.ts
+/**
+* Vite plugin
+*
+* @example
+* ```ts
+* // vite.config.ts
+* import Raw from 'unplugin-raw/vite'
+*
+* export default defineConfig({
+*   plugins: [Raw()],
+* })
+* ```
+*/
+declare const vite: typeof unplugin.vite;
+//#endregion
+export { vite as default, vite as "module.exports" };

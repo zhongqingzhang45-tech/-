@@ -1,0 +1,17 @@
+import type { StyleValue } from 'vue';
+interface SceneFocusMaskProps {
+    blurPx?: number;
+    class?: string | string[];
+    color?: string;
+    mode?: 'blur' | 'dim';
+    opacity?: number;
+    style?: StyleValue;
+}
+declare const __VLS_export: import("vue").DefineComponent<SceneFocusMaskProps, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<SceneFocusMaskProps> & Readonly<{}>, {
+    blurPx: number;
+    color: string;
+    mode: "blur" | "dim";
+    opacity: number;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const _default: typeof __VLS_export;
+export default _default;

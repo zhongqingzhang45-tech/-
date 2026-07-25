@@ -1,0 +1,52 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+//#region src/core/options.ts
+function resolveOptions(options) {
+	let { transform = false } = options;
+	if (transform === true) transform = {};
+	return {
+		...options,
+		enforce: "enforce" in options ? options.enforce : "pre",
+		transform: transform ? {
+			...transform,
+			include: transform.include || [/\.[cm]?[jt]sx?$/],
+			exclude: transform.exclude || [/node_modules/],
+			options: transform.options || {}
+		} : false
+	};
+}
+//#endregion
+//#region src/core/transform.ts
+async function transformRaw(file, type, transform, transformFilter, options) {
+	let contents = await readFile(file, type === "text" ? "utf8" : void 0);
+	if (type === "text" && transformFilter?.(file)) {
+		transform ||= (await import("esbuild")).transform;
+		contents = (await transform(contents, {
+			loader: guessLoader(file),
+			...options
+		})).code;
+	}
+	return type === "bytes" ? contents : `export default ${JSON.stringify(contents)}`;
+}
+const ExtToLoader = {
+	".js": "js",
+	".mjs": "js",
+	".cjs": "js",
+	".jsx": "jsx",
+	".ts": "ts",
+	".cts": "ts",
+	".mts": "ts",
+	".tsx": "tsx",
+	".css": "css",
+	".less": "css",
+	".stylus": "css",
+	".scss": "css",
+	".sass": "css",
+	".json": "json",
+	".txt": "text"
+};
+function guessLoader(id) {
+	return ExtToLoader[path.extname(id).toLowerCase()] || "js";
+}
+//#endregion
+export { resolveOptions as n, transformRaw as t };

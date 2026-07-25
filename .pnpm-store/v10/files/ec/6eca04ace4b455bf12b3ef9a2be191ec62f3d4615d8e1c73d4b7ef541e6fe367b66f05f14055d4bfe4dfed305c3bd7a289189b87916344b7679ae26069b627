@@ -1,0 +1,4 @@
+/**
+ * @see @{@link https://github.com/hashintel/hash/blob/b03f6fe875220edd0f01ae4626ed223d3cf663ed/libs/%40hashintel/refractive/src/helpers/image-data-to-url.ts}
+ */
+export declare function imageDataToUrl(imageData: ImageData, width?: number, height?: number, x?: number, y?: number): string;

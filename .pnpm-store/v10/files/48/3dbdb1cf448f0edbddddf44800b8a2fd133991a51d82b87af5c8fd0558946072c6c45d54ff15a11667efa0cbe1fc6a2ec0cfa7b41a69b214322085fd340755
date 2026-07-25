@@ -1,0 +1,26 @@
+import { Unused } from "./index.mjs";
+
+//#region src/rolldown.ts
+/**
+* This entry file is for Rolldown plugin.
+*
+* @module
+*/
+/**
+* Rolldown plugin
+*
+* @example
+* ```ts
+* // rolldown.config.js
+* import Unused from 'unplugin-unused/rolldown'
+*
+* export default {
+*   plugins: [Unused()],
+* }
+* ```
+*/
+const rolldown = Unused.rolldown;
+var rolldown_default = rolldown;
+
+//#endregion
+export { rolldown_default as default, rolldown as "module.exports" };

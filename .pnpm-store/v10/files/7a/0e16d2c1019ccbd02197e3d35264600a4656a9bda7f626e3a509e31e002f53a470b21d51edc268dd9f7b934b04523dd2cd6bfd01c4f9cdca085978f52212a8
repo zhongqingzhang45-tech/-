@@ -1,0 +1,14 @@
+import { t as Options } from "./types-D06-cUms.cjs";
+import { NuxtModule } from "@nuxt/schema";
+
+//#region src/nuxt.d.ts
+declare const nuxtModule: NuxtModule<Options>;
+declare module '@nuxt/schema' {
+  interface NuxtConfig {
+    info?: Options;
+  }
+  interface NuxtOptions {
+    info?: Options;
+  }
+}
+export = nuxtModule;

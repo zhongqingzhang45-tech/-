@@ -1,0 +1,45 @@
+import { defineComponent as p, inject as m, computed as c, onMounted as s, onUnmounted as d, withDirectives as l, openBlock as f, createBlock as h, withCtx as _, renderSlot as C, vShow as R } from "vue";
+import { useRoute as g } from "vue-router";
+import v from "./capture-content.vue.js";
+import { injectSceneRouterStore as S } from "./context.js";
+const D = /* @__PURE__ */ p({
+  __name: "capture-root",
+  props: {
+    name: {},
+    padding: { default: "0px" }
+  },
+  setup(a) {
+    const e = a, n = g(), t = m(S, null);
+    function u(o) {
+      return o.split("-").filter(Boolean).map((r) => r[0]?.toUpperCase() + r.slice(1)).join(" ");
+    }
+    const i = c(() => {
+      if (!t)
+        return !0;
+      const o = t.activeCaptureRootId.value;
+      return o ? o === e.name : !0;
+    });
+    return s(() => {
+      t && t.registerCaptureRoot({
+        id: e.name,
+        routePath: n.path,
+        title: u(e.name)
+      });
+    }), d(() => {
+      t && t.unregisterCaptureRoot(n.path, e.name);
+    }), (o, r) => l((f(), h(v, {
+      name: e.name,
+      padding: e.padding
+    }, {
+      default: _(() => [
+        C(o.$slots, "default")
+      ]),
+      _: 3
+    }, 8, ["name", "padding"])), [
+      [R, i.value]
+    ]);
+  }
+});
+export {
+  D as default
+};

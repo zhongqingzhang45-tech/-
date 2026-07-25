@@ -1,0 +1,153 @@
+import { encodeBase64 } from '@moeru/std/base64';
+import { defineStreamInvoke, defineInvoke } from '@moeru/eventa';
+import { createContext } from '@moeru/eventa/adapters/webworkers';
+import { readableStreamToAsyncIterator } from '@moeru/std/async-iterator';
+import { c as createLoadDefinition, a as createProcessDefinition } from './rpc-Cw4bL-t1.js';
+
+function getOnProgress(optionsMayHaveOnProgress) {
+  if (optionsMayHaveOnProgress == null)
+    return void 0;
+  if (typeof optionsMayHaveOnProgress !== "object") {
+    return void 0;
+  }
+  if (typeof optionsMayHaveOnProgress.onProgress !== "function") {
+    return void 0;
+  }
+  const onProgress = optionsMayHaveOnProgress.onProgress;
+  delete optionsMayHaveOnProgress.onProgress;
+  return onProgress;
+}
+function getWorker(optionsMayHaveWorkerOrWorkerURL) {
+  if (optionsMayHaveWorkerOrWorkerURL == null)
+    throw new TypeError("Either worker or workerURL is required");
+  if (typeof optionsMayHaveWorkerOrWorkerURL !== "object")
+    throw new TypeError("Either worker or workerURL is required");
+  if (optionsMayHaveWorkerOrWorkerURL.worker != null)
+    return optionsMayHaveWorkerOrWorkerURL.worker;
+  if (optionsMayHaveWorkerOrWorkerURL.workerURL != null) {
+    let workerURLString;
+    if (optionsMayHaveWorkerOrWorkerURL.workerURL instanceof URL) {
+      workerURLString = optionsMayHaveWorkerOrWorkerURL.workerURL.searchParams.get("worker-url");
+    } else if (typeof optionsMayHaveWorkerOrWorkerURL.workerURL === "string") {
+      workerURLString = optionsMayHaveWorkerOrWorkerURL.workerURL;
+    } else {
+      throw new TypeError("Worker URL is required");
+    }
+    if (!workerURLString)
+      throw new TypeError("Worker URL is required");
+    return new Worker(workerURLString, { type: "module" });
+  }
+  throw new TypeError("Either worker or workerURL is required");
+}
+const createTransformersWorker = (createOptions) => {
+  let worker;
+  let workerContext;
+  let isReady = false;
+  let isLoading = false;
+  const load = async (payload, options) => {
+    if (!payload)
+      throw new Error("Payload is required");
+    if (isReady) {
+      return;
+    }
+    try {
+      if (!isLoading && !isReady && !worker) {
+        isLoading = true;
+        worker = getWorker(createOptions);
+        workerContext = createContext(worker).context;
+        const onProgress = getOnProgress(options);
+        const load2 = defineStreamInvoke(workerContext, createLoadDefinition());
+        const loading = readableStreamToAsyncIterator(load2(payload));
+        for await (const loadEvent of loading) {
+          if (onProgress && loadEvent.data && loadEvent.type === "progress") {
+            onProgress(loadEvent.data.progress);
+          }
+        }
+      }
+      isReady = true;
+      isLoading = false;
+    } catch (err) {
+      isLoading = false;
+      throw err;
+    }
+  };
+  const ensureLoadBeforeProcess = async (options) => {
+    if (options?.loadOptions)
+      await load(options.loadOptions.payload, options.loadOptions.options);
+  };
+  const process = async (payload, onResultType, options) => {
+    await ensureLoadBeforeProcess(options);
+    if (!worker || !isReady) {
+      throw new Error("Model not loaded");
+    }
+    const processDefinition = createProcessDefinition(onResultType);
+    const process2 = defineInvoke(workerContext, processDefinition);
+    return process2(payload);
+  };
+  return {
+    dispose: () => {
+      if (!worker)
+        return;
+      worker.terminate();
+      isReady = false;
+      isLoading = false;
+      worker = void 0;
+    },
+    load,
+    process
+  };
+};
+
+const createTranscriptionProvider = (createOptions) => {
+  let workerOptions;
+  if (createOptions.worker) {
+    workerOptions = { worker: createOptions.worker };
+  } else {
+    if (!createOptions.baseURL) {
+      throw new Error("baseURL is required when worker is not provided");
+    }
+    const workerURL = new URL(createOptions.baseURL).searchParams.get("worker-url");
+    if (!workerURL) {
+      throw new Error("worker-url is required when worker is not provided");
+    }
+    workerOptions = { workerURL };
+  }
+  const worker = createTransformersWorker(workerOptions);
+  const loadModel = async (model, options) => {
+    let onProgress;
+    if (options && "onProgress" in options && typeof options.onProgress === "function") {
+      onProgress = options.onProgress;
+      delete options.onProgress;
+    }
+    await worker.load({ modelId: model, options, task: "automatic-speech-recognition" }, { onProgress });
+  };
+  const terminateTranscribe = () => worker.dispose();
+  return {
+    loadTranscribe: loadModel,
+    terminateTranscribe,
+    transcription: (model, options) => Object.assign(createOptions, {
+      fetch: async (_, init) => {
+        await loadModel(model, options);
+        const formData = init.body;
+        const file = formData.get("file");
+        if (!file) {
+          throw new Error("No file provided");
+        }
+        const buffer = await file.arrayBuffer();
+        const base64 = encodeBase64(buffer);
+        const res = await worker.process({ audio: base64, options }, "transcribe");
+        const result = {
+          duration: void 0,
+          language: void 0,
+          segments: void 0,
+          text: res.text,
+          words: void 0
+        };
+        const encoder = new TextEncoder();
+        return new Response(encoder.encode(JSON.stringify(result)));
+      }
+    })
+  };
+};
+
+export { createTranscriptionProvider };

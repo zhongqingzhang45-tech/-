@@ -1,0 +1,11 @@
+import { i as VishotArtifactStage, n as VishotArtifact, t as ArtifactTransformer } from "./types-D8MhHxWz.mjs";
+//#region src/artifacts.d.ts
+declare function applyArtifactTransformers(artifact: VishotArtifact, transformers: ArtifactTransformer[] | undefined): Promise<VishotArtifact[]>;
+declare function createImageArtifact(options: {
+  artifactName: string;
+  filePath: string;
+  metadata?: Record<string, unknown>;
+  stage: VishotArtifactStage;
+}): VishotArtifact;
+//#endregion
+export { applyArtifactTransformers, createImageArtifact };

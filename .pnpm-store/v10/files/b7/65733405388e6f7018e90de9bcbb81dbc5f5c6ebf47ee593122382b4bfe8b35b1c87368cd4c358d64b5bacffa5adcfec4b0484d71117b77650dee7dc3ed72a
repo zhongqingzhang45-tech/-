@@ -1,0 +1,16 @@
+async function* eadableStreamToAsyncIterator(res, func) {
+  const reader = res.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        return;
+      }
+      yield func(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export { eadableStreamToAsyncIterator };

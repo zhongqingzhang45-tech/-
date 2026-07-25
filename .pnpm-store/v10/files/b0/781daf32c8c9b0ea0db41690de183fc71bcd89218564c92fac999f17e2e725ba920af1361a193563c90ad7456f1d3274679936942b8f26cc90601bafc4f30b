@@ -1,0 +1,83 @@
+{
+  "name": "@tresjs/post-processing",
+  "type": "module",
+  "version": "3.7.1",
+  "description": "Post-processing library for TresJS",
+  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tresjs/tres.git",
+    "directory": "packages/postprocessing"
+  },
+  "keywords": [
+    "vue",
+    "3d",
+    "threejs",
+    "three",
+    "post-processing",
+    "effects",
+    "fx"
+  ],
+  "maintainers": [
+    "Alvaro Saburido (https://github.com/alvarosabu/)",
+    "Tino Koch (https://github.com/Tinoooo)",
+    "Damien Montastier (https://github.com/damienmontastier)"
+  ],
+  "exports": {
+    ".": "./dist/tres-post-processing.js",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/tres-post-processing.js",
+  "module": "./dist/tres-post-processing.js",
+  "types": "./dist/tres-post-processing.d.ts",
+  "files": [
+    "*.d.ts",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@tresjs/core": "5.8.0",
+    "three": ">=0.169",
+    "vue": ">=3.4"
+  },
+  "dependencies": {
+    "@vueuse/core": "^13.9.0",
+    "postprocessing": "^6.37.2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.183.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "eslint": "^9.34.0",
+    "kolorist": "^1.8.0",
+    "pathe": "^2.0.3",
+    "rollup-plugin-analyzer": "^4.0.0",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "three": "^0.183.0",
+    "tsdown": "0.18.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.1.9",
+    "vite-plugin-banner": "^0.8.1",
+    "vite-plugin-dts": "4.5.4",
+    "vue": "^3.5.22",
+    "vue-tsc": "^3.2.1",
+    "@tresjs/core": "5.8.0",
+    "@tresjs/leches": "1.2.0",
+    "@tresjs/eslint-config": "1.5.1"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@tresjs/post-processing-*"
+    ]
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:analyze": "ANALYZE=true tsdown",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "typecheck": "vue-tsc --noEmit",
+    "lint:fix": "eslint . --fix"
+  }
+}

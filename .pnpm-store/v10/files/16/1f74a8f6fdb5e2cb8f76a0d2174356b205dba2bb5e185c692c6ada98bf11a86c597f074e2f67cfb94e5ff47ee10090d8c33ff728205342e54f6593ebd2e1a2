@@ -1,0 +1,129 @@
+//#region node_modules/.pnpm/@antfu+utils@9.3.0/node_modules/@antfu/utils/dist/index.mjs
+function toArray(array) {
+	array = array ?? [];
+	return Array.isArray(array) ? array : [array];
+}
+
+//#endregion
+//#region src/rolldown.ts
+function getRolldownPlugin(factory) {
+	return async (userOptions) => {
+		const { plugins } = factory(userOptions, { framework: "rolldown" });
+		return resolvePlugins(await plugins, "rolldown");
+	};
+}
+
+//#endregion
+//#region src/rollup.ts
+function getRollupPlugin(factory) {
+	return async (userOptions) => {
+		const { plugins } = factory(userOptions, { framework: "rollup" });
+		return resolvePlugins(await plugins, "rollup");
+	};
+}
+
+//#endregion
+//#region src/webpack.ts
+function getWebpackPlugin(factory, framework = "webpack") {
+	return (userOptions) => {
+		const { name, plugins } = factory(userOptions, { framework });
+		return (compiler) => {
+			if (plugins instanceof Promise) {
+				compiler.hooks.beforeRun.tapPromise(name, async () => {
+					executePlugins(compiler, framework, await plugins);
+				});
+				/**
+				* `beforeRun` hook is only triggered when calling compiler.run() (rspack build), and will not be executed in watch mode (rspack dev). Use `watchRun` hook in watch mode.
+				*/
+				if (framework === "rspack") compiler.hooks.watchRun.tapPromise(name, async () => {
+					executePlugins(compiler, framework, await plugins);
+				});
+			} else executePlugins(compiler, framework, plugins);
+		};
+	};
+}
+function executePlugins(compiler, framework, plugins) {
+	for (const plugin of resolvePlugins(plugins, framework)) if (typeof plugin === "object") plugin.apply.call(compiler, compiler);
+	else plugin.call(compiler, compiler);
+}
+
+//#endregion
+//#region src/rspack.ts
+function getRspackPlugin(factory) {
+	return getWebpackPlugin(factory, "rspack");
+}
+
+//#endregion
+//#region src/vite.ts
+function getVitePlugin(factory) {
+	return async (userOptions) => {
+		const { plugins } = factory(userOptions, { framework: "vite" });
+		return resolvePlugins(await plugins, "vite");
+	};
+}
+
+//#endregion
+//#region src/index.ts
+function flatPlugins(plugins) {
+	return toArray(plugins).flat(Number.POSITIVE_INFINITY);
+}
+function resolvePlugins(plugins, type) {
+	return flatPlugins(plugins).filter((p) => !!p).map((plugin) => {
+		if ("instance" in plugin) {
+			const { instance, options } = plugin;
+			return instance[type](options);
+		}
+		return plugin;
+	});
+}
+const createCombinePlugin = (factory) => {
+	return {
+		get rollup() {
+			return getRollupPlugin(factory);
+		},
+		get rolldown() {
+			return getRolldownPlugin(factory);
+		},
+		get vite() {
+			return getVitePlugin(factory);
+		},
+		get esbuild() {
+			return getEsbuildPlugin(factory);
+		},
+		get webpack() {
+			return getWebpackPlugin(factory);
+		},
+		get rspack() {
+			return getRspackPlugin(factory);
+		},
+		get raw() {
+			return factory;
+		},
+		get plugins() {
+			return getPluginList(factory);
+		}
+	};
+};
+function getPluginList(factory) {
+	return (userOptions) => {
+		const { plugins } = factory(userOptions, {});
+		return plugins;
+	};
+}
+
+//#endregion
+//#region src/esbuild.ts
+const getEsbuildPlugin = (factory) => {
+	return (userOptions) => {
+		const { name, plugins } = factory(userOptions, { framework: "esbuild" });
+		return {
+			name,
+			async setup(build) {
+				for (const plugin of resolvePlugins(await plugins, "esbuild")) plugin.setup(build);
+			}
+		};
+	};
+};
+
+//#endregion
+export { getVitePlugin as a, getRollupPlugin as c, resolvePlugins as i, getRolldownPlugin as l, createCombinePlugin as n, getRspackPlugin as o, getPluginList as r, getWebpackPlugin as s, getEsbuildPlugin as t };

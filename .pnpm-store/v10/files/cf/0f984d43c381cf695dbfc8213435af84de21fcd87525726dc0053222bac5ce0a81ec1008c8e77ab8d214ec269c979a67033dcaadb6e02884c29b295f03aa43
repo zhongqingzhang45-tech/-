@@ -1,0 +1,42 @@
+import { EventaFlowDirection, and, createContext as createContext$1, defineInboundEventa, defineOutboundEventa, matchBy } from "../../context-C35Qku9U.mjs";
+import "../../src-Bb-vxm5k.mjs";
+import { defineOutboundWorkerEventa, defineWorkerEventa, generateWorkerPayload, isWorkerEventa, normalizeOnListenerParameters, parseWorkerPayload, withTransfer, workerErrorEvent } from "../../shared-DbO1rU2W.mjs";
+
+//#region src/adapters/webworkers/index.ts
+function createContext(worker) {
+	const ctx = createContext$1();
+	ctx.on(and(matchBy((e) => e._flowDirection === EventaFlowDirection.Outbound || !e._flowDirection), matchBy("*")), (event, options) => {
+		const { body, transfer } = normalizeOnListenerParameters(event, options);
+		const data = generateWorkerPayload(event.id, {
+			...defineOutboundEventa(event.type),
+			...event,
+			body
+		});
+		if (transfer != null) {
+			worker.postMessage(data, { transfer });
+			return;
+		}
+		worker.postMessage(data);
+	});
+	worker.onmessage = (event) => {
+		try {
+			const { type, payload } = parseWorkerPayload(event.data);
+			if (!isWorkerEventa(payload)) ctx.emit(defineInboundEventa(type), payload.body, { raw: { message: event } });
+			else ctx.emit(defineInboundEventa(type), { message: payload.body }, { raw: { message: event } });
+		} catch (error) {
+			console.error("Failed to parse WebWorker message:", error);
+			ctx.emit(workerErrorEvent, { error }, { raw: { message: event } });
+		}
+	};
+	worker.onerror = (error) => {
+		ctx.emit(workerErrorEvent, { error }, { raw: { error } });
+	};
+	worker.onmessageerror = (error) => {
+		ctx.emit(workerErrorEvent, { error }, { raw: { messageError: error } });
+	};
+	return { context: ctx };
+}
+
+//#endregion
+export { createContext, defineOutboundWorkerEventa, defineWorkerEventa, isWorkerEventa, withTransfer };
+//# sourceMappingURL=index.mjs.map

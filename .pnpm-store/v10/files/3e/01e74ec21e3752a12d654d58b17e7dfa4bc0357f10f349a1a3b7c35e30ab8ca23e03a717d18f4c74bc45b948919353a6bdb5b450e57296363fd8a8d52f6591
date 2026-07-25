@@ -1,0 +1,151 @@
+import path from "node:path";
+import { mkdir, rm } from "node:fs/promises";
+import { applyArtifactTransformers, applyArtifactTransformers as applyArtifactTransformers$1, artifactFilePath, artifactFilePath as artifactFilePath$1, assertArtifactFilesExist, assertArtifactFilesExist as assertArtifactFilesExist$1, assertUniqueArtifactFilePaths, assertUniqueArtifactFilePaths as assertUniqueArtifactFilePaths$1, assertUniqueCaptureFilePaths, assertUniqueCaptureFilePaths as assertUniqueCaptureFilePaths$1, captureRootSelector, captureRootSelector as captureRootSelector$1, createImageArtifact, createImageArtifact as createImageArtifact$1, sanitizeOutputName } from "@vishot/core";
+import { chromium } from "playwright";
+import { createServer } from "vite";
+//#region src/runtime/vite-server.ts
+async function startSceneViteServer(sceneAppRoot) {
+	const server = await createServer({
+		root: sceneAppRoot,
+		server: {
+			host: "127.0.0.1",
+			port: 41731,
+			strictPort: false,
+			watch: null
+		}
+	});
+	await server.listen();
+	return {
+		baseUrl: resolveViteServerUrl(server, sceneAppRoot),
+		close: async () => {
+			await server.close();
+		}
+	};
+}
+function resolveViteServerUrl(server, sceneAppRoot) {
+	const url = server.resolvedUrls?.local?.[0] ?? server.resolvedUrls?.network?.[0];
+	if (url) return url;
+	const address = server.httpServer?.address();
+	if (!address || typeof address === "string") throw new Error(`Unable to determine Vite dev server address for ${sceneAppRoot}`);
+	const { address: host, port } = address;
+	return `http://${host}:${port}`;
+}
+//#endregion
+//#region src/runtime/capture.ts
+const defaultViewport = {
+	deviceScaleFactor: 2,
+	height: 1200,
+	width: 1600
+};
+async function captureBrowserRoots(request) {
+	const { baseUrl, closeServer } = await resolveBaseUrl(request);
+	let browser;
+	try {
+		browser = await chromium.launch();
+		const context = await browser.newContext({
+			deviceScaleFactor: request.viewport?.deviceScaleFactor ?? defaultViewport.deviceScaleFactor,
+			viewport: {
+				height: request.viewport?.height ?? defaultViewport.height,
+				width: request.viewport?.width ?? defaultViewport.width
+			}
+		});
+		try {
+			const page = await context.newPage();
+			const targetUrl = new URL(request.routePath, baseUrl).href;
+			await page.goto(targetUrl);
+			await waitForScenarioReady(page);
+			await waitForPostReadySettle(page, request.settleMs);
+			await mkdir(path.resolve(request.outputDir), { recursive: true });
+			const rootNames = request.rootNames?.length ? request.rootNames : await getScenarioCaptureRoots(page);
+			assertUniqueCaptureFilePaths$1(rootNames);
+			const artifacts = [];
+			const cleanupTargets = [];
+			for (const rootName of rootNames) {
+				const transformed = await applyBrowserImageTransformers(await captureRoot(page, request.outputDir, rootName), request.imageTransformers);
+				artifacts.push(...transformed.artifacts);
+				cleanupTargets.push(transformed);
+			}
+			assertUniqueArtifactFilePaths$1(artifacts);
+			for (const cleanupTarget of cleanupTargets) if (cleanupTarget.shouldRemoveSourceFile) await rm(cleanupTarget.sourceFilePath, { force: true });
+			await context.close();
+			return artifacts;
+		} finally {
+			await context.close().catch(() => {});
+		}
+	} finally {
+		try {
+			if (browser) await browser.close();
+		} finally {
+			if (closeServer) await closeServer();
+		}
+	}
+}
+async function applyBrowserImageTransformers(artifact, transformers) {
+	const sourceFilePath = artifact.filePath;
+	let currentArtifacts = [artifact];
+	for (const transformer of transformers ?? []) {
+		const nextArtifacts = [];
+		for (const currentArtifact of currentArtifacts) {
+			const transformedArtifacts = await applyArtifactTransformers$1(currentArtifact, [transformer]);
+			for (const transformedArtifact of transformedArtifacts) {
+				assertBrowserImageArtifact(transformedArtifact);
+				nextArtifacts.push(transformedArtifact);
+			}
+		}
+		assertUniqueArtifactFilePaths$1(nextArtifacts);
+		await assertArtifactFilesExist$1(nextArtifacts);
+		currentArtifacts = nextArtifacts;
+	}
+	assertUniqueArtifactFilePaths$1(currentArtifacts);
+	await assertArtifactFilesExist$1(currentArtifacts);
+	return {
+		artifacts: currentArtifacts,
+		shouldRemoveSourceFile: currentArtifacts.length > 0 && currentArtifacts.every((artifact) => artifact.filePath !== sourceFilePath),
+		sourceFilePath
+	};
+}
+function assertBrowserImageArtifact(artifact) {
+	if (artifact.kind !== "image" || artifact.stage !== "browser-final") throw new Error(`Browser image transformers must return image artifacts with stage "browser-final". Received kind="${artifact.kind}" stage="${artifact.stage}" for artifact "${artifact.artifactName}".`);
+}
+async function captureRoot(page, outputDir, rootName) {
+	const filePath = artifactFilePath$1(outputDir, rootName, "png");
+	const locator = page.locator(captureRootSelector$1(rootName));
+	await locator.waitFor({ state: "visible" });
+	await locator.screenshot({
+		animations: "disabled",
+		path: filePath
+	});
+	return createImageArtifact$1({
+		artifactName: rootName,
+		filePath,
+		stage: "browser-final"
+	});
+}
+function getScenarioCaptureRoots(page) {
+	return page.locator("[data-scenario-capture-root]").evaluateAll((elements) => {
+		const rootNames = elements.map((element) => element.getAttribute("data-scenario-capture-root") ?? "").filter((name) => name.length > 0);
+		return [...new Set(rootNames)];
+	});
+}
+async function resolveBaseUrl(request) {
+	if (request.baseUrl) return { baseUrl: request.baseUrl };
+	if (request.sceneAppRoot) {
+		const server = await startSceneViteServer(request.sceneAppRoot);
+		return {
+			baseUrl: server.baseUrl,
+			closeServer: server.close
+		};
+	}
+	throw new Error("Browser capture requires either \"baseUrl\" or \"sceneAppRoot\"");
+}
+async function waitForPostReadySettle(page, settleMs) {
+	if (!settleMs || settleMs <= 0) return;
+	await page.waitForTimeout(settleMs);
+}
+async function waitForScenarioReady(page) {
+	await page.waitForFunction(() => {
+		return window.__SCENARIO_CAPTURE_READY__ === true;
+	});
+}
+//#endregion
+export { applyArtifactTransformers, artifactFilePath, assertArtifactFilesExist, assertUniqueArtifactFilePaths, assertUniqueCaptureFilePaths, captureBrowserRoots, captureRootSelector, createImageArtifact, sanitizeOutputName };

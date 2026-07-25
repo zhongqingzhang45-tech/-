@@ -1,0 +1,6 @@
+declare const _default: import("../../rule.ts").RuleModuleWithName<"variable", [], {
+    description: string;
+    recommended: string;
+}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
+export default _default;
+//# sourceMappingURL=no-interpolation.d.ts.map

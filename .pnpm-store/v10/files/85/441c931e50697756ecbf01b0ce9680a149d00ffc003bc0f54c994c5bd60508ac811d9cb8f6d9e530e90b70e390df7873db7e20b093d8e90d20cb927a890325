@@ -1,0 +1,27 @@
+function I(o) {
+  const { fillColor: m, maximumDistanceToBorder: l, processPixel: f } = o, s = Math.round(o.width), i = Math.round(o.height), d = new ImageData(s, i);
+  new Uint32Array(d.data.buffer).fill(m);
+  const t = Math.min(o.radius, s / 2, i / 2), B = s - t * 2, S = i - t * 2, g = t ** 2, w = (t + 1) ** 2, M = l ? (t - l) ** 2 : 0;
+  for (let e = 0; e < i; e++)
+    for (let n = 0; n < s; n++) {
+      const x = (e * s + n) * 4, q = n < t, O = n >= s - t, y = e < t, C = e >= i - t, a = q ? n - t : O ? n - t - B : 0, c = y ? e - t : C ? e - t - S : 0, r = a * a + c * c;
+      if (r <= w && r >= M) {
+        const h = Math.sqrt(r), u = t - h, R = u / t, z = Math.atan2(c, a), D = r > g ? 1 - u : 1;
+        f(
+          a,
+          c,
+          d.data,
+          x,
+          h,
+          u,
+          R,
+          z,
+          D
+        );
+      }
+    }
+  return d;
+}
+export {
+  I as calculateCircleMap
+};

@@ -1,0 +1,32 @@
+{
+  "name": "@lemonneko/crop-empty-pixels",
+  "type": "module",
+  "version": "0.1.1",
+  "private": false,
+  "author": "LemonNeko",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LemonNekoGH/crop-empty-pixels"
+  },
+  "keywords": [
+    "image-processing"
+  ],
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@antfu/eslint-config": "^5.2.1",
+    "eslint": "^9.34.0",
+    "tsdown": "^0.13.5",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "build": "tsdown ./src/index.ts",
+    "lint": "eslint . --cache",
+    "lint:fix": "pnpm lint --fix",
+    "typecheck": "tsc --noEmit"
+  }
+}

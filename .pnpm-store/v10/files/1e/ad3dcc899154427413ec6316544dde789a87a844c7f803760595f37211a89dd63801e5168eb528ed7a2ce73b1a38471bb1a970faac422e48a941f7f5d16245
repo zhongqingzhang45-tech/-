@@ -1,0 +1,4 @@
+export { x } from "./lib/index.js";
+export type Attributes = import('./lib/index.js').Attributes;
+export type Child = import('./lib/index.js').Child;
+export type Result = import('./lib/index.js').Result;

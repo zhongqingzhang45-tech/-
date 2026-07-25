@@ -1,0 +1,7 @@
+import { t as Options } from "./types-xBc6GOed.mjs";
+import * as _$esbuild from "esbuild";
+
+//#region src/esbuild.d.ts
+declare const _default: (options?: Options | undefined) => _$esbuild.Plugin;
+//#endregion
+export { _default as default };

@@ -1,0 +1,21 @@
+import { ArtifactTransformer, ArtifactTransformer as ArtifactTransformer$1, VishotArtifact, VishotArtifact as VishotArtifact$1, VishotArtifactKind, VishotArtifactStage, applyArtifactTransformers, artifactFilePath, assertArtifactFilesExist, assertUniqueArtifactFilePaths, assertUniqueCaptureFilePaths, captureRootSelector, createImageArtifact, sanitizeOutputName } from "@vishot/core";
+//#region src/runtime/types.d.ts
+interface BrowserCaptureRequest {
+  baseUrl?: string;
+  imageTransformers?: ArtifactTransformer$1[];
+  outputDir: string;
+  rootNames?: string[];
+  routePath: string;
+  sceneAppRoot?: string;
+  settleMs?: number;
+  viewport?: {
+    deviceScaleFactor?: number;
+    height: number;
+    width: number;
+  };
+}
+//#endregion
+//#region src/runtime/capture.d.ts
+declare function captureBrowserRoots(request: BrowserCaptureRequest): Promise<VishotArtifact$1[]>;
+//#endregion
+export { type ArtifactTransformer, type BrowserCaptureRequest, type VishotArtifact, type VishotArtifactKind, type VishotArtifactStage, applyArtifactTransformers, artifactFilePath, assertArtifactFilesExist, assertUniqueArtifactFilePaths, assertUniqueCaptureFilePaths, captureBrowserRoots, captureRootSelector, createImageArtifact, sanitizeOutputName };

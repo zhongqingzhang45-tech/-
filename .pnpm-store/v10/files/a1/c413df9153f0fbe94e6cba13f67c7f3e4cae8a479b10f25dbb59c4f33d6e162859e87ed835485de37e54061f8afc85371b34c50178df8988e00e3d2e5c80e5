@@ -1,0 +1,38 @@
+import { UnaryExpression } from 'estree'
+import { Rule } from 'eslint'
+interface TransformOptions {
+  /**
+   * The type of logical expression to transform.
+   */
+  expressionType: ExpressionType
+  /**
+   * Whether the transformed expression should be wrapped in parentheses.
+   */
+  shouldWrapInParens: boolean
+  /**
+   * The ESLint rule context.
+   */
+  context: Rule.RuleContext
+  /**
+   * The UnaryExpression node to transform.
+   */
+  node: UnaryExpression
+}
+type ExpressionType = 'conjunction' | 'disjunction'
+/**
+ * Transforms a negated logical expression according to De Morgan's law. Can
+ * handle both conjunctions `(!(A && B) -> !A || !B)` and disjunctions `(!(A ||
+ * B) -> !A && !B)`. Preserves formatting, comments, and whitespace in the
+ * transformed expression.
+ *
+ * @param options - The transformation options.
+ * @returns The transformed expression or null if transformation is not
+ *   applicable.
+ */
+export declare function transform({
+  shouldWrapInParens,
+  expressionType,
+  context,
+  node,
+}: TransformOptions): string | null
+export {}

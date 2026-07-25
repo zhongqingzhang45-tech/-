@@ -1,0 +1,121 @@
+import { pipeline, PretrainedConfig as PretrainedConfig$1, ProgressInfo as ProgressInfo$1, PretrainedOptions as PretrainedOptions$1, AutoModel } from '@huggingface/transformers';
+import { InferenceSession } from 'onnxruntime-common';
+
+interface DoneProgressInfo {
+    file: string;
+    name: string;
+    status: 'done';
+}
+interface DownloadProgressInfo {
+    file: string;
+    name: string;
+    status: 'download';
+}
+interface InitiateProgressInfo {
+    file: string;
+    name: string;
+    status: 'initiate';
+}
+type ProgressCallback = (progress: ProgressInfo) => void;
+type ProgressInfo = DoneProgressInfo | DownloadProgressInfo | InitiateProgressInfo | ProgressStatusInfo | ReadyProgressInfo;
+interface ProgressStatusInfo {
+    file: string;
+    loaded: number;
+    name: string;
+    progress: number;
+    status: 'progress';
+    total: number;
+}
+interface ReadyProgressInfo {
+    model: string;
+    status: 'ready';
+    task: string;
+}
+
+type Device = Extract<Exclude<NonNullable<Required<Parameters<typeof pipeline>>[2]['device']>, Record<string, any>>, 'wasm' | 'webgpu'>;
+
+type DType = DTypeItem | Record<string, DTypeItem>;
+type DTypeItem = Exclude<NonNullable<Required<Parameters<typeof pipeline>>[2]['dtype']>, string>[string];
+
+/**
+ * Options for loading a pretrained model.
+ */
+interface ModelSpecificPretrainedOptions {
+    /**
+     * The device to run the model on. If not specified, the device will be chosen from the environment settings.
+     */
+    device?: Device;
+    /**
+     * The data type to use for the model. If not specified, the data type will be chosen from the environment settings.
+     */
+    dtype?: DType;
+    /**
+     * If specified, load the model with this name (excluding the .onnx suffix). Currently only valid for encoder- or decoder-only models.
+     *
+     * @default null
+     */
+    model_file_name?: string;
+    /**
+     * User-specified session options passed to the runtime. If not provided, suitable defaults will be chosen.
+     */
+    session_options?: InferenceSession.SessionOptions;
+    /**
+     * In case the relevant files are located inside a subfolder of the model repo on huggingface.co,
+     * you can specify the folder name here.
+     *
+     * @default 'onnx'
+     */
+    subfolder?: string;
+    /**
+     * Whether to load the model using the external data format (used for models >= 2GB in size).
+     *
+     * @default false
+     */
+    use_external_data_format?: boolean;
+}
+/**
+ * Options for loading a pretrained model.
+ */
+interface PretrainedOptions {
+    /**
+     * Path to a directory in which a downloaded pretrained model configuration should be cached if the standard cache should not be used.
+     */
+    cache_dir?: string;
+    /**
+     * Configuration for the model to use instead of an automatically loaded configuration. Configuration can be automatically loaded when:
+     * - The model is a model provided by the library (loaded with the *model id* string of a pretrained model).
+     * - The model is loaded by supplying a local directory as `pretrained_model_name_or_path` and a configuration JSON file named *config.json* is found in the directory.
+     */
+    config?: PretrainedConfig$1;
+    /**
+     * Whether or not to only look at local files (e.g., not try downloading the model).
+     *
+     * @default false
+     */
+    local_files_only?: boolean;
+    /**
+     * If specified, this function will be called during model construction, to provide the user with progress updates.
+     */
+    progress_callback?: ProgressCallback;
+    /**
+     * The specific model version to use. It can be a branch name, a tag name, or a commit id,
+     * since we use a git-based system for storing models and other artifacts on huggingface.co, so `revision` can be any identifier allowed by git.
+     * NOTE: This setting is ignored for local requests.
+     *
+     * @default 'main'
+     */
+    revision?: string;
+}
+
+type LoadOptionProgressCallback = (progress: ProgressInfo$1) => Promise<void> | void;
+type LoadOptions<T> = Omit<ModelSpecificPretrainedOptions & PretrainedOptions$1, 'progress_callback'> & T & {
+    onProgress?: LoadOptionProgressCallback;
+};
+type PipelineOptionsFrom<T> = T extends (...args: any) => any ? NonNullable<Parameters<T>[2]> : never;
+type PipelineSelfOptionsFrom<T> = T extends (...args: any) => Promise<(infer R)> ? R extends (...args: any) => any ? NonNullable<Parameters<R>[1]> : never : never;
+type PretrainedConfig = NonNullable<Parameters<typeof AutoModel.from_pretrained>[1]>['config'];
+type PretrainedConfigFrom<T> = T extends {
+    from_pretrained: (...args: any) => any;
+} ? NonNullable<Parameters<T['from_pretrained']>[1]>['config'] : never;
+
+export type { DType, DTypeItem, Device, DoneProgressInfo, DownloadProgressInfo, InitiateProgressInfo, LoadOptionProgressCallback, LoadOptions, ModelSpecificPretrainedOptions, PipelineOptionsFrom, PipelineSelfOptionsFrom, PretrainedConfig, PretrainedConfigFrom, PretrainedOptions, ProgressCallback, ProgressInfo, ProgressStatusInfo, ReadyProgressInfo };

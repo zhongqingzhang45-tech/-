@@ -1,0 +1,4 @@
+import type { HistoireConfig, ServerStoryFile, ServerTree, ServerTreeFile } from '@histoire/shared';
+export declare function createPath(config: HistoireConfig, file: ServerTreeFile): string[];
+export declare function makeTree(config: HistoireConfig, files: ServerStoryFile[]): ServerTree;
+//# sourceMappingURL=tree.d.ts.map

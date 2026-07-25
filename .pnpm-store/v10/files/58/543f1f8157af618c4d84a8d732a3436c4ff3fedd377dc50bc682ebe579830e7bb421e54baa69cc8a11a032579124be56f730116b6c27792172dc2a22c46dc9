@@ -1,0 +1,6 @@
+import { t as Options } from "./types-D06-cUms.cjs";
+import * as _$webpack from "webpack";
+
+//#region src/webpack.d.ts
+declare const _default: (options?: Options | undefined) => _$webpack.WebpackPluginInstance;
+export = _default;

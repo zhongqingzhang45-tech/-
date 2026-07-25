@@ -1,0 +1,71 @@
+{
+  "name": "@proj-airi/iconify-meteocons",
+  "type": "module",
+  "version": "0.1.5",
+  "description": "Iconify JSON IconSet port for Meteocons",
+  "author": {
+    "name": "Project AIRI Team",
+    "email": "airi@moeru.ai",
+    "url": "https://github.com/proj-airi"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/basmilius/weather-icons",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proj-airi/iconify-meteocons.git"
+  },
+  "exports": {
+    "./*": "./*",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.mjs"
+    },
+    "./icons.json": "./dist/icons.json",
+    "./info.json": "./dist/info.json",
+    "./metadata.json": "./dist/metadata.json"
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "README.md",
+    "dist",
+    "package.json"
+  ],
+  "dependencies": {
+    "@iconify/types": "^2.0.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^8.2.0",
+    "@iconify/tools": "^5.0.11",
+    "@types/node": "^25.6.0",
+    "bumpp": "^11.0.1",
+    "changelogithub": "^14.0.0",
+    "eslint": "^10.2.0",
+    "lint-staged": "^16.4.0",
+    "local-pkg": "^1.1.2",
+    "simple-git-hooks": "^2.13.1",
+    "taze": "^19.11.0",
+    "tsdown": "^0.21.8",
+    "typescript": "^5.9.3",
+    "unplugin-unused": "^0.5.7"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
+  },
+  "scripts": {
+    "dev": "tsdown",
+    "stub": "tsdown",
+    "build": "tsdown",
+    "lint": "eslint --cache .",
+    "lint:fix": "eslint --cache --fix .",
+    "typecheck": "tsc --noEmit",
+    "sizecheck": "npx vite-bundle-visualizer",
+    "up": "taze -w -r -I -f && pnpm prune && pnpm dedupe",
+    "changelogithub": "changelogithub"
+  }
+}

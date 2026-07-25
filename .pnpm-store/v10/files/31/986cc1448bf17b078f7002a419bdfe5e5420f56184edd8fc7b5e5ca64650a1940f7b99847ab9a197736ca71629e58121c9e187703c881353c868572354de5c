@@ -1,0 +1,27 @@
+{
+    "name": "@types/splitpanes",
+    "version": "2.2.6",
+    "description": "TypeScript definitions for splitpanes",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/splitpanes",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "n0k0",
+            "githubUsername": "n0k0",
+            "url": "https://github.com/n0k0"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/splitpanes"
+    },
+    "scripts": {},
+    "dependencies": {
+        "vue": "^2.0.0"
+    },
+    "typesPublisherContentHash": "9530b444d9c6d55f62369f89a4deea5d3445e60702f704ddcbfaa7d1e9e65707",
+    "typeScriptVersion": "4.5"
+}

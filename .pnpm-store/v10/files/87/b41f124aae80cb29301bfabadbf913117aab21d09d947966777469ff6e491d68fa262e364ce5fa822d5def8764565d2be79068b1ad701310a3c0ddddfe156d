@@ -1,0 +1,13 @@
+import type { Ref } from 'vue';
+interface SceneDefinition {
+    id: string;
+    title: string;
+}
+interface SceneNavigatorProps {
+    currentSceneId?: Ref<string> | string;
+    onNavigate?: (sceneId: string) => void;
+    scenes?: readonly SceneDefinition[];
+}
+declare const __VLS_export: import("vue").DefineComponent<SceneNavigatorProps, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<SceneNavigatorProps> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const _default: typeof __VLS_export;
+export default _default;

@@ -1,0 +1,5 @@
+import { t as UnpluginInfo } from "./core-CXsJy3-3.mjs";
+//#region src/webpack.ts
+var webpack_default = UnpluginInfo.webpack;
+//#endregion
+export { webpack_default as default };

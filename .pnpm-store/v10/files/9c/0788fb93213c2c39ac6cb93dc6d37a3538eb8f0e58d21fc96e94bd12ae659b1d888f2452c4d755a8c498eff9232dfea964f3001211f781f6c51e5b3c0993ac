@@ -1,0 +1,55 @@
+import { c as matchBy, i as and, o as defineInboundEventa, s as defineOutboundEventa, t as createContext$1 } from "../../context-SiKOMx8N.mjs";
+import { t as toError } from "../../errors-B--PnHjv.mjs";
+import { a as workerErrorEvent, i as normalizeOnListenerParameters, n as defineWorkerEventa, o as generateWorkerPayload, r as isWorkerEventa, s as parseWorkerPayload, t as defineOutboundWorkerEventa } from "../../shared-V2T5WOQ7.mjs";
+//#region src/adapters/webworkers/index.ts
+function createContext(worker) {
+	const ctx = createContext$1();
+	ctx.on(and(matchBy((e) => e._flowDirection === "outbound" || !e._flowDirection), matchBy("*")), (event, options) => {
+		const { body, transfer } = normalizeOnListenerParameters(event, options);
+		const data = generateWorkerPayload(event.id, {
+			...defineOutboundEventa(event.type),
+			...event,
+			body
+		});
+		if (transfer != null) {
+			worker.postMessage(data, { transfer });
+			return;
+		}
+		worker.postMessage(data);
+	});
+	worker.onmessage = (event) => {
+		try {
+			const { type, payload } = parseWorkerPayload(event.data);
+			if (!isWorkerEventa(payload)) ctx.emit(defineInboundEventa(type), payload.body, { raw: { message: event } });
+			else ctx.emit(defineInboundEventa(type), { message: payload.body }, { raw: { message: event } });
+		} catch (error) {
+			console.error("Failed to parse WebWorker message:", error);
+			ctx.emit(workerErrorEvent, {
+				kind: "parse",
+				error: toError(error, "eventa: webworker message parse error")
+			}, { raw: { message: event } });
+		}
+	};
+	worker.onerror = (event) => {
+		const error = toError(event, "eventa: invoke cancelled, webworker error");
+		ctx.abort(error);
+		ctx.emit(workerErrorEvent, {
+			kind: "fatal",
+			error
+		}, { raw: { error: event } });
+	};
+	worker.onmessageerror = (event) => {
+		const error = toError(event, "eventa: invoke cancelled, webworker messageerror");
+		ctx.abort(error);
+		ctx.emit(workerErrorEvent, {
+			kind: "messageerror",
+			error,
+			message: event
+		}, { raw: { messageError: event } });
+	};
+	return { context: ctx };
+}
+//#endregion
+export { createContext, defineOutboundWorkerEventa, defineWorkerEventa, isWorkerEventa, workerErrorEvent };
+
+//# sourceMappingURL=index.mjs.map

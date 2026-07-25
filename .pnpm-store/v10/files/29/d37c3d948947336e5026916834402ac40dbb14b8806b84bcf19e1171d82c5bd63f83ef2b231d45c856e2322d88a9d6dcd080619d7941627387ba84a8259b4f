@@ -1,0 +1,58 @@
+import { ProgressInfo } from '@huggingface/transformers';
+import * as _moeru_eventa from '@moeru/eventa';
+import { LoadOptionProgressCallback } from '../types/index.js';
+import 'onnxruntime-common';
+
+type ErrorMessageEvents<E = unknown> = WorkerMessageEvent<{
+    error?: E;
+    message?: string;
+}, 'error'>;
+type LoadMessageEvents<D = undefined, T extends string = string> = WorkerMessageEvent<D, T> | WorkerMessageEvent<{
+    message: string;
+}, 'info'> | WorkerMessageEvent<{
+    message?: string;
+    status: 'loading' | 'ready';
+}, 'status'> | WorkerMessageEvent<{
+    progress: ProgressInfo;
+}, 'progress'>;
+type ProcessMessageEvents<D = unknown, T = unknown> = WorkerMessageEvent<D, T>;
+interface WorkerMessageEvent<D, T> {
+    data: D;
+    type: T;
+}
+type WorkerMessageEvents<D = undefined, T extends string = string> = LoadMessageEvents<D, T> | ProcessMessageEvents<D, T>;
+
+declare function createLoadDefinition<Params, StreamEventBody = undefined, StreamEventType extends string = string>(): {
+    sendEvent: _moeru_eventa.SendEvent<LoadMessageEvents<StreamEventBody, StreamEventType>, Params, Error, Error>;
+    sendEventError: _moeru_eventa.SendEventError<LoadMessageEvents<StreamEventBody, StreamEventType>, Params, Error, Error>;
+    receiveEvent: _moeru_eventa.ReceiveEvent<LoadMessageEvents<StreamEventBody, StreamEventType>, Params, Error, Error>;
+    receiveEventError: _moeru_eventa.ReceiveEventError<LoadMessageEvents<StreamEventBody, StreamEventType>, Params, Error, Error>;
+    receiveEventStreamEnd: _moeru_eventa.ReceiveEventStreamEnd<LoadMessageEvents<StreamEventBody, StreamEventType>, Params, Error, Error>;
+};
+declare function createProcessDefinition<Params, Results, T extends string = string>(onResultType: T): {
+    sendEvent: _moeru_eventa.SendEvent<Results, Params, Error, Error>;
+    sendEventError: _moeru_eventa.SendEventError<Results, Params, Error, Error>;
+    receiveEvent: _moeru_eventa.ReceiveEvent<Results, Params, Error, Error>;
+    receiveEventError: _moeru_eventa.ReceiveEventError<Results, Params, Error, Error>;
+    receiveEventStreamEnd: _moeru_eventa.ReceiveEventStreamEnd<Results, Params, Error, Error>;
+};
+
+interface WorkerOptions {
+    worker?: Worker;
+    workerURL?: string | undefined | URL;
+}
+declare const createTransformersWorker: <T extends WorkerOptions, T2 extends {
+    onProgress?: LoadOptionProgressCallback;
+}>(createOptions: T) => {
+    dispose: () => void;
+    load: <Params>(payload?: Params, options?: T2) => Promise<void>;
+    process: <Params, Results>(payload: Params, onResultType: string, options?: T2 & {
+        loadOptions?: {
+            options?: T2;
+            payload: LoadMessageEvents<any, string>;
+        };
+    }) => Promise<Results>;
+};
+
+export { createLoadDefinition, createProcessDefinition, createTransformersWorker };
+export type { ErrorMessageEvents, LoadMessageEvents, ProcessMessageEvents, WorkerMessageEvent, WorkerMessageEvents, WorkerOptions };

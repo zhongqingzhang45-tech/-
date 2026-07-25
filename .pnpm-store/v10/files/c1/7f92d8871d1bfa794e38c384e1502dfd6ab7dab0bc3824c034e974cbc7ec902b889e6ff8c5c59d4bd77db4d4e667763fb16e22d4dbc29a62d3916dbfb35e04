@@ -1,0 +1,29 @@
+//#region src/index.d.ts
+type MaybePromise<T> = T | Promise<T>;
+type ReaderLikeReadResult = {
+  done: false;
+  value: Uint8Array;
+} | {
+  done: true;
+  value?: Uint8Array;
+};
+interface ReaderLike {
+  read: () => MaybePromise<ReaderLikeReadResult>;
+  close?: () => void;
+}
+interface Options {
+  signal?: AbortSignal;
+}
+/**
+ * Safely read UTF-8 grapheme clusters from a byte stream.
+ *
+ * @param reader
+ * @param reader.read A function that read a chunk from a stream-like data source.
+ * @param reader.close An optional function to close the reader.
+ * @param options
+ * @param options.signal An optional AbortSignal to cancel the operation.
+ * @returns An async iterable iterator of grapheme clusters presented as strings.
+ */
+declare function readGraphemeClusters(reader: ReaderLike, options?: Options): AsyncIterableIterator<string>;
+//#endregion
+export { MaybePromise, Options, ReaderLike, ReaderLikeReadResult, readGraphemeClusters };

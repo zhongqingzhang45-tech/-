@@ -1,0 +1,4 @@
+import f from "./menu-bar.vue.js";
+export {
+  f as default
+};

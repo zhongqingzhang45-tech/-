@@ -1,0 +1,32 @@
+export function wrap(input, callback) {
+    return callback(input);
+}
+export function quote(input) {
+    return JSON.stringify(input);
+}
+export function isValidVariableName(input) {
+    return /^\p{ID_Start}\p{ID_Continue}+$/u.test(input);
+}
+export function property(name) {
+    return isValidVariableName(name) ? '.' + name : `[${name}]`;
+}
+export function findLastIndex(elements, predicate) {
+    let index = elements.length;
+    while (index) {
+        index -= 1;
+        if (predicate(elements[index]))
+            return index;
+    }
+    return -1;
+}
+/** ----- ESLint Helper ----- */
+/**
+ * `context.sourceCode.getScope()` requires at least one argument, no-argument usage (global scope)
+ * is no longer supported.
+ *
+ * https://github.com/ota-meshi/eslint-compat-utils/blob/96387ca53dc08306d773c33b3b003582721084a1/src/get-source-code.ts#L36
+ */
+export function getGlobalScope(sourceCode) {
+    return sourceCode.scopeManager?.scopes[0] ?? null;
+}
+//# sourceMappingURL=utils.js.map

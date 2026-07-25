@@ -1,0 +1,16 @@
+import { Logg } from "@guiiai/logg";
+import { PgliteDatabase } from "drizzle-orm/pglite";
+
+//#region src/pglite/index.d.ts
+interface MigrateOptions {
+  logger?: Logg;
+}
+declare function migrate<TSchema extends Record<string, unknown>>(db: PgliteDatabase<TSchema>, bundledMigrations: {
+  idx: number;
+  when: number;
+  tag: string;
+  hash: string;
+  sql: string[];
+}[], options?: MigrateOptions): Promise<void>;
+//#endregion
+export { MigrateOptions, migrate };

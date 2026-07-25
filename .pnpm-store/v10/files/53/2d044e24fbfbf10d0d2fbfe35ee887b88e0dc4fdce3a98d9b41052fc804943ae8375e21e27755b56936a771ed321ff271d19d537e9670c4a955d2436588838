@@ -1,0 +1,21 @@
+import { CommonRequestOptions } from '@xsai/shared';
+
+interface Model {
+    created: number;
+    id: string;
+    object: 'model';
+    owned_by: string;
+}
+
+interface ListModelsOptions extends Omit<CommonRequestOptions, 'model'> {
+}
+interface ListModelsResponse {
+    data: Model[];
+    object: 'list';
+}
+declare const listModels: (options: ListModelsOptions) => Promise<Model[]>;
+
+declare const retrieveModel: (options: CommonRequestOptions) => Promise<Model>;
+
+export { listModels, retrieveModel };
+export type { ListModelsOptions, ListModelsResponse, Model };

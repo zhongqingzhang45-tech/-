@@ -1,0 +1,10 @@
+import { defineInvokeEventa } from '@moeru/eventa';
+
+function createLoadDefinition() {
+  return defineInvokeEventa("load");
+}
+function createProcessDefinition(onResultType) {
+  return defineInvokeEventa(onResultType);
+}
+
+export { createProcessDefinition as a, createLoadDefinition as c };

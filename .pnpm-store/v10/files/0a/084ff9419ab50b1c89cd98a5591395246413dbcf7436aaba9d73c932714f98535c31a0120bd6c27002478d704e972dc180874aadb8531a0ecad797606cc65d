@@ -1,0 +1,1227 @@
+/**
+  * name: @tresjs/post-processing
+  * version: v3.7.1
+  * (c) 2026
+  * description: Post-processing library for TresJS
+  * author: Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)
+  */
+import * as vue47 from "vue";
+import { Reactive, ShallowRef } from "vue";
+import * as postprocessing0 from "postprocessing";
+import { ASCIIEffect, ASCIITexture, BlendFunction, BloomEffect, BrightnessContrastEffect, ChromaticAberrationEffect, ColorAverageEffect, ColorDepthEffect, DepthCopyMode, DepthOfFieldEffect, DepthPickingPass, DotScreenEffect, EdgeDetectionMode, Effect, EffectComposer, EffectPass, FXAAEffect, GlitchEffect, GlitchMode, GodRaysEffect, GridEffect, HueSaturationEffect, KernelSize, LensDistortionEffect, NoiseEffect, OutlineEffect, PixelationEffect, PredicationMode, SMAAEffect, SMAAPreset, ScanlineEffect, SepiaEffect, ShockWaveEffect, TextureEffect, TiltShiftEffect, ToneMappingEffect, ToneMappingMode, VignetteEffect, VignetteTechnique } from "postprocessing";
+import { TresColor } from "@tresjs/core";
+import { Color, DepthPackingStrategies, Mesh, Object3D, Points, Texture, Vector2, Vector3, WebGLRenderTarget } from "three";
+import { EffectComposer as EffectComposer$1 } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { GlitchPass } from "three/examples/jsm/postprocessing/GlitchPass.js";
+import { HalftonePass } from "three/examples/jsm/postprocessing/HalftonePass.js";
+import { RenderPixelatedPass } from "three/examples/jsm/postprocessing/RenderPixelatedPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { Pass } from "three/examples/jsm/postprocessing/Pass.js";
+import { Blending } from "three/src/constants.js";
+
+//#region src/core/pmndrs/BloomPmndrs.vue.d.ts
+interface BloomPmndrsProps {
+  /**
+   * The blend function of this effect.
+   * @default BlendFunction.SCREEN
+   * @type {BlendFunction}
+   * @memberof BloomPmndrsProps
+  */
+  blendFunction?: BlendFunction;
+  /**
+   * The intensity of the bloom effect.
+   *
+   * @default 1
+   * @type {number}
+   * @memberof BloomProps
+   */
+  intensity?: number;
+  /**
+   * The kernel size.
+   *
+   * @default KernelSize.LARGE
+   *
+   * @type {KernelSize}
+   * @memberof BloomPmndrsProps
+   */
+  kernelSize?: KernelSize;
+  /**
+   * The luminance threshold. Raise this value to mask out darker elements in the scene. Range is [0, 1].
+   *
+   * @default 0.9
+   *
+   * @type {number}
+   * @memberof BloomPmndrsProps
+   */
+  luminanceThreshold?: number;
+  /**
+   * Controls the smoothness of the luminance threshold. Range is [0, 1].
+   *
+   * @default 0.025
+   *
+   * @type {number}
+   * @memberof BloomPmndrsProps
+   */
+  luminanceSmoothing?: number;
+  /**
+   * Enables mip map blur.
+   *
+   * @default false
+   *
+   * @type {boolean}
+   * @memberof BloomPmndrsProps
+   */
+  mipmapBlur?: boolean;
+}
+declare const _default$2: typeof __VLS_export$37;
+declare const __VLS_export$37: vue47.DefineComponent<BloomPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<BloomEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<BloomPmndrsProps> & Readonly<{}>, {
+  mipmapBlur: boolean;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/composables/useEffectPmndrs.d.ts
+/**
+ * @param newEffectFunction - A function that returns a new effect instance.
+ * @param passDependencies - A reactive object that the pass depends on (usually props). Changes to this object will trigger re-rendering.
+ * @param dependencyFieldsTriggeringRecreation - fields in passDependencies that require effect recreation when changed
+ */
+declare const useEffectPmndrs: <T extends Effect, D extends Record<PropertyKey, any>>(newEffectFunction: () => T, passDependencies: Reactive<D>, dependencyFieldsTriggeringRecreation?: (keyof D)[]) => {
+  pass: ShallowRef<EffectPass | null>;
+  effect: ShallowRef<T | null>;
+};
+//#endregion
+//#region src/core/pmndrs/DepthOfFieldPmndrs.vue.d.ts
+interface DepthOfFieldPmndrsProps {
+  /**
+   * The blend function of this effect.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The focus distance in world units.
+   */
+  worldFocusDistance?: number;
+  /**
+   * The focus range in world units.
+   */
+  worldFocusRange?: number;
+  /**
+   * The normalized focus distance. Range is [0.0, 1.0].
+   */
+  focusDistance?: number;
+  /**
+   * The focus range. Range is [0.0, 1.0].
+   */
+  focusRange?: number;
+  /**
+   * The scale of the bokeh blur.
+   */
+  bokehScale?: number;
+  resolutionScale?: number;
+  resolutionX?: number;
+  resolutionY?: number;
+}
+declare const _default$7: typeof __VLS_export$36;
+declare const __VLS_export$36: vue47.DefineComponent<DepthOfFieldPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<DepthOfFieldEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<DepthOfFieldPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/EffectComposerPmndrs.vue.d.ts
+interface EffectComposerPmndrsProps {
+  enabled?: boolean;
+  depthBuffer?: boolean;
+  disableNormalPass?: boolean;
+  stencilBuffer?: boolean;
+  resolutionScale?: number;
+  autoClear?: boolean;
+  multisampling?: number;
+  frameBufferType?: number;
+}
+declare const _default$11: typeof __VLS_export$35;
+declare const __VLS_export$35: __VLS_WithSlots$1<vue47.DefineComponent<EffectComposerPmndrsProps, {
+  composer: ShallowRef<EffectComposer | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {
+  render: (...args: any[]) => void;
+}, string, vue47.PublicProps, Readonly<EffectComposerPmndrsProps> & Readonly<{
+  onRender?: ((...args: any[]) => any) | undefined;
+}>, {
+  enabled: boolean;
+  depthBuffer: boolean;
+  disableNormalPass: boolean;
+  stencilBuffer: boolean;
+  autoClear: boolean;
+  multisampling: number;
+  frameBufferType: number;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>, {
+  default?: (props: {}) => any;
+}>;
+type __VLS_WithSlots$1<T, S> = T & {
+  new (): {
+    $slots: S;
+  };
+};
+//#endregion
+//#region src/core/pmndrs/GlitchPmndrs.vue.d.ts
+interface GlitchPmndrsProps {
+  blendFunction?: BlendFunction;
+  /**
+   *  The minimum and maximum delay between glitch activations in seconds.
+   */
+  delay?: Vector2;
+  /**
+   * The minimum and maximum duration of a glitch in seconds.
+   */
+  duration?: Vector2;
+  /**
+   * The strength of weak and strong glitches.
+   */
+  strength?: Vector2;
+  /**
+   * The glitch mode. Can be DISABLED | SPORADIC | CONSTANT_MILD | CONSTANT_WILD.
+   */
+  mode?: GlitchMode;
+  /**
+   * Turn the effect on and off.
+   */
+  active?: boolean;
+  /**
+   *
+   * The threshold for strong glitches.
+   */
+  ratio?: number;
+  /**
+   * The scale of the blocky glitch columns.
+   */
+  columns?: number;
+  /**
+   * A chromatic aberration offset. If provided, the glitch effect will influence this offset.
+   */
+  chromaticAberrationOffset?: Vector2;
+  /**
+   * A perturbation map. If none is provided, a noise texture will be created.
+   */
+  perturbationMap?: Texture;
+  /**
+   * The size of the generated noise map. Will be ignored if a perturbation map is provided.
+   */
+  dtSize?: number;
+}
+declare const _default$15: typeof __VLS_export$34;
+declare const __VLS_export$34: vue47.DefineComponent<GlitchPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<GlitchEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<GlitchPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/NoisePmndrs.vue.d.ts
+interface NoisePmndrsProps {
+  /**
+   * Whether the noise should be multiplied with the input color.
+   */
+  premultiply?: boolean;
+  blendFunction?: BlendFunction;
+}
+declare const _default$23: typeof __VLS_export$33;
+declare const __VLS_export$33: vue47.DefineComponent<NoisePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<NoiseEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<NoisePmndrsProps> & Readonly<{}>, {
+  premultiply: boolean;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/OutlinePmndrs.vue.d.ts
+interface OutlinePmndrsProps {
+  /**
+   * The objects in the scene which should have an outline.
+   */
+  outlinedObjects: Object3D[];
+  blur?: boolean;
+  /**
+   * Whether occluded parts of selected objects should be visible
+   */
+  xRay?: boolean;
+  /**
+   * The blur kernel size. Must be used with blur being true.
+   */
+  kernelSize?: KernelSize;
+  /**
+   * The pulse speed. A value of zero disables the pulse effect.
+   */
+  pulseSpeed?: number;
+  resolutionX?: number;
+  resolutionY?: number;
+  edgeStrength?: number;
+  patternScale?: number;
+  /**
+   * The number of samples used for multisample antialiasing. Requires WebGL 2.
+   */
+  multisampling?: number;
+  blendFunction?: BlendFunction;
+  patternTexture?: Texture;
+  resolutionScale?: number;
+  hiddenEdgeColor?: TresColor;
+  visibleEdgeColor?: TresColor;
+}
+declare const __VLS_export$32: vue47.DefineComponent<OutlinePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<OutlineEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<OutlinePmndrsProps> & Readonly<{}>, {
+  blur: boolean;
+  xRay: boolean;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$24: typeof __VLS_export$32;
+//#endregion
+//#region src/core/pmndrs/PixelationPmndrs.vue.d.ts
+interface PixelationPmndrsProps {
+  /**
+   * The pixel granularity.
+   */
+  granularity?: number;
+}
+declare const _default$27: typeof __VLS_export$31;
+declare const __VLS_export$31: vue47.DefineComponent<PixelationPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<PixelationEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<PixelationPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/VignettePmndrs.vue.d.ts
+interface VignettePmndrsProps {
+  /**
+   * Whether the noise should be multiplied with the input color.
+   */
+  technique?: VignetteTechnique;
+  blendFunction?: BlendFunction;
+  offset?: number;
+  darkness?: number;
+}
+declare const _default$37: typeof __VLS_export$30;
+declare const __VLS_export$30: vue47.DefineComponent<VignettePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<VignetteEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<VignettePmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/custom/barrel-blur/index.d.ts
+/**
+ * BarrelBlurEffect - A custom effect for applying a barrel distortion
+ * with chromatic aberration blur.
+ */
+declare class BarrelBlurEffect extends Effect {
+  /**
+   * Creates a new BarrelBlurEffect instance.
+   *
+   * @param {object} [options] - Configuration options for the effect.
+   * @param {BlendFunction} [options.blendFunction] - Blend mode.
+   * @param {number} [options.amount] - Intensity of the barrel distortion (0 to 1).
+   * @param {Vector2} [options.offset] - Offset of the barrel distortion center (0 to 1 for both x and y). This allows you to change the position of the distortion effect.
+   *
+   */
+  constructor({
+    blendFunction,
+    amount,
+    offset
+  }?: {
+    blendFunction?: BlendFunction | undefined;
+    amount?: number | undefined;
+    offset?: Vector2 | undefined;
+  });
+  /**
+   * The amount.
+   *
+   * @type {number}
+   */
+  get amount(): any;
+  set amount(value: any);
+  /**
+   * The offset.
+   *
+   * @type {Vector2}
+   */
+  get offset(): any;
+  set offset(value: any);
+}
+//#endregion
+//#region src/core/pmndrs/BarrelBlurPmndrs.vue.d.ts
+interface BarrelBlurPmndrsProps {
+  /**
+   * The blend function for the effect.
+   * Determines how this effect blends with other effects.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The intensity of the barrel distortion.
+   * A value between 0 (no distortion) and 1 (maximum distortion).
+   */
+  amount?: number;
+  /**
+   * The offset of the barrel distortion center.
+   * A Vector2 value or an A value or an array of two numbers, with both values ranging from 0 to 1.
+   * This allows you to change the position of the distortion effect.
+   */
+  offset?: Vector2 | [number, number];
+}
+declare const __VLS_export$29: vue47.DefineComponent<BarrelBlurPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<BarrelBlurEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<BarrelBlurPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$1: typeof __VLS_export$29;
+//#endregion
+//#region src/core/pmndrs/ToneMappingPmndrs.vue.d.ts
+interface ToneMappingPmndrsProps {
+  /**
+   * The tone mapping mode.
+   */
+  mode?: ToneMappingMode;
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The resolution for luminance texture. The resolution of the luminance texture. Must be a power of two.
+   */
+  resolution?: number;
+  /**
+   * The average luminance. Only for `REINHARD2`.
+   */
+  averageLuminance?: number;
+  /**
+   * The middle grey factor. Only for `REINHARD2`.
+   */
+  middleGrey?: number;
+  /**
+   * The minimum luminance. Only for `REINHARD2`.
+   */
+  minLuminance?: number;
+  /**
+   * The white point. Only for `REINHARD2`.
+   */
+  whitePoint?: number;
+}
+declare const __VLS_export$28: vue47.DefineComponent<ToneMappingPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ToneMappingEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ToneMappingPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$35: typeof __VLS_export$28;
+//#endregion
+//#region src/core/pmndrs/ChromaticAberrationPmndrs.vue.d.ts
+interface ChromaticAberrationPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The color offset.
+   */
+  offset?: Vector2;
+  /**
+   * Whether the effect should be modulated with a radial gradient.
+   */
+  radialModulation?: boolean;
+  /**
+   * The modulation offset, applicable if radial modulation is enabled.
+   */
+  modulationOffset?: number;
+}
+declare const __VLS_export$27: vue47.DefineComponent<ChromaticAberrationPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ChromaticAberrationEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ChromaticAberrationPmndrsProps> & Readonly<{}>, {
+  radialModulation: boolean;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$4: typeof __VLS_export$27;
+//#endregion
+//#region src/core/pmndrs/HueSaturationPmndrs.vue.d.ts
+interface HueSaturationPmndrsProps {
+  /**
+   * The saturation adjustment. A value of 0.0 results in grayscale, and 1.0 leaves saturation unchanged.
+   * Range: [0.0, 1.0]
+   */
+  saturation?: number;
+  /**
+   * The hue adjustment in radians.
+   * Range: [-π, π] (or [0, 2π] for a full rotation)
+   */
+  hue?: number;
+  /**
+   * The blend function. Defines how the effect blends with the original scene.
+   */
+  blendFunction?: BlendFunction;
+}
+declare const __VLS_export$26: vue47.DefineComponent<HueSaturationPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<HueSaturationEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<HueSaturationPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$19: typeof __VLS_export$26;
+//#endregion
+//#region src/core/pmndrs/ScanlinePmndrs.vue.d.ts
+interface ScanlinePmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The density of the scanlines.
+   */
+  density?: number;
+  /**
+   * The density of the scanlines.
+   */
+  scrollSpeed?: number;
+  /**
+   * The opacity of the scanlines.
+   */
+  opacity?: number;
+}
+declare const __VLS_export$25: vue47.DefineComponent<ScanlinePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ScanlineEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ScanlinePmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$30: typeof __VLS_export$25;
+//#endregion
+//#region src/core/pmndrs/custom/kuwahara/index.d.ts
+declare class KuwaharaEffect extends Effect {
+  /**
+   * Creates a new KuwaharaEffect instance.
+   *
+   * @param {object} [options] - Configuration options for the effect.
+   * @param {BlendFunction} [options.blendFunction] - Blend mode.
+   * @param {number} [options.radius] - Intensity of the effect.
+   * @param {number} [options.sectorCount] - Number of sectors.
+   *
+   */
+  constructor({
+    blendFunction,
+    radius,
+    sectorCount
+  }?: {
+    blendFunction?: BlendFunction | undefined;
+    radius?: number | undefined;
+    sectorCount?: number | undefined;
+  });
+  /**
+   * The radius.
+   *
+   * @type {number}
+   */
+  get radius(): any;
+  set radius(value: any);
+  /**
+   * The sector count.
+   *
+   * @type {number}
+   */
+  get sectorCount(): any;
+  set sectorCount(value: any);
+}
+//#endregion
+//#region src/core/pmndrs/KuwaharaPmndrs.vue.d.ts
+interface KuwaharaPmndrsProps {
+  /**
+   * The blend function for the effect.
+   * Determines how this effect blends with other effects.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The intensity of the barrel distortion.
+   * A value between 0 (no distortion) and 1 (maximum distortion).
+   */
+  radius?: number;
+  /**
+   * The number of sectors.
+   * Determines the number of angular divisions used in the Kuwahara filter.
+   * Higher values can improve the quality of the effect but may reduce performance.
+   * The maximum value is defined by MAX_SECTOR_COUNT = 8 in the kuwahara/index.ts file.
+   * It is preferable that the value is an integer.
+   */
+  sectorCount?: number;
+}
+declare const __VLS_export$24: vue47.DefineComponent<KuwaharaPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<KuwaharaEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<KuwaharaPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$20: typeof __VLS_export$24;
+//#endregion
+//#region src/core/pmndrs/ColorAveragePmndrs.vue.d.ts
+interface ColorAveragePmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The opacity of the color Average.
+   */
+  opacity?: number;
+}
+declare const __VLS_export$23: vue47.DefineComponent<ColorAveragePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ColorAverageEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ColorAveragePmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$5: typeof __VLS_export$23;
+//#endregion
+//#region src/core/pmndrs/LensDistortionPmndrs.vue.d.ts
+interface LensDistortionPmndrsProps {
+  /**
+   * The distortion effect strength.
+   */
+  distortion?: Vector2 | [number, number];
+  /**
+   * The center point.
+   */
+  principalPoint?: Vector2 | [number, number];
+  /**
+   * The focal length.
+   */
+  focalLength?: Vector2 | [number, number];
+  /**
+   * The skew value.
+   */
+  skew?: number;
+}
+declare const __VLS_export$22: vue47.DefineComponent<LensDistortionPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<LensDistortionEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<LensDistortionPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$21: typeof __VLS_export$22;
+//#endregion
+//#region src/core/pmndrs/ShockWavePmndrs.vue.d.ts
+interface ShockWavePmndrsProps {
+  /**
+   * The position of the shockwave.
+   */
+  position?: Vector3 | [number, number, number];
+  /**
+   * The amplitude of the shockwave.
+   */
+  amplitude?: number;
+  /**
+   * The speed of the shockwave.
+   */
+  speed?: number;
+  /**
+   * The max radius of the shockwave.
+   */
+  maxRadius?: number;
+  /**
+   * The wave size of the shockwave.
+   */
+  waveSize?: number;
+}
+declare const __VLS_export$21: vue47.DefineComponent<ShockWavePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ShockWaveEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ShockWavePmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$32: typeof __VLS_export$21;
+//#endregion
+//#region src/core/pmndrs/TiltShiftPmndrs.vue.d.ts
+interface TiltShiftPmndrsProps {
+  /**
+   * The blend function. Defines how the effect blends with the original scene.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The relative offset of the focus area.
+   * Range: [-0.5, 0.5]
+   */
+  offset?: number;
+  /**
+   * The rotation of the focus area in radians.
+   * Range: [-π, π]
+   */
+  rotation?: number;
+  /**
+   * The relative size of the focus area.
+   * Range: [0, 1]
+   */
+  focusArea?: number;
+  /**
+   * The softness of the focus area edges.
+   * Range: [0, 1]
+   */
+  feather?: number;
+  /**
+   * The blur kernel size.
+   */
+  kernelSize?: KernelSize;
+  /**
+   * The resolution scale.
+   * Range: [0.1, 1]
+   */
+  resolutionScale?: number;
+  /**
+   * The horizontal resolution.
+   */
+  resolutionX?: number;
+  /**
+   * The vertical resolution.
+   */
+  resolutionY?: number;
+}
+declare const __VLS_export$20: vue47.DefineComponent<TiltShiftPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<TiltShiftEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<TiltShiftPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$34: typeof __VLS_export$20;
+//#endregion
+//#region src/core/pmndrs/DotScreenPmndrs.vue.d.ts
+interface DotScreenPmndrsProps {
+  /**
+   * The angle of the dot pattern.
+   * Default: 1.57
+   */
+  angle?: number;
+  /**
+   * The scale of the dot pattern.
+   * Default: 1.0
+   */
+  scale?: number;
+  /**
+   * The blend function. Defines how the effect blends with the original scene.
+   */
+  blendFunction?: BlendFunction;
+}
+declare const __VLS_export$19: vue47.DefineComponent<DotScreenPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<DotScreenEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<DotScreenPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$9: typeof __VLS_export$19;
+//#endregion
+//#region src/core/pmndrs/SepiaPmndrs.vue.d.ts
+interface SepiaPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The intensity of the sepia effect.
+   */
+  intensity?: number;
+}
+declare const __VLS_export$18: vue47.DefineComponent<SepiaPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<SepiaEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<SepiaPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$31: typeof __VLS_export$18;
+//#endregion
+//#region src/core/pmndrs/custom/linocut/index.d.ts
+/**
+ * LinocutEffect - A custom effect for applying a linocut shader effect.
+ */
+declare class LinocutEffect extends Effect {
+  /**
+   * Creates a new LinocutEffect instance.
+   *
+   * @param {LinocutPmndrsProps} [options] - Configuration options for the effect.
+   *
+   */
+  constructor({
+    blendFunction,
+    scale,
+    noiseScale,
+    center,
+    rotation
+  }?: {
+    blendFunction?: BlendFunction | undefined;
+    scale?: number | undefined;
+    noiseScale?: number | undefined;
+    center?: number[] | undefined;
+    rotation?: number | undefined;
+  });
+  get scale(): any;
+  set scale(value: any);
+  get noiseScale(): any;
+  set noiseScale(value: any);
+  get center(): any;
+  set center(value: any);
+  get rotation(): any;
+  set rotation(value: any);
+}
+//#endregion
+//#region src/core/pmndrs/LinocutPmndrs.vue.d.ts
+interface LinocutPmndrsProps {
+  blendFunction?: BlendFunction;
+  scale?: number;
+  noiseScale?: number;
+  center?: Vector2 | [number, number];
+  rotation?: number;
+}
+declare const __VLS_export$17: vue47.DefineComponent<LinocutPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<LinocutEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<LinocutPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$22: typeof __VLS_export$17;
+//#endregion
+//#region src/core/pmndrs/DepthPickingPassPmndrs.vue.d.ts
+interface DepthPickingPassPmndrsProps {
+  /**
+   * The depth packing strategy.
+   * Default: RGBADepthPacking
+   */
+  depthPacking?: DepthPackingStrategies;
+  /**
+   * The depth copy mode.
+   * Default: DepthCopyMode.SINGLE
+   */
+  mode?: DepthCopyMode;
+}
+declare const __VLS_export$16: vue47.DefineComponent<DepthPickingPassPmndrsProps, {
+  pass: DepthPickingPass;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<DepthPickingPassPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$8: typeof __VLS_export$16;
+//#endregion
+//#region src/core/pmndrs/GodRaysPmndrs.vue.d.ts
+interface GodRaysPmndrsProps {
+  /**
+   * The blend function of this effect.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The light source. Must not write depth and has to be flagged as transparent.
+   */
+  lightSource?: Mesh | Points | null;
+  /**
+   * The opacity of the God Rays.
+   */
+  opacity?: number;
+  /**
+   * The density of the light rays.
+   */
+  density?: number;
+  /**
+   * The decay of the light rays.
+   */
+  decay?: number;
+  /**
+   * The blur kernel size. Has no effect if blur is disabled.
+   */
+  kernelSize?: KernelSize;
+  /**
+   * The resolution scale.
+   */
+  resolutionScale?: number;
+  /**
+   * Whether the god rays should be blurred to reduce artifacts.
+   */
+  blur?: boolean;
+  /**
+   * The horizontal resolution.
+   */
+  resolutionX?: number;
+  /**
+   * The vertical resolution.
+   */
+  resolutionY?: number;
+  /**
+   * The weight of the light rays.
+   */
+  weight?: number;
+  /**
+   * A constant attenuation coefficient.
+   */
+  exposure?: number;
+  /**
+   * The number of samples per pixel.
+   */
+  samples?: number;
+  /**
+   * An upper bound for the saturation of the overall effect.
+   */
+  clampMax?: number;
+}
+declare const __VLS_export$15: vue47.DefineComponent<GodRaysPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<GodRaysEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<GodRaysPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$16: typeof __VLS_export$15;
+//#endregion
+//#region src/core/pmndrs/ColorDepthPmndrs.vue.d.ts
+interface ColorDepthPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The color bit depth.
+   */
+  bits?: number;
+  /**
+   * The opacity of the effect.
+   */
+  opacity?: number;
+}
+declare const __VLS_export$14: vue47.DefineComponent<ColorDepthPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ColorDepthEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ColorDepthPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$6: typeof __VLS_export$14;
+//#endregion
+//#region src/core/pmndrs/GridPmndrs.vue.d.ts
+interface GridPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The scale.
+   */
+  scale?: number;
+  /**
+   * The line width.
+   */
+  lineWidth?: number;
+}
+declare const __VLS_export$13: vue47.DefineComponent<GridPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<GridEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<GridPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$17: typeof __VLS_export$13;
+//#endregion
+//#region src/core/pmndrs/custom/fish-eye/index.d.ts
+/**
+ * FishEyeEffect - A custom effect for applying a fish-eye distortion
+ */
+declare class FishEyeEffect extends Effect {
+  /**
+   * Creates a new FishEyeEffect instance.
+   *
+   * @param {object} [options] - Configuration options for the effect.
+   * @param {BlendFunction} [options.blendFunction] - Blend mode.
+   * @param {Vector2} [options.lensS] - Lens scale.
+   * @param {Vector2} [options.lensF] - Lens factor.
+   * @param {number} [options.scale] - Scale.
+   *
+   */
+  constructor({
+    blendFunction,
+    lensS,
+    lensF,
+    scale
+  }?: {
+    blendFunction?: BlendFunction | undefined;
+    lensS?: Vector2 | undefined;
+    lensF?: Vector2 | undefined;
+    scale?: number | undefined;
+  });
+  /**
+   * The lensS.
+   *
+   * @type {Vector2}
+   */
+  get lensS(): any;
+  set lensS(value: any);
+  /**
+   * The lensF.
+   *
+   * @type {Vector2}
+   */
+  get lensF(): any;
+  set lensF(value: any);
+  /**
+   * The scale.
+   *
+   * @type {number}
+   */
+  get scale(): any;
+  set scale(value: any);
+}
+//#endregion
+//#region src/core/pmndrs/FishEyePmndrs.vue.d.ts
+interface FishEyePmndrsProps {
+  /**
+   * The blend function for the effect.
+   * Determines how this effect blends with other effects.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The lens scale.
+   * A Vector2 value or an array of two numbers.
+   */
+  lensS?: Vector2 | [number, number];
+  /**
+   * The lens factor.
+   * A Vector2 value or an array of two numbers.
+   */
+  lensF?: Vector2 | [number, number];
+  /**
+   * The scale of the effect.
+   * A number value.
+   */
+  scale?: number;
+}
+declare const __VLS_export$12: vue47.DefineComponent<FishEyePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<FishEyeEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<FishEyePmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$13: typeof __VLS_export$12;
+//#endregion
+//#region src/core/pmndrs/BrightnessContrastPmndrs.vue.d.ts
+interface BrightnessContrastPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The brightness of the effect.
+   */
+  brightness?: number;
+  /**
+   * The contrast of the effect.
+   */
+  contrast?: number;
+}
+declare const __VLS_export$11: vue47.DefineComponent<BrightnessContrastPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<BrightnessContrastEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<BrightnessContrastPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$3: typeof __VLS_export$11;
+//#endregion
+//#region src/core/pmndrs/SMAAPmndrs.vue.d.ts
+declare const DEBUG_MODE: {
+  readonly OFF: 0;
+  readonly EDGES: 1;
+  readonly WEIGHTS: 2;
+};
+interface SMAAPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The opacity of the effect.
+   */
+  opacity?: number;
+  /**
+   * The preset configuration for SMAA (Subpixel Morphological Antialiasing).
+   */
+  preset?: SMAAPreset;
+  /**
+   * The mode used for edge detection.
+   */
+  edgeDetectionMode?: EdgeDetectionMode;
+  /**
+   * The mode used for predication to improve edge detection.
+   */
+  predicationMode?: PredicationMode;
+  /**
+   * The debug mode for visualizing the effect.
+   *
+   * OPTIONS:
+   * - 0: OFF
+   * - 1: EDGES
+   * - 2: WEIGHTS
+   */
+  debug?: typeof DEBUG_MODE[keyof typeof DEBUG_MODE];
+}
+declare const _default$29: typeof __VLS_export$10;
+declare const __VLS_export$10: vue47.DefineComponent<SMAAPmndrsProps, {
+  pass: vue47.ShallowRef<EffectPass | null>;
+  effect: vue47.ShallowRef<SMAAEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<SMAAPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/pmndrs/FXAAPmndrs.vue.d.ts
+interface FXAAPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The opacity of the effect.
+   */
+  opacity?: number;
+  /**
+   * The maximum amount of edge detection samples.
+   */
+  samples?: number;
+  /**
+   * The minimum edge detection threshold. Range is [0.0, 1.0].
+   */
+  minEdgeThreshold?: number;
+  /**
+   * The maximum edge detection threshold. Range is [0.0, 1.0].
+   */
+  maxEdgeThreshold?: number;
+  /**
+   * The subpixel blend quality. Range is [0.0, 1.0].
+   */
+  subpixelQuality?: number;
+}
+declare const __VLS_export$9: vue47.DefineComponent<FXAAPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<FXAAEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<FXAAPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$12: typeof __VLS_export$9;
+//#endregion
+//#region src/core/pmndrs/TexturePmndrs.vue.d.ts
+interface TexturePmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The texture.
+   */
+  texture?: Texture;
+  /**
+   * The opacity of the effect.
+   */
+  opacity?: number;
+}
+declare const __VLS_export$8: vue47.DefineComponent<TexturePmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<TextureEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<TexturePmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default$33: typeof __VLS_export$8;
+//#endregion
+//#region src/core/pmndrs/ASCIIPmndrs.vue.d.ts
+type ASCIITextureOptions = ConstructorParameters<typeof ASCIITexture>[0];
+interface ASCIIPmndrsProps {
+  /**
+   * The blend function.
+   */
+  blendFunction?: BlendFunction;
+  /**
+   * The opacity of the effect.
+   */
+  opacity?: number;
+  /**
+   * The cell size.
+   */
+  cellSize?: number;
+  /**
+   * Controls whether the effect should be inverted.
+   */
+  inverted?: boolean;
+  /**
+   * The color of the effect.
+   */
+  color?: Color | string | number | null;
+  /**
+   * Controls whether the effect should use the scene color.
+   * If `true`, it overrides the `color` props.
+   */
+  useSceneColor?: boolean;
+  /**
+   * The ASCII texture options to use for creating an ASCIITexture instance.
+   * https://pmndrs.github.io/postprocessing/public/docs/class/src/textures/ASCIITexture.js~ASCIITexture.html
+   */
+  asciiTexture?: ASCIITextureOptions;
+}
+declare const __VLS_export$7: vue47.DefineComponent<ASCIIPmndrsProps, {
+  pass: vue47.ShallowRef<postprocessing0.EffectPass | null>;
+  effect: vue47.ShallowRef<ASCIIEffect | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<ASCIIPmndrsProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+declare const _default: typeof __VLS_export$7;
+//#endregion
+//#region src/core/three/composables/useEffect.d.ts
+/**
+ * @param newPassFunction - A function that returns a new pass instance.
+ * @param passDependencies - A reactive object that the pass depends on (usually props). Changes to this object will trigger re-rendering.
+ * @param dependencyFieldsTriggeringRecreation - fields in passDependencies that require effect recreation when changed
+ */
+declare const useEffect: <T extends Pass, D extends Record<PropertyKey, any>>(newPassFunction: () => T, passDependencies?: Reactive<D>, dependencyFieldsTriggeringRecreation?: (keyof D)[]) => {
+  pass: ShallowRef<T>;
+};
+//#endregion
+//#region src/core/three/EffectComposer.vue.d.ts
+interface EffectComposerProps {
+  enabled?: boolean;
+  renderTarget?: WebGLRenderTarget;
+  withoutRenderPass?: boolean;
+}
+declare const _default$10: typeof __VLS_export$6;
+declare const __VLS_export$6: __VLS_WithSlots<vue47.DefineComponent<EffectComposerProps, {
+  composer: ShallowRef<EffectComposer$1 | null>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<EffectComposerProps> & Readonly<{}>, {
+  enabled: boolean;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>, {
+  default?: (props: {}) => any;
+}>;
+type __VLS_WithSlots<T, S> = T & {
+  new (): {
+    $slots: S;
+  };
+};
+//#endregion
+//#region src/core/three/Glitch.vue.d.ts
+interface GlitchProps {
+  /**
+   * The size of the generated noise map
+   */
+  dtSize?: number;
+  /**
+   * If true, the glitch effect will be more wild 🤪
+   */
+  goWild?: boolean;
+}
+declare const _default$14: typeof __VLS_export$5;
+declare const __VLS_export$5: vue47.DefineComponent<GlitchProps, {
+  pass: vue47.ShallowRef<GlitchPass>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<GlitchProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/three/Halftone.vue.d.ts
+declare enum HalftoneShape {
+  Dot = 1,
+  Ellipse = 2,
+  Line = 3,
+  Square = 4,
+}
+interface HalftoneProps {
+  shape?: HalftoneShape;
+  radius?: number;
+  rotateR?: number;
+  rotateG?: number;
+  rotateB?: number;
+  scatter?: number;
+  blending?: number;
+  greyscale?: boolean;
+  blendingMode?: Blending;
+}
+declare const _default$18: typeof __VLS_export$4;
+declare const __VLS_export$4: vue47.DefineComponent<HalftoneProps, {
+  pass: vue47.ShallowRef<HalftonePass>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<HalftoneProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/three/Pixelation.vue.d.ts
+interface PixelationProps {
+  pixelSize: number;
+  depthEdgeStrength?: number;
+  normalEdgeStrength?: number;
+}
+declare const _default$26: typeof __VLS_export$3;
+declare const __VLS_export$3: vue47.DefineComponent<PixelationProps, {
+  pass: vue47.ShallowRef<RenderPixelatedPass>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<PixelationProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/three/Output.vue.d.ts
+declare const __VLS_export$2: vue47.DefineComponent<{}, {
+  pass: vue47.ShallowRef<OutputPass>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, true, {}, any>;
+declare const _default$25: typeof __VLS_export$2;
+//#endregion
+//#region src/core/three/SMAA.vue.d.ts
+interface SMAAProps {
+  width?: number;
+  height?: number;
+}
+declare const _default$28: typeof __VLS_export$1;
+declare const __VLS_export$1: vue47.DefineComponent<SMAAProps, {
+  pass: vue47.ShallowRef<SMAAPass>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<SMAAProps> & Readonly<{}>, {}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+//#region src/core/three/UnrealBloom.vue.d.ts
+interface UnrealBloomProps {
+  radius?: number;
+  strength?: number;
+  threshold?: number;
+}
+declare const _default$36: typeof __VLS_export;
+declare const __VLS_export: vue47.DefineComponent<UnrealBloomProps, {
+  pass: vue47.ShallowRef<UnrealBloomPass>;
+}, {}, {}, {}, vue47.ComponentOptionsMixin, vue47.ComponentOptionsMixin, {}, string, vue47.PublicProps, Readonly<UnrealBloomProps> & Readonly<{}>, {
+  radius: number;
+  strength: number;
+  threshold: number;
+}, {}, {}, {}, string, vue47.ComponentProvideOptions, false, {}, any>;
+//#endregion
+export { _default as ASCIIPmndrs, ASCIIPmndrsProps, _default$1 as BarrelBlurPmndrs, BarrelBlurPmndrsProps, _default$2 as BloomPmndrs, BloomPmndrsProps, _default$3 as BrightnessContrastPmndrs, BrightnessContrastPmndrsProps, _default$4 as ChromaticAberrationPmndrs, ChromaticAberrationPmndrsProps, _default$5 as ColorAveragePmndrs, ColorAveragePmndrsProps, _default$6 as ColorDepthPmndrs, ColorDepthPmndrsProps, _default$7 as DepthOfFieldPmndrs, DepthOfFieldPmndrsProps, _default$8 as DepthPickingPassPmndrs, DepthPickingPassPmndrsProps, _default$9 as DotScreenPmndrs, DotScreenPmndrsProps, _default$10 as EffectComposer, _default$11 as EffectComposerPmndrs, EffectComposerPmndrsProps, EffectComposerProps, _default$12 as FXAAPmndrs, FXAAPmndrsProps, _default$13 as FishEyePmndrs, FishEyePmndrsProps, _default$14 as Glitch, _default$15 as GlitchPmndrs, GlitchPmndrsProps, GlitchProps, _default$16 as GodRaysPmndrs, GodRaysPmndrsProps, _default$17 as GridPmndrs, GridPmndrsProps, _default$18 as Halftone, HalftoneProps, _default$19 as HueSaturationPmndrs, HueSaturationPmndrsProps, _default$20 as KuwaharaPmndrs, KuwaharaPmndrsProps, _default$21 as LensDistortionPmndrs, LensDistortionPmndrsProps, _default$22 as LinocutPmndrs, LinocutPmndrsProps, _default$23 as NoisePmndrs, NoisePmndrsProps, _default$24 as OutlinePmndrs, OutlinePmndrsProps, _default$25 as Output, _default$26 as Pixelation, _default$27 as PixelationPmndrs, PixelationPmndrsProps, PixelationProps, _default$28 as SMAA, _default$29 as SMAAPmndrs, SMAAPmndrsProps, SMAAProps, _default$30 as ScanlinePmndrs, ScanlinePmndrsProps, _default$31 as SepiaPmndrs, SepiaPmndrsProps, _default$32 as ShockWavePmndrs, ShockWavePmndrsProps, _default$33 as TexturePmndrs, TexturePmndrsProps, _default$34 as TiltShiftPmndrs, TiltShiftPmndrsProps, _default$35 as ToneMappingPmndrs, ToneMappingPmndrsProps, _default$36 as UnrealBloom, UnrealBloomProps, _default$37 as VignettePmndrs, VignettePmndrsProps, useEffect, useEffectPmndrs };

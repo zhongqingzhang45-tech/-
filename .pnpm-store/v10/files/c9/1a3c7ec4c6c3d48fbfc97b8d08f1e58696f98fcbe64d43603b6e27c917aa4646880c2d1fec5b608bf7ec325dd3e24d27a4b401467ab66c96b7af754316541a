@@ -1,0 +1,4 @@
+import type { Plugin as VitePlugin } from 'vite';
+import type { Context } from '../context.js';
+export declare function createVirtualFilesPlugin(ctx: Context, isServer: boolean): VitePlugin;
+//# sourceMappingURL=vite-plugin.d.ts.map

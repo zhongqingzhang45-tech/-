@@ -1,0 +1,4 @@
+import f from "./deco-focus-mask.vue.js";
+export {
+  f as default
+};

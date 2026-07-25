@@ -1,0 +1,74 @@
+{
+  "name": "vitest-browser-vue",
+  "type": "module",
+  "version": "2.1.0",
+  "description": "Render Vue components in Vitest Browser Mode",
+  "author": "Vitest Community",
+  "license": "MIT",
+  "funding": "https://opencollective.com/vitest",
+  "homepage": "https://github.com/vitest-community/vitest-browser-vue#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitest-community/vitest-browser-vue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vitest-community/vitest-browser-vue/issues"
+  },
+  "keywords": [
+    "vue",
+    "vitest",
+    "browser",
+    "testing"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./pure": {
+      "types": "./dist/pure.d.ts",
+      "default": "./dist/pure.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "*.d.ts",
+    "*.mjs",
+    "dist"
+  ],
+  "peerDependencies": {
+    "vitest": "^4.0.0-0",
+    "vue": "^3.0.0"
+  },
+  "dependencies": {
+    "@vue/test-utils": "^2.4.6"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^2.24.1",
+    "@playwright/test": "^1.58.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/browser-playwright": "4.1.0-beta.6",
+    "bumpp": "^9.4.2",
+    "changelogithub": "^0.13.9",
+    "eslint": "^9.8.0",
+    "playwright": "^1.58.2",
+    "tsdown": "^0.15.9",
+    "tsx": "^4.16.5",
+    "typescript": "^5.5.4",
+    "vitest": "4.1.0-beta.6",
+    "vue": "^3.4.35",
+    "zx": "^8.1.4"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch --sourcemap",
+    "test": "vitest",
+    "publish-ci": "tsx scripts/publish-ci.ts",
+    "release": "tsx scripts/release.ts",
+    "lint": "eslint --cache .",
+    "lint:fix": "pnpm lint --fix"
+  }
+}

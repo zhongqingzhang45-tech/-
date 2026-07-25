@@ -1,0 +1,25 @@
+import { t as EventContext } from "../../context-CimstVCt.mjs";
+import { n as AdapterErrorPayload, t as AdapterErrorKind } from "../../errors-BKTILLCx.mjs";
+import { a as isWorkerEventa, i as defineWorkerEventa, n as WorkerPayload, o as normalizeOnListenerParameters, r as defineOutboundWorkerEventa, s as workerErrorEvent, t as WorkerEventa } from "../../shared-Q44eiCzF.mjs";
+
+//#region src/adapters/webworkers/index.d.ts
+declare function createContext(worker: Worker): {
+  context: EventContext<{
+    invokeRequest?: {
+      transfer?: Transferable[];
+    };
+    invokeResponse?: {
+      transfer?: Transferable[];
+    };
+  }, {
+    raw: {
+      message?: MessageEvent;
+      error?: ErrorEvent;
+      messageError?: MessageEvent;
+    };
+    transfer?: Transferable[];
+  }>;
+};
+//#endregion
+export { type AdapterErrorKind, type AdapterErrorPayload, type WorkerEventa, type WorkerPayload, createContext, defineOutboundWorkerEventa, defineWorkerEventa, isWorkerEventa, type normalizeOnListenerParameters, workerErrorEvent };
+//# sourceMappingURL=index.d.mts.map

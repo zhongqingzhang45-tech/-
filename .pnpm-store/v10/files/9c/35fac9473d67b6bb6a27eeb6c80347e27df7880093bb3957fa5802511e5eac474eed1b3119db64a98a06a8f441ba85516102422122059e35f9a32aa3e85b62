@@ -1,0 +1,4 @@
+//#region src/vite.ts
+var vite_default = require("./core-CEOGw--w.cjs").UnpluginInfo.vite;
+//#endregion
+module.exports = vite_default;

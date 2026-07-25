@@ -1,0 +1,14 @@
+//#region src/config/models.ts
+/**
+* Resolves one model by id, model name, or alias in registration order.
+*
+* Returns:
+* - the first matching model, or `undefined` when no match exists
+*/
+function resolveModelByName(models, name) {
+	return models.find((model) => model.id === name || model.model === name || model.aliases.includes(name));
+}
+//#endregion
+export { resolveModelByName as t };
+
+//# sourceMappingURL=models-D_MsBtYw.mjs.map

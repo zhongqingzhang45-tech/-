@@ -1,0 +1,7 @@
+import { a as resolveDependencies, b as parseDependencies, h as writePackage, m as loadPackages, n as CheckPackages, o as resolveDependency, p as loadPackage, s as resolvePackage, t as DependenciesTypeShortMap, y as dumpDependencies } from "./types-BgsyRS69.mjs";
+//#region src/index.ts
+function defineConfig(config) {
+	return config;
+}
+//#endregion
+export { CheckPackages, DependenciesTypeShortMap, defineConfig, dumpDependencies, loadPackage, loadPackages, parseDependencies, resolveDependencies, resolveDependency, resolvePackage, writePackage };

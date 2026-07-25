@@ -1,0 +1,22 @@
+import "./split-CKPPrG1i.mjs";
+import { newPlugin } from "./src-Dbre5JHh.mjs";
+
+//#region src/vite.ts
+/**
+* Vite plugin
+*
+* @example
+* ```ts
+* // vite.config.ts
+* import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/vite'
+*
+* export default defineConfig({
+*   plugins: [DrizzleORMMigrations()],
+* })
+* ```
+*/
+const vite = newPlugin().vite;
+var vite_default = vite;
+
+//#endregion
+export { vite_default as default, vite as "module.exports" };

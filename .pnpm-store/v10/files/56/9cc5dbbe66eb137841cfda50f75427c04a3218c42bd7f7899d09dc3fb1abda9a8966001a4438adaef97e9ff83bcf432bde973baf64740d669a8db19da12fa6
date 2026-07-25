@@ -1,0 +1,20 @@
+import { n as YamlOptions } from "./types-CQtoDK96.mjs";
+import { NuxtModule } from "@nuxt/schema";
+
+//#region src/nuxt.d.ts
+/**
+ * Nuxt plugin
+ *
+ * @example
+ * ```ts
+ * // nuxt.config.ts
+ * import yaml from "unplugin-yaml/nuxt"
+ *
+ * export default defineNuxtConfig({
+ *   plugins: [yaml()],
+ * })
+ * ```
+ */
+declare const _default: NuxtModule<YamlOptions>;
+//#endregion
+export { _default as default };

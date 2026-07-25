@@ -1,0 +1,25 @@
+import "./transform-B0c68K4O.mjs";
+import { t as src_default } from "./src-BsseL4ca.mjs";
+
+//#region src/esbuild.ts
+/**
+* This entry file is for esbuild plugin.
+*
+* @module
+*/
+/**
+* Esbuild plugin
+*
+* @example
+* ```ts
+* import { build } from 'esbuild'
+* import LightningCSS from 'unplugin-lightningcss/esbuild'
+* 
+* build({ plugins: [LightningCSS()] })
+```
+*/
+const esbuild = src_default.esbuild;
+var esbuild_default = esbuild;
+
+//#endregion
+export { esbuild_default as default, esbuild as "module.exports" };

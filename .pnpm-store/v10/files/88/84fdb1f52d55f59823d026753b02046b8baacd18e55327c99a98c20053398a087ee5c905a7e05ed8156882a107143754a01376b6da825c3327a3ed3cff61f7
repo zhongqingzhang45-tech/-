@@ -1,0 +1,79 @@
+import { a as ResourceServerMetadata } from "./oauth-4vgZlF-I.mjs";
+import { JWTPayload, JWTVerifyOptions } from "jose";
+import { Auth } from "better-auth/types";
+
+//#region src/client-resource.d.ts
+declare const oauthProviderResourceClient: <T extends Auth | undefined>(auth?: T) => {
+  id: "oauth-provider-resource-client";
+  getActions(): {
+    /**
+     * Performs verification of an access token for your APIs. Can perform
+     * local verification using `jwksUrl` by default. Can also be configured
+     * for remote introspection using `remoteVerify` if a confidential client
+     * is set up for this API.
+     *
+     * The optional auth parameter can fill known values automatically.
+     */
+    verifyAccessToken: VerifyAccessTokenOutput<T>;
+    /**
+     * An authorization server does not typically publish
+     * the `/.well-known/oauth-protected-resource` themselves.
+     * Thus, we provide a client-only endpoint to help set up
+     * your protected resource metadata.
+     *
+     * The optional auth parameter can fill known values automatically.
+     *
+     * @see https://datatracker.ietf.org/doc/html/rfc8414#section-2
+     */
+    getProtectedResourceMetadata: ProtectedResourceMetadataOutput<T>;
+  };
+};
+interface VerifyAccessTokenRemote {
+  /** Full url of the introspect endpoint. Should end with `/oauth2/introspect` */
+  introspectUrl: string;
+  /** Client Secret */
+  clientId: string;
+  /** Client Secret */
+  clientSecret: string;
+  /**
+   * Forces remote verification of a token.
+   * This ensures attached session (if applicable)
+   * is also still active.
+   */
+  force?: boolean;
+}
+type VerifyAccessTokenOutput<T> = T extends Auth ? (token: string | undefined, opts?: VerifyAccessTokenAuthOpts) => Promise<JWTPayload> : (token: string | undefined, opts: VerifyAccessTokenNoAuthOpts) => Promise<JWTPayload>;
+type VerifyAccessTokenAuthOpts = {
+  verifyOptions?: JWTVerifyOptions & Required<Pick<JWTVerifyOptions, "audience">>;
+  scopes?: string[];
+  jwksUrl?: string;
+  remoteVerify?: VerifyAccessTokenRemote; /** Maps non-url (ie urn, client) resources to resource_metadata */
+  resourceMetadataMappings?: Record<string, string>;
+};
+type VerifyAccessTokenNoAuthOpts = {
+  verifyOptions: JWTVerifyOptions & Required<Pick<JWTVerifyOptions, "audience" | "issuer">>;
+  scopes?: string[];
+  jwksUrl: string;
+  remoteVerify?: VerifyAccessTokenRemote; /** Maps non-url (ie urn, client) resources to resource_metadata */
+  resourceMetadataMappings?: Record<string, string>;
+} | {
+  verifyOptions: JWTVerifyOptions & Required<Pick<JWTVerifyOptions, "audience" | "issuer">>;
+  scopes?: string[];
+  jwksUrl?: string;
+  remoteVerify: VerifyAccessTokenRemote; /** Maps non-url (ie urn, client) resources to resource_metadata */
+  resourceMetadataMappings?: Record<string, string>;
+};
+type ProtectedResourceMetadataOutput<T> = T extends Auth ? (overrides?: Partial<ResourceServerMetadata>, opts?: {
+  silenceWarnings?: {
+    oidcScopes?: boolean;
+  };
+  externalScopes?: string[];
+}) => Promise<ResourceServerMetadata> : (overrides: ResourceServerMetadata, opts?: {
+  silenceWarnings?: {
+    oidcScopes?: boolean;
+  };
+  externalScopes?: string[];
+}) => Promise<ResourceServerMetadata>;
+//#endregion
+export { VerifyAccessTokenRemote, oauthProviderResourceClient };
+//# sourceMappingURL=client-resource.d.mts.map

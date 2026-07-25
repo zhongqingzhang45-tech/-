@@ -1,0 +1,20 @@
+import "./split-CKPPrG1i.mjs";
+import { newPlugin } from "./src-Dbre5JHh.mjs";
+
+//#region src/webpack.ts
+/**
+* Webpack plugin
+*
+* @example
+* ```ts
+* // webpack.config.js
+* module.exports = {
+*  plugins: [require('@proj-airi/unplugin-drizzle-orm-migrations/webpack')()],
+* }
+* ```
+*/
+const webpack = newPlugin().webpack;
+var webpack_default = webpack;
+
+//#endregion
+export { webpack_default as default, webpack as "module.exports" };

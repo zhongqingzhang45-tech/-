@@ -1,0 +1,7 @@
+import { t as Options } from "./types-xBc6GOed.mjs";
+import * as _$unplugin from "unplugin";
+
+//#region src/rspack.d.ts
+declare const _default: (options?: Options | undefined) => _$unplugin.RspackPluginInstance;
+//#endregion
+export { _default as default };

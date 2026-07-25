@@ -1,0 +1,19 @@
+import { n as oauthProvider } from "./oauth-E89Dh-ZC.mjs";
+import * as _better_fetch_fetch0 from "@better-fetch/fetch";
+
+//#region src/client.d.ts
+declare const oauthProviderClient: () => {
+  id: "oauth-provider-client";
+  fetchPlugins: {
+    id: string;
+    name: string;
+    description: string;
+    hooks: {
+      onRequest<T extends Record<string, any>>(ctx: _better_fetch_fetch0.RequestContext<T>): Promise<void>;
+    };
+  }[];
+  $InferServerPlugin: ReturnType<typeof oauthProvider>;
+};
+//#endregion
+export { oauthProviderClient };
+//# sourceMappingURL=client.d.mts.map

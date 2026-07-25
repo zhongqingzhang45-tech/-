@@ -1,0 +1,13 @@
+type TryCatchResult<T> = {
+    data: T;
+    error: undefined;
+} | {
+    data: undefined;
+    error: unknown;
+};
+/** @see {@link https://std.moeru.ai/docs/packages/std/utils/without-throw} */
+declare const tryCatch: <T extends () => unknown>(fn: T) => TryCatchResult<ReturnType<T>>;
+declare const tryCatchAsync: <T extends () => Promise<unknown>>(fn: T) => Promise<TryCatchResult<Awaited<ReturnType<T>>>>;
+
+export { tryCatch, tryCatchAsync };
+export type { TryCatchResult };

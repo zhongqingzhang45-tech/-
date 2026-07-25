@@ -1,0 +1,18 @@
+import antfu, { OptionsConfig, Awaitable, TypedFlatConfigItem } from '@antfu/eslint-config';
+
+interface MoeruOptions extends OptionsConfig {
+    masknet: boolean;
+    oxlint: boolean | {
+        oxlintrcPath: string;
+    };
+    perfectionist: boolean;
+    preferArrow: boolean;
+    sonarjs: boolean;
+    sortPackageJsonScripts: boolean;
+}
+declare const moeru: (userOptions?: Partial<MoeruOptions>) => Awaitable<TypedFlatConfigItem[]>[];
+declare const defineConfig: (userOptions?: Partial<MoeruOptions>, ...userConfigs: Array<Parameters<typeof antfu>[1]>) => ReturnType<typeof antfu>;
+declare const config: ReturnType<typeof antfu>;
+
+export { config as default, defineConfig, moeru };
+export type { MoeruOptions };

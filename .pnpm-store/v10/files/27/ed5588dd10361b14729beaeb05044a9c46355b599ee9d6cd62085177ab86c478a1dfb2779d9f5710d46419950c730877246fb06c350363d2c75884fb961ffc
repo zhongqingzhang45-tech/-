@@ -1,0 +1,43 @@
+import { WithUnknown, CommonRequestOptions } from '@xsai/shared';
+
+interface EmbedOptions extends CommonRequestOptions {
+    /** The number of dimensions the resulting output embeddings should have. */
+    dimensions?: number;
+    /** Input text to embed. */
+    input: string;
+}
+interface EmbedResponse {
+    data: {
+        embedding: number[];
+        index: number;
+        object: 'embedding';
+    }[];
+    model: string;
+    object: 'list';
+    system_fingerprint?: string;
+    usage: EmbedResponseUsage;
+}
+interface EmbedResponseUsage {
+    prompt_tokens: number;
+    total_tokens: number;
+}
+interface EmbedResult {
+    embedding: number[];
+    input: string;
+    usage: EmbedResponseUsage;
+}
+declare const embed: (options: WithUnknown<EmbedOptions>) => Promise<EmbedResult>;
+
+interface EmbedManyOptions extends Omit<EmbedOptions, 'input'> {
+    /** Input text to embed. */
+    input: string[];
+}
+interface EmbedManyResult {
+    embeddings: number[][];
+    input: string[];
+    usage: EmbedResponseUsage;
+}
+declare const embedMany: (options: WithUnknown<EmbedManyOptions>) => Promise<EmbedManyResult>;
+
+export { embed, embedMany };
+export type { EmbedManyOptions, EmbedManyResult, EmbedOptions, EmbedResponse, EmbedResponseUsage, EmbedResult };

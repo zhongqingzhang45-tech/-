@@ -1,0 +1,57 @@
+import { Eventa } from "../../../eventa-B2HPBK4S.mjs";
+import { EventContext } from "../../../context-C_-MRU46.mjs";
+import { Hooks, Message, Peer, WSError } from "crossws";
+
+//#region src/adapters/websocket/h3/global.d.ts
+declare const wsConnectedEvent: Eventa<{
+  id: string;
+}>;
+declare const wsDisconnectedEvent: Eventa<{
+  id: string;
+}>;
+declare const wsErrorEvent: Eventa<{
+  error: unknown;
+}>;
+declare function createGlobalContext(): {
+  websocketHandlers: Omit<Hooks, 'upgrade'>;
+  context: EventContext<any, {
+    raw: {
+      error?: WSError;
+      message?: Message;
+    };
+  }>;
+};
+//#endregion
+//#region src/adapters/websocket/h3/peer.d.ts
+declare const wsConnectedEvent$1: Eventa<{
+  id: string;
+}>;
+declare const wsDisconnectedEvent$1: Eventa<{
+  id: string;
+}>;
+declare const wsErrorEvent$1: Eventa<{
+  error: unknown;
+}>;
+declare function createPeerContext(peer: Peer): {
+  hooks: Pick<Hooks, 'message'>;
+  context: EventContext<any, {
+    raw: {
+      message: Message;
+    };
+  }>;
+};
+interface PeerContext {
+  peer: Peer;
+  context: EventContext<any, {
+    raw: {
+      message: Message;
+    };
+  }>;
+}
+declare function createPeerHooks(): {
+  hooks: Partial<Hooks>;
+  untilLeastOneConnected: Promise<PeerContext>;
+};
+//#endregion
+export { type PeerContext, createGlobalContext, createPeerContext, createPeerHooks, wsErrorEvent as global, wsConnectedEvent as globalWsConnectedEvent, wsDisconnectedEvent as globalWsDisconnectedEvent, wsConnectedEvent$1 as peerWsConnectedEvent, wsDisconnectedEvent$1 as peerWsDisconnectedEvent, wsErrorEvent$1 as peerWsErrorEvent };
+//# sourceMappingURL=index.d.mts.map

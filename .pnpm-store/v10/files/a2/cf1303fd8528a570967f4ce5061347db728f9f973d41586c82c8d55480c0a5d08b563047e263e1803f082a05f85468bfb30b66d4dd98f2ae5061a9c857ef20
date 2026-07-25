@@ -1,0 +1,63 @@
+import { EventTag, Eventa } from "../../eventa-B2HPBK4S.mjs";
+import { EventContext } from "../../context-C_-MRU46.mjs";
+import { ExtendableInvokeResponse } from "../../invoke-LTUFMmHi.mjs";
+
+//#region src/adapters/webworkers/shared.d.ts
+interface WorkerPayload<T> {
+  id: string;
+  type: EventTag<any, any>;
+  payload: T;
+  transfer?: Transferable[];
+}
+interface WorkerEventa<T> extends Eventa<{
+  message: T;
+  transfer?: Transferable[];
+}> {
+  _workerTransfer: true;
+}
+declare function defineWorkerEventa<T>(id?: string): WorkerEventa<T>;
+declare function defineOutboundWorkerEventa<T>(id?: string): WorkerEventa<T>;
+declare function isWorkerEventa(event: Eventa<any>): event is WorkerEventa<any>;
+declare const workerErrorEvent: Eventa<{
+  error: unknown;
+}>;
+declare const workerMessageErrorEvent: Eventa<{
+  error: unknown;
+  message: any;
+}>;
+declare function normalizeOnListenerParameters(event: Eventa<any>, options?: {
+  transfer?: Transferable[];
+} | unknown): {
+  body: any;
+  transfer: Transferable[] | undefined;
+};
+interface WithTransfer<T> {
+  message: T;
+  _transfer?: Transferable[];
+}
+declare function withTransfer<T>(body: T, transfer?: Transferable[]): ExtendableInvokeResponse<T, EventContext<{
+  invokeResponse?: {
+    transfer?: Transferable[];
+  };
+}, any>>;
+//#endregion
+//#region src/adapters/webworkers/index.d.ts
+declare function createContext(worker: Worker): {
+  context: EventContext<{
+    invokeRequest?: {
+      transfer?: Transferable[];
+    };
+    invokeResponse?: {
+      transfer?: Transferable[];
+    };
+  }, {
+    raw: {
+      message?: MessageEvent;
+      error?: ErrorEvent;
+      messageError?: MessageEvent;
+    };
+  }>;
+};
+//#endregion
+export { WithTransfer, WorkerEventa, WorkerPayload, createContext, defineOutboundWorkerEventa, defineWorkerEventa, isWorkerEventa, normalizeOnListenerParameters, withTransfer, workerErrorEvent, workerMessageErrorEvent };
+//# sourceMappingURL=index.d.mts.map

@@ -1,0 +1,3 @@
+import { splitSQL } from "../split-CKPPrG1i.mjs";
+
+export { splitSQL };

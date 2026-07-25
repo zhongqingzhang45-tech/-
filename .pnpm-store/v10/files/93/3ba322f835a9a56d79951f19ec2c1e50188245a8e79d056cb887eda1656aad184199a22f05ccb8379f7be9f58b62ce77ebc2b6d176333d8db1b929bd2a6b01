@@ -1,0 +1,8 @@
+import "./core-D-T0fUm9.js";
+import { src_default } from "./src-CXSf_6wP.js";
+
+//#region src/webpack.ts
+var webpack_default = src_default.webpack;
+
+//#endregion
+export { webpack_default as default };

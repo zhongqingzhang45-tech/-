@@ -1,0 +1,49 @@
+import { CommonRequestOptions } from '@xsai/shared';
+
+interface GenerateTranscriptionOptions<T1 extends GenerateTranscriptionOptionsResponseFormat = undefined, T2 extends GenerateTranscriptionOptionsTimeStampGranularities = undefined> extends CommonRequestOptions {
+    file: Blob;
+    fileName?: string;
+    language?: string;
+    prompt?: string;
+    /** @default `json` */
+    responseFormat?: T1;
+    /**
+     * If you want to enable stream, use `@xsai/stream-transcription`.
+     */
+    stream?: never;
+    temperature?: string;
+    /** @default `segment` */
+    timestampGranularities?: T2;
+}
+type GenerateTranscriptionOptionsResponseFormat = 'json' | 'verbose_json' | undefined;
+type GenerateTranscriptionOptionsTimeStampGranularities = 'segment' | 'word' | undefined;
+interface GenerateTranscriptionResult<T1 extends GenerateTranscriptionOptionsResponseFormat = undefined, T2 extends GenerateTranscriptionOptionsTimeStampGranularities = undefined> {
+    duration: T1 extends 'verbose_json' ? number : never;
+    language: T1 extends 'verbose_json' ? string : never;
+    segments: T1 extends 'verbose_json' ? T2 extends 'word' ? never : GenerateTranscriptionResultSegment[] : never;
+    text: string;
+    words: T1 extends 'verbose_json' ? T2 extends 'word' ? GenerateTranscriptionResultWord[] : never : never;
+}
+/** @see {@link https://platform.openai.com/docs/api-reference/audio/verbose-json-object#audio/verbose-json-object-segments} */
+interface GenerateTranscriptionResultSegment {
+    avg_logprob: number;
+    compression_ratio: number;
+    end: number;
+    id: number;
+    no_speech_prob: number;
+    seek: number;
+    start: number;
+    temperature: number;
+    text: string;
+    tokens: number[];
+}
+/** @see {@link https://platform.openai.com/docs/api-reference/audio/verbose-json-object#audio/verbose-json-object-words} */
+interface GenerateTranscriptionResultWord {
+    end: number;
+    start: number;
+    word: string;
+}
+declare const generateTranscription: <T1 extends GenerateTranscriptionOptionsResponseFormat = undefined, T2 extends GenerateTranscriptionOptionsTimeStampGranularities = undefined>(options: GenerateTranscriptionOptions<T1, T2>) => Promise<GenerateTranscriptionResult<T1, T2>>;
+
+export { generateTranscription };
+export type { GenerateTranscriptionOptions, GenerateTranscriptionOptionsResponseFormat, GenerateTranscriptionOptionsTimeStampGranularities, GenerateTranscriptionResult, GenerateTranscriptionResultSegment, GenerateTranscriptionResultWord };

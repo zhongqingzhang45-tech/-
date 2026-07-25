@@ -1,0 +1,16 @@
+const tryCatch = (fn) => {
+  try {
+    return { data: fn(), error: void 0 };
+  } catch (error) {
+    return { data: void 0, error };
+  }
+};
+const tryCatchAsync = async (fn) => {
+  try {
+    return { data: await fn(), error: void 0 };
+  } catch (error) {
+    return { data: void 0, error };
+  }
+};
+
+export { tryCatch, tryCatchAsync };

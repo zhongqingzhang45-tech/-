@@ -1,0 +1,57 @@
+import { splitSQL } from "./split-CKPPrG1i.mjs";
+import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { cwd, env } from "node:process";
+import { loadConfig } from "c12";
+import { subtle } from "uncrypto";
+import { createUnplugin } from "unplugin";
+
+//#region src/index.ts
+function newPlugin(isRolldownLike = false) {
+	const VirtualModuleID = "virtual:drizzle-migrations.sql";
+	const ResolvedVirtualModuleId = !isRolldownLike ? `\0${VirtualModuleID}` : VirtualModuleID;
+	const VirtualModuleIDPlain = "drizzle-migrations:sql";
+	const ResolvedVirtualModuleIDPlain = !isRolldownLike ? `\0${VirtualModuleIDPlain}` : VirtualModuleIDPlain;
+	return createUnplugin((rawOptions = { root: cwd() }) => {
+		const options = rawOptions || { root: cwd() };
+		if (options.root == null) options.root = cwd();
+		let _drizzleConfig;
+		const migrateSQLFileContents = [];
+		return {
+			name: "drizzle-migrations",
+			buildStart: async () => {
+				_drizzleConfig = (await loadConfig({
+					name: "drizzle",
+					cwd: options.root
+				})).config;
+				if (!_drizzleConfig.out) return;
+				const journalJSONContent = (await readFile(join(rawOptions.root, _drizzleConfig.out, "meta/_journal.json"))).toString("utf-8");
+				const journal = JSON.parse(journalJSONContent);
+				for (let index = 0; index < journal.entries.length; index++) {
+					const { when, idx, tag } = journal.entries[index];
+					const migrateSQLFilePath = join(rawOptions.root, _drizzleConfig.out, `${tag}.sql`);
+					const migrateSQLFileContent = (await readFile(migrateSQLFilePath)).toString("utf-8");
+					migrateSQLFileContents.push({
+						idx,
+						when,
+						tag,
+						hash: Buffer.from(await subtle.digest({ name: "SHA-256" }, Buffer.from(migrateSQLFileContent, "utf-8"))).toString("hex"),
+						sql: splitSQL(migrateSQLFileContent)
+					});
+				}
+			},
+			resolveId(source) {
+				if (source.startsWith(VirtualModuleID) || source.startsWith(VirtualModuleIDPlain)) return !isRolldownLike ? `\0${source}` : source;
+			},
+			load(id) {
+				if (!id.startsWith(ResolvedVirtualModuleId) && !id.startsWith(ResolvedVirtualModuleIDPlain)) return null;
+				if (!_drizzleConfig.out) return null;
+				return `export default ${JSON.stringify(migrateSQLFileContents, null, env.NODE_ENV === "production" ? 0 : 2)}`;
+			}
+		};
+	});
+}
+
+//#endregion
+export { newPlugin };

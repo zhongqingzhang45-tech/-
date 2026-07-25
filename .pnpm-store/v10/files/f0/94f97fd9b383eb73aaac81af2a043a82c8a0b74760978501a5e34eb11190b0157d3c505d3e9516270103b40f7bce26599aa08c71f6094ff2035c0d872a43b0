@@ -1,0 +1,6 @@
+import { i as Factory, m as UnpluginCombineInstance } from "./types-CTyinCGO.js";
+
+//#region src/rspack.d.ts
+declare function getRspackPlugin<UserOptions>(factory: Factory<UserOptions>): UnpluginCombineInstance<UserOptions>["rspack"];
+//#endregion
+export { getRspackPlugin };

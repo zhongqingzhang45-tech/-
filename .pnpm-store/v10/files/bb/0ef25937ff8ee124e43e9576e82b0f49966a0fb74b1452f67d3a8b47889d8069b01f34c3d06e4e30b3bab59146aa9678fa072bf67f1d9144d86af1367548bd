@@ -1,0 +1,274 @@
+import { defineComponent as te, inject as ne, ref as T, computed as v, unref as o, watch as c, onBeforeUnmount as oe, openBlock as m, createElementBlock as C, normalizeClass as i, createCommentVNode as j, createElementVNode as l, createVNode as s, withCtx as r, createTextVNode as H, isRef as ie, createBlock as I, Fragment as ae, renderList as le, toDisplayString as se } from "vue";
+import { useMagicKeys as re } from "@vueuse/core";
+import { DialogRoot as ue, DialogTrigger as ce, DialogPortal as de, DialogOverlay as fe, DialogContent as pe, DialogTitle as ve, DialogDescription as me, ListboxRoot as be, ListboxFilter as ge, ListboxContent as he, ListboxItem as xe } from "reka-ui";
+import { useRouter as we, useRoute as ye } from "vue-router";
+import { useSceneNavigation as Se } from "../../../composables/screen-navigation/use-screen-navigation.js";
+import { injectSceneRouterStore as ke } from "../../helpers/router/context.js";
+const Te = ["disabled"], Ce = {
+  class: /* @__PURE__ */ i(["block"])
+}, Ne = ["data-scene-nav-item"], Re = {
+  class: /* @__PURE__ */ i(["min-w-0 truncate font-medium"])
+}, Pe = ["disabled"], Ie = /* @__PURE__ */ te({
+  __name: "navigator",
+  props: {
+    currentSceneId: {},
+    onNavigate: { type: Function },
+    scenes: {}
+  },
+  setup(M) {
+    const u = M, N = we(), h = ye(), d = ne(ke, null), a = T(!1), f = T(!1), R = T();
+    let b;
+    function V(e) {
+      if (typeof e.meta.title == "string" && e.meta.title.length > 0)
+        return e.meta.title;
+      const t = e.path.split("/").filter(Boolean).at(-1);
+      return t ? t.split("-").filter(Boolean).map((n) => n[0]?.toUpperCase() + n.slice(1)).join(" ") : "Home";
+    }
+    const _ = v(() => {
+      const e = N.getRoutes().filter((n) => n.redirect || n.path.includes(":") ? !1 : n.meta.sceneNavigator !== !1), t = /* @__PURE__ */ new Map();
+      for (const n of e)
+        t.has(n.path) || t.set(n.path, {
+          id: n.path,
+          title: V(n)
+        });
+      return [...t.values()].sort((n, L) => n.id.localeCompare(L.id));
+    }), p = v(() => d ? d.currentRouteCaptureRoots.value.map((e) => ({
+      id: e.id,
+      title: e.title
+    })) : []), B = v(() => u.scenes ? u.scenes : p.value.length > 0 ? p.value : _.value), P = v(() => u.currentSceneId ? o(u.currentSceneId) : p.value.length > 0 ? d?.activeCaptureRootId.value ?? p.value[0]?.id ?? h.path : h.path), F = P;
+    function U(e) {
+      if (u.onNavigate) {
+        u.onNavigate(e);
+        return;
+      }
+      if (e !== h.path) {
+        if (p.value.length > 0 && d) {
+          d.navigateToCaptureRoot(e);
+          return;
+        }
+        N.push({ path: e });
+      }
+    }
+    const A = Se({
+      currentSceneId: P,
+      onNavigate: v(() => U),
+      scenes: B
+    }), {
+      canGoNext: G,
+      canGoPrev: J,
+      goNext: g,
+      goPrev: x,
+      goToScene: O,
+      paletteItems: E,
+      searchQuery: w
+    } = A;
+    function q() {
+      a.value = !0;
+    }
+    function z() {
+      a.value = !1;
+    }
+    function y() {
+      b && (clearTimeout(b), b = void 0);
+    }
+    function S() {
+      y(), b = setTimeout(() => {
+        a.value || (f.value = !1);
+      }, 1200);
+    }
+    function D() {
+      f.value = !0, S();
+    }
+    function K(e) {
+      O(e), z();
+    }
+    function Q(e) {
+      return e instanceof HTMLElement ? e.isContentEditable || e instanceof HTMLInputElement || e instanceof HTMLTextAreaElement || e instanceof HTMLSelectElement : !1;
+    }
+    function k() {
+      return Q(document.activeElement);
+    }
+    c(a, (e) => {
+      e ? (f.value = !0, y(), requestAnimationFrame(() => {
+        R.value?.highlightFirstItem();
+      })) : S();
+    }), oe(() => {
+      y();
+    });
+    const { ctrl_k: $, meta_k: W, escape: X, arrowleft: Y, arrowright: Z, space: ee } = re();
+    return c(X, (e) => e && z()), c([$, W], ([e, t]) => (e || t) && q()), c(Y, (e) => e && !a.value && !k() && x()), c(Z, (e) => e && !a.value && !k() && g()), c(ee, (e) => e && !a.value && !k() && g()), (e, t) => (m(), C("div", {
+      class: i([
+        "fixed bottom-4 left-4 z-50 size-12"
+      ]),
+      onMouseenter: D,
+      onMouseleave: S
+    }, [
+      !f.value && !a.value ? (m(), C("button", {
+        key: 0,
+        type: "button",
+        "aria-label": "Show scene navigation",
+        class: i([
+          "absolute inset-0 rounded-xl bg-transparent"
+        ]),
+        onFocus: D
+      }, null, 32)) : j("", !0),
+      l("div", {
+        class: i([
+          "absolute bottom-0 left-0 flex items-center gap-1 rounded-xl bg-neutral-950/68 p-1.5 backdrop-blur-xl transition-all duration-250 ease-out",
+          f.value || a.value ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-1 pointer-events-none"
+        ])
+      }, [
+        l("button", {
+          "data-scene-nav-prev": "",
+          type: "button",
+          disabled: !o(J),
+          class: i([
+            "inline-flex size-8 items-center justify-center rounded-lg text-white/86",
+            "transition duration-150 ease-out hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80",
+            "disabled:cursor-not-allowed disabled:opacity-35"
+          ]),
+          onClick: t[0] || (t[0] = //@ts-ignore
+          (...n) => o(x) && o(x)(...n))
+        }, [...t[4] || (t[4] = [
+          l("span", {
+            class: i(["i-ph-arrow-left text-base"])
+          }, null, -1)
+        ])], 8, Te),
+        s(o(ue), {
+          open: a.value,
+          "onUpdate:open": t[2] || (t[2] = (n) => a.value = n)
+        }, {
+          default: r(() => [
+            s(o(ce), { "as-child": "" }, {
+              default: r(() => [...t[5] || (t[5] = [
+                l("button", {
+                  "data-scene-nav-jump": "",
+                  type: "button",
+                  class: i([
+                    "inline-flex size-8 items-center justify-center rounded-lg text-white/86",
+                    "transition duration-150 ease-out hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80"
+                  ])
+                }, [
+                  l("span", {
+                    class: i(["i-ph-magnifying-glass text-base"])
+                  })
+                ], -1)
+              ])]),
+              _: 1
+            }),
+            s(o(de), null, {
+              default: r(() => [
+                s(o(fe), {
+                  class: i([
+                    "pointer-events-auto fixed inset-0 z-60 bg-black/40"
+                  ])
+                }),
+                s(o(pe), {
+                  "data-scene-nav-palette": "",
+                  class: i([
+                    "fixed left-1/2 top-[18dvh] z-60 w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 rounded-3xl border border-white/12 bg-neutral-950/94 p-3 text-white",
+                    "shadow-2xl shadow-black/40 backdrop-blur-xl focus:outline-none"
+                  ])
+                }, {
+                  default: r(() => [
+                    s(o(ve), {
+                      class: i(["sr-only"])
+                    }, {
+                      default: r(() => [...t[6] || (t[6] = [
+                        H(" Jump to scene ", -1)
+                      ])]),
+                      _: 1
+                    }),
+                    s(o(me), {
+                      class: i(["sr-only"])
+                    }, {
+                      default: r(() => [...t[7] || (t[7] = [
+                        H(" Search and select a scene to navigate. ", -1)
+                      ])]),
+                      _: 1
+                    }),
+                    s(o(be), {
+                      ref_key: "listboxRef",
+                      ref: R
+                    }, {
+                      default: r(() => [
+                        l("label", Ce, [
+                          t[8] || (t[8] = l("span", {
+                            class: i(["sr-only"])
+                          }, "Search scenes", -1)),
+                          s(o(ge), {
+                            modelValue: o(w),
+                            "onUpdate:modelValue": t[1] || (t[1] = (n) => ie(w) ? w.value = n : null),
+                            placeholder: "Jump to scene",
+                            "auto-focus": "",
+                            class: i([
+                              "w-full rounded-xl bg-white/5 px-4 py-3 text-sm text-white outline-none",
+                              "placeholder:text-white/35 focus:ring-2 focus:ring-neutral-400/20"
+                            ])
+                          }, null, 8, ["modelValue"])
+                        ]),
+                        o(E).length > 0 ? (m(), I(o(he), {
+                          key: 0,
+                          as: "ul",
+                          class: i(["mt-3 max-h-72 overflow-auto rounded-xl bg-white/4 p-1 flex flex-col gap-1"])
+                        }, {
+                          default: r(() => [
+                            (m(!0), C(ae, null, le(o(E), (n) => (m(), I(o(xe), {
+                              key: n.id,
+                              value: n.id,
+                              "as-child": "",
+                              onSelect: (L) => K(n.id)
+                            }, {
+                              default: r(() => [
+                                l("button", {
+                                  "data-scene-nav-item": n.id,
+                                  type: "button",
+                                  class: i([
+                                    "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition",
+                                    "data-[highlighted]:bg-white/15 data-[highlighted]:text-white",
+                                    n.id === o(F) ? "bg-white/12 text-white" : "text-white/78 hover:bg-white/8 hover:text-white"
+                                  ])
+                                }, [
+                                  l("span", Re, se(n.title), 1)
+                                ], 10, Ne)
+                              ]),
+                              _: 2
+                            }, 1032, ["value", "onSelect"]))), 128))
+                          ]),
+                          _: 1
+                        })) : j("", !0)
+                      ]),
+                      _: 1
+                    }, 512)
+                  ]),
+                  _: 1
+                })
+              ]),
+              _: 1
+            })
+          ]),
+          _: 1
+        }, 8, ["open"]),
+        l("button", {
+          "data-scene-nav-next": "",
+          type: "button",
+          disabled: !o(G),
+          class: i([
+            "inline-flex size-8 items-center justify-center rounded-lg text-white/86",
+            "transition duration-150 ease-out hover:bg-white/12 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80",
+            "disabled:cursor-not-allowed disabled:opacity-35"
+          ]),
+          onClick: t[3] || (t[3] = //@ts-ignore
+          (...n) => o(g) && o(g)(...n))
+        }, [...t[9] || (t[9] = [
+          l("span", {
+            class: i(["i-ph-arrow-left-bold text-base rotate-180"])
+          }, null, -1)
+        ])], 8, Pe)
+      ], 2)
+    ], 32));
+  }
+});
+export {
+  Ie as default
+};

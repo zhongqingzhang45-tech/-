@@ -1,0 +1,10 @@
+import * as _$vitest from "vitest";
+
+//#region src/expect.d.ts
+/**
+ * Re-exported expect with vieval custom matchers pre-installed.
+ */
+declare const expect: _$vitest.ExpectStatic;
+//#endregion
+export { expect };
+//# sourceMappingURL=expect.d.mts.map

@@ -1,0 +1,13 @@
+/**
+ * @see @{@link https://github.com/hashintel/hash/blob/b03f6fe875220edd0f01ae4626ed223d3cf663ed/libs/%40hashintel/refractive/src/maps/displacement-map.ts}
+ */
+export declare function calculateDisplacementMap(props: {
+    bezelWidth: number;
+    height: number;
+    maximumDisplacement: number;
+    pixelRatio: number;
+    precomputedDisplacementMap: number[];
+    radius: number;
+    width: number;
+}): ImageData;
+export declare function calculateDisplacementMapRadius(glassThickness?: number, bezelWidth?: number, bezelHeightFn?: (x: number) => number, refractiveIndex?: number, samples?: number): number[];

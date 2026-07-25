@@ -1,0 +1,78 @@
+import { defineComponent as g, useAttrs as m, useId as z, shallowRef as c, computed as u, onMounted as x, onBeforeUnmount as y, openBlock as h, createElementBlock as k, Fragment as w, createVNode as R, unref as A, createBlock as B, resolveDynamicComponent as S, mergeProps as _, withCtx as F, renderSlot as I } from "vue";
+import O from "../components/filter.vue.js";
+import { convex as $ } from "../helpers/surface-equations.js";
+const W = /* @__PURE__ */ g({
+  name: "Refractive",
+  inheritAttrs: !1,
+  __name: "refractive",
+  props: {
+    as: { default: "div" },
+    refraction: {}
+  },
+  setup(a) {
+    const r = a, d = m(), f = z(), i = c(null), n = c(0), s = c(0);
+    let o = null;
+    const v = u(() => {
+      const { style: e, ...t } = d;
+      return t;
+    }), p = u(() => [
+      d.style,
+      {
+        backdropFilter: `url(#${f})`,
+        borderRadius: `${r.refraction.radius}px`
+      }
+    ]), l = u(() => ({
+      blur: r.refraction.blur ?? 0,
+      glassThickness: r.refraction.glassThickness ?? 70,
+      bezelWidth: r.refraction.bezelWidth ?? 0,
+      refractiveIndex: r.refraction.refractiveIndex ?? 1.5,
+      specularOpacity: r.refraction.specularOpacity ?? 0,
+      specularAngle: r.refraction.specularAngle ?? 0,
+      bezelHeightFn: r.refraction.bezelHeightFn ?? $
+    }));
+    function b(e) {
+      const t = Array.isArray(e.borderBoxSize) ? e.borderBoxSize[0] : e.borderBoxSize;
+      if (t) {
+        n.value = t.inlineSize, s.value = t.blockSize;
+        return;
+      }
+      n.value = e.contentRect.width, s.value = e.contentRect.height;
+    }
+    return x(() => {
+      i.value && (o = new ResizeObserver((e) => {
+        for (const t of e)
+          b(t);
+      }), o.observe(i.value));
+    }), y(() => {
+      o?.disconnect();
+    }), (e, t) => (h(), k(w, null, [
+      R(O, {
+        id: A(f),
+        "scale-ratio": 1,
+        "pixel-ratio": 6,
+        width: n.value,
+        height: s.value,
+        radius: a.refraction.radius,
+        blur: l.value.blur,
+        "glass-thickness": l.value.glassThickness,
+        "bezel-width": l.value.bezelWidth,
+        "refractive-index": l.value.refractiveIndex,
+        "specular-opacity": l.value.specularOpacity,
+        "specular-angle": l.value.specularAngle,
+        "bezel-height-fn": l.value.bezelHeightFn
+      }, null, 8, ["id", "width", "height", "radius", "blur", "glass-thickness", "bezel-width", "refractive-index", "specular-opacity", "specular-angle", "bezel-height-fn"]),
+      (h(), B(S(a.as), _({
+        ref_key: "elementRef",
+        ref: i
+      }, v.value, { style: p.value }), {
+        default: F(() => [
+          I(e.$slots, "default")
+        ]),
+        _: 3
+      }, 16, ["style"]))
+    ], 64));
+  }
+});
+export {
+  W as default
+};

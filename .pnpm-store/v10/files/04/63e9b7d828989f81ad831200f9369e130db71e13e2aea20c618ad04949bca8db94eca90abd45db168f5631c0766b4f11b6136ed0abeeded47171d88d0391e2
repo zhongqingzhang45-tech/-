@@ -1,0 +1,4 @@
+//#region src/rspack.ts
+var rspack_default = require("./core-CEOGw--w.cjs").UnpluginInfo.rspack;
+//#endregion
+module.exports = rspack_default;

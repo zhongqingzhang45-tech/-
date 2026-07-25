@@ -1,0 +1,70 @@
+{
+  "name": "@vue-macros/jsx-directive",
+  "version": "3.1.2",
+  "description": "jsxDirective feature from Vue Macros.",
+  "type": "module",
+  "keywords": [
+    "vue-macros",
+    "macros",
+    "vue",
+    "sfc",
+    "setup",
+    "script-setup",
+    "jsx-directive",
+    "unplugin"
+  ],
+  "license": "MIT",
+  "homepage": "https://vue-macros.dev",
+  "bugs": {
+    "url": "https://github.com/vue-macros/vue-macros/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vue-macros/vue-macros.git",
+    "directory": "packages/jsx-directive"
+  },
+  "author": "zhiyuanzmj",
+  "contributors": [
+    "Kevin Deng <sxzz@sxzz.moe>"
+  ],
+  "funding": "https://github.com/sponsors/vue-macros",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./api": "./dist/api.js",
+    "./esbuild": "./dist/esbuild.js",
+    "./helpers": "./dist/helpers.js",
+    "./raw": "./dist/raw.js",
+    "./rolldown": "./dist/rolldown.js",
+    "./rollup": "./dist/rollup.js",
+    "./rspack": "./dist/rspack.js",
+    "./vite": "./dist/vite.js",
+    "./webpack": "./dist/webpack.js",
+    "./*": "./*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "unplugin": "^2.3.10",
+    "vue": "^3.5.22",
+    "@vue-macros/common": "3.1.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {}
+}

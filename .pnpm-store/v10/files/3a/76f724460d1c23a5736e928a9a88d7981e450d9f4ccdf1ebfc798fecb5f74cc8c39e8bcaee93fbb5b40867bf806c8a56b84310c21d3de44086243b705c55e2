@@ -1,0 +1,22 @@
+import "./split-CKPPrG1i.mjs";
+import { newPlugin } from "./src-Dbre5JHh.mjs";
+
+//#region src/rollup.ts
+/**
+* Rollup plugin
+*
+* @example
+* ```ts
+* // rollup.config.js
+* import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/rollup'
+*
+* export default {
+*   plugins: [DrizzleORMMigrations()],
+* }
+* ```
+*/
+const rollup = newPlugin().rollup;
+var rollup_default = rollup;
+
+//#endregion
+export { rollup_default as default, rollup as "module.exports" };

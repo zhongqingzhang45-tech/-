@@ -1,0 +1,10 @@
+function n(e) {
+  const { canvasHeight: t, canvasWidth: i, viewportHeight: a, viewportWidth: c } = e, l = e.scaleMultiplier && e.scaleMultiplier > 0 ? e.scaleMultiplier : 1;
+  return c <= 0 || a <= 0 || i <= 0 || t <= 0 ? l : Math.min(
+    c / i,
+    a / t
+  ) * l;
+}
+export {
+  n as computeScenarioCanvasScale
+};

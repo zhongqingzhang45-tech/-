@@ -1,0 +1,1 @@
+{"version":3,"file":"pinceau-tokens.d.ts","sourceRoot":"","sources":["../../../src/node/builtin-plugins/pinceau-tokens.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,MAAM,EAAiB,MAAM,kBAAkB,CAAA;AAI7D,MAAM,WAAW,oBAAoB;IACnC,aAAa,CAAC,EAAE,MAAM,GAAG,MAAM,EAAE,CAAA;IACjC,cAAc,CAAC,EAAE,MAAM,CAAA;CACxB;AAED,wBAAgB,aAAa,CAAC,QAAQ,GAAE,oBAAyB,GAAG,MAAM,CA2DzE"}

@@ -1,0 +1,4 @@
+import f from "./deco-highlight-region.vue.js";
+export {
+  f as default
+};
