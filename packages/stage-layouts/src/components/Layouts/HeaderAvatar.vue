@@ -118,6 +118,15 @@ onClickOutside(dropdownRef, () => {
 
           <div class="py-1">
             <RouterLink
+              to="/my"
+              class="group w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              @click="showDropdown = false"
+            >
+              <div class="i-solar:user-heart-bold-duotone text-lg text-neutral-400 transition group-hover:text-primary-500" />
+              我的中
+            </RouterLink>
+
+            <RouterLink
               to="/settings/account"
               class="group w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
               @click="showDropdown = false"
