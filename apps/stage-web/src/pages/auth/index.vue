@@ -7,18 +7,7 @@ const router = useRouter()
 const loading = ref(false)
 const isLoaded = ref(false)
 
-async function handleLogin() {
-  loading.value = true
-  try {
-    await triggerSignIn()
-  }
-  catch (err) {
-    console.error('Login failed:', err)
-    loading.value = false
-  }
-}
-
-async function handleGuest() {
+async function goToChat() {
   try {
     await router.push('/chat')
   }
@@ -26,6 +15,24 @@ async function handleGuest() {
     console.error('Navigation to /chat failed:', err)
     window.location.href = '/chat'
   }
+}
+
+async function handleLogin() {
+  loading.value = true
+  try {
+    await triggerSignIn()
+    // If triggerSignIn succeeds without redirecting, go to chat
+    await goToChat()
+  }
+  catch (err) {
+    console.error('Login failed, entering as guest:', err)
+    // Login service may be unavailable in Life build; go to chat anyway
+    await goToChat()
+  }
+}
+
+async function handleGuest() {
+  await goToChat()
 }
 
 onMounted(() => {
