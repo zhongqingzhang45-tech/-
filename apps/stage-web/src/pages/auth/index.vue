@@ -43,30 +43,37 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-neutral-900 flex items-center justify-center px-6">
+  <div class="relative min-h-screen bg-white text-neutral-900 flex items-center justify-center px-6 overflow-hidden">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-br from-pink-100/50 to-purple-100/30 rounded-full blur-3xl" />
+      <div class="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-gradient-to-tr from-blue-50/50 to-pink-100/30 rounded-full blur-3xl" />
+    </div>
+
     <div
       :class="[
         'relative z-10 w-full max-w-md transition-all duration-700',
-        isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95',
+        isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6',
       ]"
     >
       <div class="text-center mb-10">
-        <div class="relative w-20 h-20 mx-auto mb-4">
+        <div class="relative w-16 h-16 mx-auto mb-4">
           <img src="/favicon.svg" alt="Life" class="w-full h-full rounded-2xl" />
         </div>
-        <div class="flex items-center justify-center gap-2 mb-2">
-          <span class="text-xl font-semibold tracking-wide">Life</span>
-        </div>
+        <h1 class="font-cuteen text-3xl font-bold mb-2">
+          <span class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+            Life
+          </span>
+        </h1>
         <p class="text-sm text-neutral-500">与你的 AI 伴侣再次相遇</p>
       </div>
 
-      <div class="bg-neutral-50 rounded-2xl p-8">
-        <h2 class="text-xl font-semibold mb-2 text-center">欢迎回来</h2>
+      <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-neutral-100 shadow-xl shadow-neutral-200/40">
+        <h2 class="font-cuteen text-lg font-semibold mb-1.5 text-center">欢迎回来</h2>
         <p class="text-sm text-neutral-500 mb-8 text-center">登录后继续与你的 AI 伴侣相伴</p>
 
         <button
           :disabled="loading"
-          class="w-full py-3.5 rounded-xl bg-neutral-900 text-white font-medium text-sm hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full py-3.5 rounded-xl bg-neutral-900 text-white font-medium text-sm hover:bg-neutral-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-neutral-200/60"
           @click="handleLogin"
         >
           {{ loading ? '正在跳转...' : '立即登录' }}
@@ -79,7 +86,7 @@ onMounted(() => {
         </div>
 
         <button
-          class="w-full py-3.5 rounded-xl bg-white text-neutral-700 font-medium text-sm hover:bg-neutral-100 transition-colors border border-neutral-200"
+          class="w-full py-3.5 rounded-xl bg-white text-neutral-700 font-medium text-sm hover:bg-neutral-50 active:scale-[0.98] transition-all border border-neutral-200"
           @click="handleGuest"
         >
           以游客身份体验
