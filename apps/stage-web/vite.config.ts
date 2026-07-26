@@ -128,11 +128,19 @@ export default defineConfig({
     // Life: 沙箱/容器环境 inotify 配额不足时，设置 LIFE_USE_POLLING_WATCH=1
     // 切换到轮询模式，避免 ENOSPC 错误阻断 dev server。
     watch: env.LIFE_USE_POLLING_WATCH === '1' || env.LIFE_USE_POLLING_WATCH === 'true'
-      ? { usePolling: true, interval: 1000, binary: false }
+      ? { usePolling: true, interval: 1000 }
       : undefined,
   },
   build: {
-    sourcemap: true,
+    // Life: sourcemap 在 OOM 受限的沙箱/CI 环境会显著放大内存峰值，
+    // 通过 LIFE_DISABLE_SOURCEMAP=1 关闭以让 build 在 6GB 内存下完成。
+    // Removal condition: 部署环境内存充裕后可恢复为 true。
+    sourcemap: env.LIFE_DISABLE_SOURCEMAP !== '1' && env.LIFE_DISABLE_SOURCEMAP !== 'true',
+    // Life: rendering chunks 阶段在 6GB 沙箱中峰值过高导致被 OOM killer 终止（exit 129）。
+    // 关闭压缩以减少 CPU/内存双峰值，产物体积变大但能完成构建；部署侧用 nginx gzip 弥补。
+    // Removal condition: 部署环境内存充裕后可恢复为 'esbuild'。
+    minify: env.LIFE_DISABLE_MINIFY === '1' || env.LIFE_DISABLE_MINIFY === 'true' ? false : 'esbuild',
+    chunkSizeWarningLimit: 16000,
   },
   worker: {
     format: 'es',

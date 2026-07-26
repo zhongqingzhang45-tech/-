@@ -88,28 +88,63 @@ watch(settings.themeColorsHueDynamic, () => {
 // build these may be missing, so we must not let one failure block the others
 // or prevent the UI from rendering.
 onMounted(async () => {
-  try { analyticsStore.initialize() } catch (e) { console.error('analyticsStore init failed:', e) }
-  try { await displayModelsStore.initialize() } catch (e) { console.error('displayModelsStore init failed:', e) }
-  try { cardStore.initialize() } catch (e) { console.error('cardStore init failed:', e) }
+  try {
+    analyticsStore.initialize()
+  }
+  catch (e) { console.error('analyticsStore init failed:', e) }
+  try {
+    await displayModelsStore.initialize()
+  }
+  catch (e) { console.error('displayModelsStore init failed:', e) }
+  try {
+    cardStore.initialize()
+  }
+  catch (e) { console.error('cardStore init failed:', e) }
 
-  // Life build uses its own auth flow; skip AIRI onboarding dialog
-  // try {
-  //   if (onboardingStore.needsOnboarding) {
-  //     onboardingStore.showingSetup = true
-  //   }
-  // } catch (e) { console.error('onboarding check failed:', e) }
+  // Life: 恢复 onboarding 首次进入引导，让新用户能完成 Provider/模型配置
+  // 仍包在 try-catch 中，避免 onboardingStore 内部异常阻断后续 init
+  try {
+    if (onboardingStore.needsOnboarding) {
+      onboardingStore.showingSetup = true
+    }
+  }
+  catch (e) { console.error('onboarding check failed:', e) }
 
-  try { await chatSessionStore.initialize() } catch (e) { console.error('chatSessionStore init failed:', e) }
-  try { await serverChannelStore.initialize({ possibleEvents: ['ui:configure'] }).catch(err => console.error('Failed to initialize Mods Server Channel in App.vue:', err)) } catch (e) { console.error('serverChannelStore init failed:', e) }
-  try { contextBridgeStore.initialize() } catch (e) { console.error('contextBridgeStore init failed:', e) }
-  try { characterOrchestratorStore.initialize() } catch (e) { console.error('characterOrchestratorStore init failed:', e) }
+  try {
+    await chatSessionStore.initialize()
+  }
+  catch (e) { console.error('chatSessionStore init failed:', e) }
+  try {
+    await serverChannelStore.initialize({ possibleEvents: ['ui:configure'] }).catch(err => console.error('Failed to initialize Mods Server Channel in App.vue:', err))
+  }
+  catch (e) { console.error('serverChannelStore init failed:', e) }
+  try {
+    contextBridgeStore.initialize()
+  }
+  catch (e) { console.error('contextBridgeStore init failed:', e) }
+  try {
+    characterOrchestratorStore.initialize()
+  }
+  catch (e) { console.error('characterOrchestratorStore init failed:', e) }
 
-  try { await displayModelsStore.loadDisplayModelsFromIndexedDB() } catch (e) { console.error('loadDisplayModels failed:', e) }
-  try { await settingsStore.initializeStageModel() } catch (e) { console.error('initializeStageModel failed:', e) }
-  try { await settingsAudioDeviceStore.initialize() } catch (e) { console.error('settingsAudioDevice init failed:', e) }
+  try {
+    await displayModelsStore.loadDisplayModelsFromIndexedDB()
+  }
+  catch (e) { console.error('loadDisplayModels failed:', e) }
+  try {
+    await settingsStore.initializeStageModel()
+  }
+  catch (e) { console.error('initializeStageModel failed:', e) }
+  try {
+    await settingsAudioDeviceStore.initialize()
+  }
+  catch (e) { console.error('settingsAudioDevice init failed:', e) }
 
   // Preload local inference models (Kokoro TTS, etc.) in background after a delay
-  try { inferencePreload.triggerPreload() } catch (e) { console.error('inferencePreload failed:', e) }
+  try {
+    inferencePreload.triggerPreload()
+  }
+  catch (e) { console.error('inferencePreload failed:', e) }
 })
 
 onUnmounted(() => {
@@ -150,13 +185,13 @@ function handleSetupSkipped() {
     <Toaster />
   </ToasterRoot>
 
-  <!-- First Time Setup Dialog - disabled in Life build -->
-  <!-- <OnboardingDialog
+  <!-- First Time Setup Dialog -->
+  <OnboardingDialog
     v-model="showingSetup"
     :extra-steps="onboardingExtraSteps"
     @configured="handleSetupConfigured"
     @skipped="handleSetupSkipped"
-  /> -->
+  />
 
   <PerformanceOverlay />
 </template>
