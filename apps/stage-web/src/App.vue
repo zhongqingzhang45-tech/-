@@ -101,15 +101,6 @@ onMounted(async () => {
   }
   catch (e) { console.error('cardStore init failed:', e) }
 
-  // Life: 恢复 onboarding 首次进入引导，让新用户能完成 Provider/模型配置
-  // 仍包在 try-catch 中，避免 onboardingStore 内部异常阻断后续 init
-  try {
-    if (onboardingStore.needsOnboarding) {
-      onboardingStore.showingSetup = true
-    }
-  }
-  catch (e) { console.error('onboarding check failed:', e) }
-
   try {
     await chatSessionStore.initialize()
   }
