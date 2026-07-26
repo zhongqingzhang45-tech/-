@@ -24,7 +24,6 @@ GITEE_REPO="https://gitee.com/lifeos20/airi.git"
 GITEE_REPO_AUTH="https://oauth2:24d31e4a13d1d3fd1efe4d106784c875@gitee.com/lifeos20/airi.git"
 APP_DIR="$HOME/airi"
 SERVER_PORT=3000
-WEB_PORT=5173
 
 # 数据库配置
 DB_NAME="airi"
@@ -40,12 +39,8 @@ generate_secret() {
   openssl rand -base64 32
 }
 
-generate_master_key() {
-  openssl rand -base64 32
-}
-
 BETTER_AUTH_SECRET=$(generate_secret)
-LLM_ROUTER_MASTER_KEY=$(generate_master_key)
+LLM_ROUTER_MASTER_KEY=$(generate_secret)
 
 info "========================================"
 info "  AIRI 一键部署脚本"
@@ -58,31 +53,29 @@ info "========================================"
 # ============================================================
 info "Step 1: 安装系统依赖..."
 
-# 更新包管理器
 sudo apt-get update -qq
 
-# 安装基础工具
+# 基础工具 + PostgreSQL + Redis + Nginx
 sudo apt-get install -y -qq curl git build-essential python3 nginx \
   postgresql postgresql-contrib redis-server ufw 2>/dev/null
 
-# canvas 原生模块编译需要的系统库
+# canvas 原生模块编译需要的系统库（如启用 canvas 构建时需要）
 sudo apt-get install -y -qq pkg-config libpixman-1-dev libcairo2-dev \
   libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev 2>/dev/null
 
 ok "系统依赖安装完成"
 
 # ============================================================
-# Step 2: 安装 Node.js 20 LTS + pnpm + PM2
+# Step 2: 安装 Node.js + pnpm + PM2
 # ============================================================
 info "Step 2: 安装 Node.js + pnpm + PM2..."
 
+# Node.js 20 LTS
 if ! command -v node &>/dev/null; then
   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
   sudo apt-get install -y -qq nodejs
 fi
-
-NODE_VERSION=$(node -v)
-ok "Node.js: $NODE_VERSION"
+ok "Node.js: $(node -v)"
 
 # pnpm
 if ! command -v pnpm &>/dev/null; then
@@ -104,7 +97,6 @@ info "Step 3: 配置 PostgreSQL..."
 sudo systemctl enable postgresql
 sudo systemctl start postgresql
 
-# 创建数据库和用户
 sudo -u postgres psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$DB_USER') THEN CREATE ROLE $DB_USER LOGIN PASSWORD '$DB_PASS'; END IF; END \$\$;" 2>/dev/null || true
 sudo -u postgres psql -c "SELECT 'CREATE DATABASE $DB_NAME' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')" | grep -q CREATE && sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;" 2>/dev/null || true
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;" 2>/dev/null || true
@@ -129,15 +121,13 @@ info "Step 5: 克隆代码仓库..."
 if [ -d "$APP_DIR/.git" ]; then
   info "仓库已存在，拉取最新代码..."
   cd "$APP_DIR"
-  # 使用带 token 的 URL 避免交互式输入
   git remote set-url origin "$GITEE_REPO_AUTH" 2>/dev/null || true
-  git pull origin main 2>&1 || warn "git pull 失败，使用现有代码继续"
-  # 恢复为不带 token 的 URL（安全）
+  git fetch origin main 2>&1 || warn "git fetch 失败"
+  git reset --hard origin/main 2>&1 || warn "git reset 失败"
   git remote set-url origin "$GITEE_REPO" 2>/dev/null || true
 else
   git clone --depth 1 "$GITEE_REPO_AUTH" "$APP_DIR"
   cd "$APP_DIR"
-  # 恢复为不带 token 的 URL
   git remote set-url origin "$GITEE_REPO" 2>/dev/null || true
 fi
 
@@ -148,9 +138,14 @@ ok "代码已就绪: $(pwd)"
 # ============================================================
 info "Step 6: 配置环境变量..."
 
-SERVER_ENV_FILE="apps/server/.env"
+# dotenvx 通过 .env.local 加载环境变量（apply:env 脚本）
+# 同时创建 .env 供其他工具使用
+SERVER_ENV_LOCAL="apps/server/.env.local"
+SERVER_ENV="apps/server/.env"
 
-cat > "$SERVER_ENV_FILE" << EOF
+# NOTICE: AUTH_GOOGLE_* / AUTH_GITHUB_* 在 env.ts 中是 nonEmpty 必填项
+# 部署时若未配置真实 OAuth，使用占位符让 server 能启动（OAuth 登录将不可用）
+cat > "$SERVER_ENV_LOCAL" << EOF
 # ===== 基础配置 =====
 HOST=0.0.0.0
 PORT=$SERVER_PORT
@@ -165,22 +160,20 @@ REDIS_URL=redis://localhost:$REDIS_PORT
 # ===== 认证密钥 =====
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 
-# ===== LLM Router 加密密钥 =====
+# ===== LLM Router 加密密钥（base64 编码的 32 字节）=====
 LLM_ROUTER_MASTER_KEY=$LLM_ROUTER_MASTER_KEY
 
-# ===== Google OAuth (可选，先留空) =====
-AUTH_GOOGLE_CLIENT_ID=
-AUTH_GOOGLE_CLIENT_SECRET=
+# ===== OAuth 占位符（env.ts 要求 nonEmpty，真实值请手动替换）=====
+AUTH_GOOGLE_CLIENT_ID=placeholder_google_client_id
+AUTH_GOOGLE_CLIENT_SECRET=placeholder_google_client_secret
+AUTH_GITHUB_CLIENT_ID=placeholder_github_client_id
+AUTH_GITHUB_CLIENT_SECRET=placeholder_github_client_secret
 
-# ===== GitHub OAuth (可选，先留空) =====
-AUTH_GITHUB_CLIENT_ID=
-AUTH_GITHUB_CLIENT_SECRET=
-
-# ===== Stripe (可选) =====
+# ===== Stripe（可选，先留空）=====
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 
-# ===== 邮件 (可选) =====
+# ===== 邮件（可选）=====
 RESEND_API_KEY=
 
 # ===== 数据库连接池 =====
@@ -193,59 +186,144 @@ DB_POOL_KEEPALIVE_INITIAL_DELAY_MS=10000
 ADDITIONAL_TRUSTED_ORIGINS=
 EOF
 
-ok "环境变量配置完成: $SERVER_ENV_FILE"
-warn "请根据需要修改 OAuth/Stripe 等配置"
+# .env 与 .env.local 保持一致
+cp "$SERVER_ENV_LOCAL" "$SERVER_ENV"
+
+ok "环境变量配置完成: $SERVER_ENV_LOCAL"
+warn "请根据需要修改 OAuth/Stripe 等配置（当前为占位符）"
 
 # ============================================================
 # Step 7: 安装项目依赖
 # ============================================================
 info "Step 7: 安装项目依赖..."
 
-# 移除未使用的 mineflayer-pathfinder patch（该包在 workspace 但未被部署目标引用）
-if grep -q "mineflayer-pathfinder" pnpm-workspace.yaml 2>/dev/null; then
-  sed -i '/mineflayer-pathfinder:/d' pnpm-workspace.yaml
-  info "已移除未使用的 mineflayer-pathfinder patch 配置"
+# ---------- 7.1 清理 pnpm-workspace.yaml 中的问题配置 ----------
+WORKSPACE_FILE="pnpm-workspace.yaml"
+
+# 移除未使用的 mineflayer-pathfinder patch（workspace 中未引用）
+if grep -q "mineflayer-pathfinder" "$WORKSPACE_FILE" 2>/dev/null; then
+  sed -i '/mineflayer-pathfinder/d' "$WORKSPACE_FILE"
+  info "已移除未使用的 mineflayer-pathfinder patch"
 fi
 
-# pnpm install: 允许 patch 警告但不中断
-pnpm install --no-frozen-lockfile 2>&1 || {
-  warn "pnpm install 遇到警告，尝试忽略 patch 错误重试..."
-  pnpm install --no-frozen-lockfile --config.strict-peer-dependencies=false 2>&1 || true
+# 移除 @mediapipe/tasks-vision patch（补丁与当前包版本不匹配，会导致安装失败）
+if grep -q "@mediapipe/tasks-vision" "$WORKSPACE_FILE" 2>/dev/null; then
+  sed -i "/@mediapipe\/tasks-vision/d" "$WORKSPACE_FILE"
+  info "已移除 @mediapipe/tasks-vision patch（补丁不匹配）"
+fi
+
+# ---------- 7.2 禁用部署不需要的 native 模块 postinstall ----------
+# 这些模块的 postinstall 会因网络或系统依赖失败，但服务器部署不需要它们:
+#   sharp@0.29.3: 从 GitHub 下载 libvips（国内网络受限）
+#   canvas: 原生编译耗时，仅用于开发工具
+#   uiohook-napi: 桌面端键盘/鼠标钩子
+#   node-pty: 终端模拟，服务器不需要
+#   electron: 桌面应用框架
+#   isolated-vm: V8 沙箱，服务器不需要
+#   stockfish: 国际象棋引擎
+# 将它们从 onlyBuiltDependencies 移到 ignoredBuiltDependencies
+NATIVE_MODULES_TO_SKIP=(
+  "sharp"
+  "canvas"
+  "uiohook-napi"
+  "node-pty"
+  "electron"
+  "isolated-vm"
+  "stockfish"
+)
+
+for mod in "${NATIVE_MODULES_TO_SKIP[@]}"; do
+  # 从 onlyBuiltDependencies 中移除
+  sed -i "/^  - ${mod}$/d" "$WORKSPACE_FILE"
+  # 添加到 ignoredBuiltDependencies（如果尚未存在）
+  if ! grep -A50 "^ignoredBuiltDependencies:" "$WORKSPACE_FILE" | grep -q "^  - ${mod}$"; then
+    sed -i "/^ignoredBuiltDependencies:/a\\  - ${mod}" "$WORKSPACE_FILE"
+  fi
+done
+info "已禁用 sharp/canvas/electron 等 native 模块的 postinstall"
+
+# ---------- 7.3 临时禁用根 postinstall 脚本 ----------
+# 根 package.json 的 postinstall 是: pnpm exec simple-git-hooks && pnpm run build:packages
+# - simple-git-hooks: 部署不需要 git hooks
+# - build:packages: 稍后手动构建（需要先安装依赖才能构建）
+ROOT_PKG="package.json"
+if grep -q '"postinstall"' "$ROOT_PKG"; then
+  sed -i 's/"postinstall":/"_postinstall_orig":/' "$ROOT_PKG"
+  info "已临时禁用根 postinstall 脚本（稍后手动构建 packages）"
+fi
+
+# ---------- 7.4 执行 pnpm install ----------
+# 使用 --filter 仅安装 server + stage-web 及其依赖，跳过 tauri/electron 等无关包
+# 这大幅减少安装时间和避免更多 native 模块问题
+info "执行 pnpm install（仅安装 server + stage-web 依赖）..."
+
+pnpm install \
+  --filter "@proj-airi/server..." \
+  --filter "@proj-airi/stage-web..." \
+  --no-frozen-lockfile 2>&1 || {
+  warn "filtered install 失败，回退到完整安装..."
+  pnpm install --no-frozen-lockfile 2>&1 || {
+    warn "完整安装也有警告，继续部署（部分 native 模块可能不可用）"
+  }
 }
 
 ok "依赖安装完成"
 
 # ============================================================
-# Step 8: 数据库迁移
+# Step 8: 构建 workspace packages
 # ============================================================
-info "Step 8: 数据库迁移..."
+info "Step 8: 构建 workspace packages..."
 
+# server 和 stage-web 依赖的 workspace packages 需要先构建（生成 dist/）
+# 使用 --filter ... 递归构建 server 和 stage-web 的所有 workspace 依赖
+info "构建 server 依赖的 packages..."
+pnpm --filter "@proj-airi/server..." run build 2>&1 || warn "server packages 构建有警告，继续"
+
+info "构建 stage-web 依赖的 packages..."
+pnpm --filter "@proj-airi/stage-web..." run build 2>&1 || warn "stage-web packages 构建有警告，继续"
+
+ok "workspace packages 构建完成"
+
+# ============================================================
+# Step 9: 数据库迁移
+# ============================================================
+info "Step 9: 数据库迁移..."
+
+# db:push 脚本通过 dotenvx 加载 .env.local，然后运行 drizzle-kit push
 cd apps/server
-pnpm run db:push 2>&1 || warn "数据库迁移可能需要手动检查"
+pnpm run db:push 2>&1 || warn "数据库迁移可能需要手动检查: cd apps/server && pnpm run db:push"
 cd ../..
 
 ok "数据库迁移完成"
 
 # ============================================================
-# Step 9: 构建应用
+# Step 10: 构建 stage-web 前端
 # ============================================================
-info "Step 9: 构建应用..."
+info "Step 10: 构建 stage-web..."
 
-# 构建 server
-info "构建 server..."
-pnpm -F @proj-airi/server run build 2>&1 || warn "server 构建有警告，继续部署"
-
-# 构建 stage-web
-info "构建 stage-web..."
 pnpm -F @proj-airi/stage-web run build 2>&1 || warn "stage-web 构建有警告，继续部署"
 
-ok "应用构建完成"
+ok "stage-web 构建完成"
 
 # ============================================================
-# Step 10: 配置 PM2
+# Step 11: 创建 PM2 启动脚本
 # ============================================================
-info "Step 10: 配置 PM2..."
+info "Step 11: 配置 PM2..."
 
+# PM2 启动脚本：通过 pnpm run start 调用 dotenvx 加载 .env.local 后启动 tsx
+# 不能直接调用 tsx，否则环境变量不会被加载（server 启动会失败）
+START_SCRIPT="$APP_DIR/apps/server/start-server.sh"
+
+cat > "$START_SCRIPT" << 'STARTEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+# 通过 pnpm run start 调用 dotenvx run 加载 .env.local，然后运行 tsx
+exec pnpm run start
+STARTEOF
+chmod +x "$START_SCRIPT"
+
+# PM2 配置
 PM2_CONFIG="$APP_DIR/ecosystem.config.cjs"
 
 cat > "$PM2_CONFIG" << 'EOF'
@@ -254,8 +332,7 @@ module.exports = {
     {
       name: 'airi-server',
       cwd: './apps/server',
-      script: './node_modules/.bin/tsx',
-      args: '--import ./instrumentation.ts src/bin/run.ts api',
+      script: './start-server.sh',
       env: {
         NODE_ENV: 'production',
       },
@@ -289,9 +366,9 @@ pm2 startup systemd -u "$USER" --hp "$HOME" 2>/dev/null || warn "PM2 开机自�
 ok "PM2 配置完成"
 
 # ============================================================
-# Step 11: 配置 Nginx 反向代理
+# Step 12: 配置 Nginx 反向代理
 # ============================================================
-info "Step 11: 配置 Nginx..."
+info "Step 12: 配置 Nginx..."
 
 NGINX_CONF="/etc/nginx/sites-available/airi"
 
@@ -383,9 +460,9 @@ sudo systemctl enable nginx
 ok "Nginx 配置完成"
 
 # ============================================================
-# Step 12: 配置防火墙
+# Step 13: 配置防火墙
 # ============================================================
-info "Step 12: 配置防火墙..."
+info "Step 13: 配置防火墙..."
 
 sudo ufw allow 22/tcp 2>/dev/null || true
 sudo ufw allow 80/tcp 2>/dev/null || true
@@ -395,11 +472,11 @@ sudo ufw --force enable 2>/dev/null || warn "防火墙配置跳过"
 ok "防火墙配置完成"
 
 # ============================================================
-# Step 13: 验证部署
+# Step 14: 验证部署
 # ============================================================
-info "Step 13: 验证部署..."
+info "Step 14: 验证部署..."
 
-sleep 3
+sleep 5
 
 # 检查 PM2 进程状态
 info "PM2 进程状态:"
@@ -410,7 +487,10 @@ info "健康检查:"
 if curl -sf "http://localhost:$SERVER_PORT/livez" 2>/dev/null; then
   ok "Server 健康检查通过"
 else
-  warn "Server 健康检查未就绪，请检查日志: pm2 logs airi-server"
+  warn "Server 健康检查未就绪"
+  warn "查看日志: pm2 logs airi-server --lines 50"
+  # 显示最近日志帮助诊断
+  pm2 logs airi-server --lines 20 --nostream 2>/dev/null || true
 fi
 
 # 检查 Nginx
@@ -435,8 +515,9 @@ echo -e "  API 地址:  ${BLUE}http://$SERVER_IP/api${NC}"
 echo -e "  健康检查:  ${BLUE}http://$SERVER_IP/livez${NC}"
 echo ""
 echo -e "  ${YELLOW}重要提示:${NC}"
-echo -e "  1. 修改 ${BLUE}apps/server/.env${NC} 中的 OAuth/Stripe 配置"
+echo -e "  1. 修改 ${BLUE}apps/server/.env.local${NC} 中的 OAuth/Stripe 配置"
+echo -e "     当前 OAuth 为占位符，登录功能不可用"
 echo -e "  2. 查看日志: ${BLUE}pm2 logs airi-server${NC}"
 echo -e "  3. 重启服务: ${BLUE}pm2 restart airi-server${NC}"
-echo -e "  4. 更新代码: ${BLUE}cd ~/airi && git pull && pnpm install && pm2 restart airi-server${NC}"
+echo -e "  4. 更新代码: ${BLUE}cd ~/airi && git pull && bash deploy.sh${NC}"
 echo ""
