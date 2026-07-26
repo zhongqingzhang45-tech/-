@@ -34,7 +34,7 @@ onMounted(() => {
       <template #fallback>
         <div class="absolute inset-0 flex items-center justify-end pr-8 md:pr-20">
           <img
-            src="/open-graph.png"
+            src="/character.avif"
             alt="Character"
             class="w-[300px] h-[380px] md:w-[420px] md:h-[520px] object-contain opacity-90"
           />

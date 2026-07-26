@@ -18,7 +18,7 @@ const sessionsDrawerOpen = shallowRef(false)
       <template #fallback>
         <div class="absolute inset-0 flex items-center justify-center">
           <img
-            src="/open-graph.png"
+            src="/character.avif"
             alt="Character"
             class="w-[280px] h-[350px] md:w-[380px] md:h-[475px] object-contain opacity-80"
           />
