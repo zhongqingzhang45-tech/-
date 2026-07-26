@@ -21,7 +21,6 @@ const containerRef = ref<HTMLDivElement>()
 const isPixiCanvasReady = ref(false)
 const pixiApp = ref<Application>()
 const pixiAppCanvas = ref<HTMLCanvasElement>()
-const webglSupported = ref(true)
 
 function resolveMaxFps(limit?: number) {
   if (!limit || limit <= 0)
@@ -50,39 +49,36 @@ async function initLive2DPixiStage(parent: HTMLDivElement) {
   componentState.value = 'loading'
   isPixiCanvasReady.value = false
 
-  try {
-    Live2DModel.registerTicker(Ticker)
-    extensions.add(TickerPlugin)
+  // https://guansss.github.io/pixi-live2d-display/#package-importing
+  Live2DModel.registerTicker(Ticker)
+  extensions.add(TickerPlugin)
+  // We handle the interactions (e.g., mouse-based focusing at) manually
+  // extensions.add(InteractionManager)
 
-    pixiApp.value = new Application({
-      width: props.width * props.resolution,
-      height: props.height * props.resolution,
-      backgroundAlpha: 0,
-      preserveDrawingBuffer: true,
-      autoDensity: false,
-      resolution: 1,
-    })
+  pixiApp.value = new Application({
+    width: props.width * props.resolution,
+    height: props.height * props.resolution,
+    backgroundAlpha: 0,
+    preserveDrawingBuffer: true,
+    autoDensity: false,
+    resolution: 1,
+  })
 
-    installRenderGuard(pixiApp.value)
-    pixiApp.value.stage.scale.set(props.resolution)
+  installRenderGuard(pixiApp.value)
+  pixiApp.value.stage.scale.set(props.resolution)
 
-    pixiAppCanvas.value = pixiApp.value.view
+  pixiAppCanvas.value = pixiApp.value.view
 
-    pixiAppCanvas.value.style.width = '100%'
-    pixiAppCanvas.value.style.height = '100%'
-    pixiAppCanvas.value.style.objectFit = 'cover'
-    pixiAppCanvas.value.style.display = 'block'
+  // Set CSS styles to make canvas responsive to container
+  pixiAppCanvas.value.style.width = '100%'
+  pixiAppCanvas.value.style.height = '100%'
+  pixiAppCanvas.value.style.objectFit = 'cover'
+  pixiAppCanvas.value.style.display = 'block'
 
-    parent.appendChild(pixiApp.value.view)
+  parent.appendChild(pixiApp.value.view)
 
-    isPixiCanvasReady.value = true
-    componentState.value = 'mounted'
-  }
-  catch (error) {
-    console.error('[Live2D] Failed to initialize Pixi Application:', error)
-    webglSupported.value = false
-    componentState.value = 'mounted'
-  }
+  isPixiCanvasReady.value = true
+  componentState.value = 'mounted'
 }
 
 function handleResize() {
@@ -141,15 +137,5 @@ import.meta.hot?.dispose(() => {
 <template>
   <div ref="containerRef" h-full w-full>
     <slot v-if="isPixiCanvasReady" :app="pixiApp" />
-    <div
-      v-else-if="!webglSupported && componentState === 'mounted'"
-      class="h-full w-full flex items-center justify-center bg-neutral-900"
-    >
-      <img
-        src="/character.avif"
-        alt="Life Character"
-        class="w-[280px] h-[350px] md:w-[380px] md:h-[475px] object-contain opacity-80"
-      />
-    </div>
   </div>
 </template>
