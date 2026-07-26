@@ -40,7 +40,36 @@
       })()
     </script>
     <!-- Live2D Cubism Core SDK (由 unplugin-live2d-sdk 在构建时下载) -->
-    <script src="/assets/js/CubismSdkForWeb-5-r.3/Core/live2dcubismcore.min.js"></script>
+    <!-- 异步加载，SDK 缺失时提供 mock 对象避免 pixi-live2d-display 在模块加载阶段抛错 -->
+    <script>
+      ;(function () {
+        // 先放一个 mock，防止 pixi-live2d-display/cubism4 在模块顶层检查时 throw
+        // 真实 SDK 加载成功后会覆盖 window.Live2DCubismCore
+        if (!window.Live2DCubismCore) {
+          window.Live2DCubismCore = {
+            Version: { csmGetVersion: function () { return 0 } },
+            Logging: { csmSetLogFunction: function () {}, csmGetLogFunction: function () { return function () {} } },
+            Utils: {
+              hasVertexPositionsDidChangeBit: function () { return false },
+              hasIsDoubleSidedBit: function () { return false },
+              hasBlendAdditiveBit: function () { return false },
+              hasBlendMultiplicativeBit: function () { return false },
+              hasIsInvertedMaskBit: function () { return false },
+            },
+            _isStarted: false,
+          }
+        }
+
+        var sdkUrl = '/assets/js/CubismSdkForWeb-5-r.3/Core/live2dcubismcore.min.js'
+        var script = document.createElement('script')
+        script.src = sdkUrl
+        script.async = true
+        script.onerror = function () {
+          console.warn('[Life] Live2D Cubism SDK 未找到，Live2D 功能将不可用')
+        }
+        document.head.appendChild(script)
+      })()
+    </script>
   </head>
   <body class="font-sans">
     <div id="app"></div>
