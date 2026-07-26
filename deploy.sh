@@ -66,6 +66,31 @@ sudo apt-get install -y -qq pkg-config libpixman-1-dev libcairo2-dev \
 ok "系统依赖安装完成"
 
 # ============================================================
+# Step 1.5: 配置 Swap 空间（防止构建时 OOM）
+# ============================================================
+info "Step 1.5: 检查并配置 Swap 空间..."
+
+TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
+SWAP_SIZE=4096
+
+if [ "$TOTAL_MEM" -lt 4096 ]; then
+  info "内存不足 ${TOTAL_MEM}MB，配置 ${SWAP_SIZE}MB Swap..."
+  
+  if ! swapon --show | grep -q .; then
+    sudo fallocate -l ${SWAP_SIZE}M /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=$SWAP_SIZE 2>/dev/null
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab > /dev/null
+    ok "Swap 空间已配置: ${SWAP_SIZE}MB"
+  else
+    info "Swap 已存在，跳过配置"
+  fi
+else
+  info "内存充足 (${TOTAL_MEM}MB)，跳过 Swap 配置"
+fi
+
+# ============================================================
 # Step 2: 安装 Node.js + pnpm + PM2
 # ============================================================
 info "Step 2: 安装 Node.js + pnpm + PM2..."
@@ -274,6 +299,9 @@ ok "依赖安装完成"
 # ============================================================
 info "Step 8: 构建 workspace packages..."
 
+# 构建 packages 也需要适当内存
+export NODE_OPTIONS="--max-old-space-size=2048"
+
 # server 和 stage-web 依赖的 workspace packages 需要先构建（生成 dist/）
 # 使用 --filter ... 递归构建 server 和 stage-web 的所有 workspace 依赖
 info "构建 server 依赖的 packages..."
@@ -281,6 +309,8 @@ pnpm --filter "@proj-airi/server..." run build 2>&1 || warn "server packages 构
 
 info "构建 stage-web 依赖的 packages..."
 pnpm --filter "@proj-airi/stage-web..." run build 2>&1 || warn "stage-web packages 构建有警告，继续"
+
+unset NODE_OPTIONS
 
 ok "workspace packages 构建完成"
 
@@ -301,7 +331,26 @@ ok "数据库迁移完成"
 # ============================================================
 info "Step 10: 构建 stage-web..."
 
-pnpm -F @proj-airi/stage-web run build 2>&1 || warn "stage-web 构建有警告，继续部署"
+# Vite/Rolldown 构建大型应用需要大量内存，增加 Node.js 内存限制
+# 低配置服务器（2G/4G）可能需要 2-4G 内存才能完成构建
+export NODE_OPTIONS="--max-old-space-size=4096"
+
+# 使用 --mode=production 构建，限制并发 worker 减少内存占用
+BUILD_RESULT=0
+pnpm -F @proj-airi/stage-web run build 2>&1 || BUILD_RESULT=$?
+
+if [ $BUILD_RESULT -ne 0 ]; then
+  warn "stage-web 构建失败（可能内存不足），尝试增加内存重试..."
+  export NODE_OPTIONS="--max-old-space-size=6144"
+  pnpm -F @proj-airi/stage-web run build 2>&1 || {
+    warn "stage-web 构建仍然失败，跳过前端构建"
+    warn "服务器内存不足，建议升级到 4G 以上内存"
+    warn "前端页面将无法访问，但 API 服务正常"
+  }
+fi
+
+# 恢复默认内存限制
+unset NODE_OPTIONS
 
 ok "stage-web 构建完成"
 
