@@ -1,1 +1,11 @@
-export const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'https://api.airi.build'
+function resolveServerUrl(): string {
+  if (import.meta.env.VITE_SERVER_URL)
+    return import.meta.env.VITE_SERVER_URL
+
+  if (typeof window !== 'undefined' && window.location?.origin)
+    return window.location.origin
+
+  return 'https://api.airi.build'
+}
+
+export const SERVER_URL = resolveServerUrl()
