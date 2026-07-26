@@ -1,3 +1,0 @@
-import type { Context } from '../context.js';
-export declare function resolvedMarkdownFiles(ctx: Context): string;
-//# sourceMappingURL=resolved-markdown-files.d.ts.map

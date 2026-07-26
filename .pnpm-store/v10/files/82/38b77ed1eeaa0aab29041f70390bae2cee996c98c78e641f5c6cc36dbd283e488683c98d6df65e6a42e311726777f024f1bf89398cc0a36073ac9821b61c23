@@ -1,7 +1,0 @@
-import { t as Options } from "./types-xBc6GOed.mjs";
-import * as _$rollup from "rollup";
-
-//#region src/rollup.d.ts
-declare const _default: (options?: Options | undefined) => _$rollup.Plugin<any> | _$rollup.Plugin<any>[];
-//#endregion
-export { _default as default };

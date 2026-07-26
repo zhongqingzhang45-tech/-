@@ -1,7 +1,0 @@
-import { n as Options, t as DepKind } from "./options-DC5dXKG8.mjs";
-import { UnpluginInstance } from "unplugin";
-
-//#region src/index.d.ts
-declare const Unused: UnpluginInstance<Options | undefined, false>;
-//#endregion
-export { type DepKind, type Options, Unused };

@@ -1,4 +1,0 @@
-//#region src/esbuild.ts
-var esbuild_default = require("./core-CEOGw--w.cjs").UnpluginInfo.esbuild;
-//#endregion
-module.exports = esbuild_default;

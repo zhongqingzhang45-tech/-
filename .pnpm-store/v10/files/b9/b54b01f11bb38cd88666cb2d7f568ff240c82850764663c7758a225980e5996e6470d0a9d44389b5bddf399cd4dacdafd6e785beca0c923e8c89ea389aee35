@@ -1,9 +1,0 @@
-import { n as VishotArtifact } from "./types-D8MhHxWz.mjs";
-//#region src/files.d.ts
-declare function artifactFilePath(outputDir: string, artifactName: string, format: string): string;
-declare function assertArtifactFilesExist(artifacts: VishotArtifact[]): Promise<void>;
-declare function assertUniqueArtifactFilePaths(artifacts: VishotArtifact[]): void;
-declare function assertUniqueCaptureFilePaths(rootNames: string[]): void;
-declare function sanitizeOutputName(name: string): string;
-//#endregion
-export { artifactFilePath, assertArtifactFilesExist, assertUniqueArtifactFilePaths, assertUniqueCaptureFilePaths, sanitizeOutputName };

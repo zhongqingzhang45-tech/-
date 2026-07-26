@@ -1,9 +1,0 @@
-export interface Options {
-    'variable'?: boolean;
-    'side-effect'?: boolean;
-}
-declare const _default: import("../rule.ts").RuleModuleWithName<"variable" | "side-effect", [Options], {
-    description: string;
-}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
-export default _default;
-//# sourceMappingURL=no-top-level.d.ts.map

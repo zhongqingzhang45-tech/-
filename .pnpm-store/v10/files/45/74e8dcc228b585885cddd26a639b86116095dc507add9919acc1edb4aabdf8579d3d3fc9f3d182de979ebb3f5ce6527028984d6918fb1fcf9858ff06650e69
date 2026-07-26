@@ -1,6 +1,0 @@
-import { t as Options } from "./types-D06-cUms.cjs";
-import * as _$vite from "vite";
-
-//#region src/vite.d.ts
-declare const _default: (options?: Options | undefined) => _$vite.Plugin<any> | _$vite.Plugin<any>[];
-export = _default;

@@ -1,2 +1,0 @@
-import type { Profile } from "./types";
-export declare function parseBinaryProfile(buffer: ArrayBuffer): Profile;

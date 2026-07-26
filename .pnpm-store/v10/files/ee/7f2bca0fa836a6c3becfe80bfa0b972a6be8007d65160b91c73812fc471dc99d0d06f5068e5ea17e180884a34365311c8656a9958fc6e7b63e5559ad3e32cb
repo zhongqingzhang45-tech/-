@@ -1,3 +1,0 @@
-import { n as config, r as render, t as cleanup } from "./pure-epEwB8Ps.js";
-
-export { cleanup, config, render };

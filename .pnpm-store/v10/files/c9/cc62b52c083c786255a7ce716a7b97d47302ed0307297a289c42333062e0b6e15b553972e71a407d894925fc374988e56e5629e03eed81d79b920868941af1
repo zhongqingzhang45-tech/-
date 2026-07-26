@@ -1,6 +1,0 @@
-import { c as createPlayer2 } from '../player2-D788vRq_.js';
-import '../utils/index.js';
-
-const player2 = createPlayer2();
-
-export { player2 };

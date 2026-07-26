@@ -1,9 +1,0 @@
-export { F as FALLBACK_AVATAR, G as GitHubProvider, P as ProvidersMap, S as SvgComposer, c as defaultConfig, b as defaultInlineCSS, a as defaultTiers, d as defineConfig, q as fetchGitHubSponsoring, u as fetchGitHubSponsoringAsSponsorships, n as fetchGitHubSponsors, v as fetchGitHubTotalSponsorshipAmountAsSponsor, m as fetchSponsors, h as genSvgImage, i as generateBadge, j as guessProviders, l as loadConfig, o as makeQuery, w as makeSponsoringQuery, x as makeSponsoringTotalAmountQuery, y as outputFormats, p as partitionTiers, e as presets, f as resizeImage, r as resolveAvatars, k as resolveProviders, s as svgToPng, g as svgToWebp, t as tierPresets } from './shared/sponsorkit.D4Gzyh4z.mjs';
-import 'unconfig';
-import 'node:process';
-import 'dotenv';
-import 'node:crypto';
-import 'node:buffer';
-import 'consola';
-import 'ofetch';
-import 'sharp';

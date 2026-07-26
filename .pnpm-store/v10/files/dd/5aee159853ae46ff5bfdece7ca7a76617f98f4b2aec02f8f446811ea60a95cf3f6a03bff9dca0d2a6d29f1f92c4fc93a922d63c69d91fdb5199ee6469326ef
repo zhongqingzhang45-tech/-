@@ -1,7 +1,0 @@
-import { t as Options } from "./options-DxFG7NAv.mjs";
-import { UnpluginInstance } from "unplugin";
-
-//#region src/index.d.ts
-declare const plugin: UnpluginInstance<Options | undefined, false>;
-//#endregion
-export { plugin as default };

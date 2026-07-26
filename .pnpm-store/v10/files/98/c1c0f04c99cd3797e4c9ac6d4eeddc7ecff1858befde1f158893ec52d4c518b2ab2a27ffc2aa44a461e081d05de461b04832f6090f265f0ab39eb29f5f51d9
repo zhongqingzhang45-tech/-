@@ -1,4 +1,0 @@
-import f from "./provider.vue.js";
-export {
-  f as default
-};

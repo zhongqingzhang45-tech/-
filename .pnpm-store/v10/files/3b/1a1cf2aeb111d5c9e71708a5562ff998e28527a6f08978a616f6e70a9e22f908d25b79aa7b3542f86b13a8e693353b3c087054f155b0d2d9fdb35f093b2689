@@ -1,8 +1,0 @@
-import { LogicalExpression, Node } from 'estree'
-/**
- * Checks whether the given AST node represents a conjunction (logical AND).
- *
- * @param node - The AST node to check.
- * @returns True if the node is a LogicalExpression with operator `&&`.
- */
-export declare function isConjunction(node: Node): node is LogicalExpression

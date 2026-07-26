@@ -1,4 +1,0 @@
-import f from "./capture-root.vue.js";
-export {
-  f as default
-};

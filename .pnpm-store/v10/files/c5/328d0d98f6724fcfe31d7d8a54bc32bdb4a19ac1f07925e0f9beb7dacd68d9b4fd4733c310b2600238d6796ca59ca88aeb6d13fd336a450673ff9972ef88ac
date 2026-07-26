@@ -1,8 +1,0 @@
-/**
- * @see @{@link https://github.com/hashintel/hash/blob/b03f6fe875220edd0f01ae4626ed223d3cf663ed/libs/%40hashintel/refractive/src/helpers/surface-equations.ts}
- */
-export type SurfaceFnDef = (x: number) => number;
-export declare const convexCircle: SurfaceFnDef;
-export declare const convex: SurfaceFnDef;
-export declare const concave: SurfaceFnDef;
-export declare const lip: SurfaceFnDef;

@@ -1,1 +1,0 @@
-export declare function smoothDamp(current: number, target: number, currentVelocity: number, smoothness: number, deltaTime: number): number[];

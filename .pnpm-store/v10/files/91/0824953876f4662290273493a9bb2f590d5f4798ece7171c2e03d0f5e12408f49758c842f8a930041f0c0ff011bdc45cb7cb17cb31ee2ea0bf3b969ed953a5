@@ -1,6 +1,0 @@
-import type { Profile } from "./types.js";
-import { WLipSyncAudioNode } from "./audio-node.js";
-export declare function createWLipSyncNode(audioContext: AudioContext, profile: Profile): Promise<WLipSyncAudioNode>;
-export type * from './types.js';
-export * from './parse.js';
-export { configuration, WLipSyncAudioNode } from './audio-node.js';

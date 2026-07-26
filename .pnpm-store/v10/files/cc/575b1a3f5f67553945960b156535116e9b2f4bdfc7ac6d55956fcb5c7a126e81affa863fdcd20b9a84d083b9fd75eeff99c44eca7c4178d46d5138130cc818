@@ -1,5 +1,0 @@
-//#region src/ready.d.ts
-declare function markScenarioReady(): void;
-declare function resetScenarioReady(): void;
-//#endregion
-export { markScenarioReady, resetScenarioReady };

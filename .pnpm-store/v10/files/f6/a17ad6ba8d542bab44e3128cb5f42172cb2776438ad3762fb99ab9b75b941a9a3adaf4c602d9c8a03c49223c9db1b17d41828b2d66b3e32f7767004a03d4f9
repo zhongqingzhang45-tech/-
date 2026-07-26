@@ -1,6 +1,0 @@
-//#region src/selectors.ts
-function captureRootSelector(rootName) {
-	return `[data-scenario-capture-root=${JSON.stringify(rootName)}]`;
-}
-//#endregion
-export { captureRootSelector };

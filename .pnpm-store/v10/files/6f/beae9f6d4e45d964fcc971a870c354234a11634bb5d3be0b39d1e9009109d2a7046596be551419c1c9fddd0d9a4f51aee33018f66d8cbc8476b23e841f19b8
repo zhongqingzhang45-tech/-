@@ -1,3 +1,0 @@
-declare const merge: <T1 extends object, T2 extends Partial<T1> = Partial<T1>>(defaults: T1, user?: T2) => T1;
-
-export { merge };

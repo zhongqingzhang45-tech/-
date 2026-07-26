@@ -1,7 +1,0 @@
-declare const encodeBase64: (data: ArrayBuffer | string | Uint8Array) => string;
-declare const decodeBase64: (b64: string) => Uint8Array;
-
-declare const decodeBase64Url: (b64url: string) => Uint8Array;
-declare const encodeBase64Url: (data: ArrayBuffer | string | Uint8Array) => string;
-
-export { decodeBase64, decodeBase64Url, encodeBase64, encodeBase64Url };

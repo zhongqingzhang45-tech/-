@@ -1,6 +1,0 @@
-declare const _default: import("../../rule.ts").RuleModuleWithName<"move-type", [], {
-    description: string;
-    recommended: string;
-}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
-export default _default;
-//# sourceMappingURL=prefer-return-type-annotation.d.ts.map

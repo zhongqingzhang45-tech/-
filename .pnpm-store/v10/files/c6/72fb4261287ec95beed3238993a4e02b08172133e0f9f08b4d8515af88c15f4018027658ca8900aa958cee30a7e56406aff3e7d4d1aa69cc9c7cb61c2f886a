@@ -1,4 +1,0 @@
-const o = /* @__PURE__ */ Symbol("vishot:platforms:macos-26:layout");
-export {
-  o as injectPlatformLayout
-};

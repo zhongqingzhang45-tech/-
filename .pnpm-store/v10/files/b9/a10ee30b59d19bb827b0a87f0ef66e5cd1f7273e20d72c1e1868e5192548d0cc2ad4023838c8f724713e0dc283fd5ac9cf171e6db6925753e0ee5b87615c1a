@@ -1,9 +1,0 @@
-import { i as resolveOptions, n as OptionsResolved, r as TransformOptions, t as Options } from "./options-C2J_Ngzl.mjs";
-import * as _$esbuild from "esbuild";
-import { TransformOptions as TransformOptions$1 } from "esbuild";
-import { Buffer } from "node:buffer";
-
-//#region src/core/transform.d.ts
-declare function transformRaw(file: string, type: "text" | "bytes", transform?: typeof _$esbuild.transform, transformFilter?: (id: string | unknown) => boolean, options?: TransformOptions$1): Promise<string | Buffer>;
-//#endregion
-export { type Options, type OptionsResolved, type TransformOptions, resolveOptions, transformRaw };

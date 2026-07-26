@@ -1,8 +1,0 @@
-import type { ModelCardConfiguration } from "./types.js";
-import { type UnpluginInstance } from "unplugin";
-export interface ModelCardOptions extends ModelCardConfiguration {
-	root?: string;
-}
-export declare function generateModelCardReadme(configurations?: ModelCardOptions): Promise<string>;
-export declare const ModelCard: UnpluginInstance<ModelCardOptions | undefined, false>;
-export type * from "./types.js";

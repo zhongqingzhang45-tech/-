@@ -1,2 +1,0 @@
-import { t as installVievalExpectMatchers } from "../expect-extensions-QLXESWjn.mjs";
-export { installVievalExpectMatchers };

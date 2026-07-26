@@ -1,7 +1,0 @@
-import { t as Options } from "./options-C2J_Ngzl.mjs";
-import { UnpluginInstance } from "unplugin";
-
-//#region src/index.d.ts
-declare const unplugin: UnpluginInstance<Options | undefined, false>;
-//#endregion
-export { unplugin as default };

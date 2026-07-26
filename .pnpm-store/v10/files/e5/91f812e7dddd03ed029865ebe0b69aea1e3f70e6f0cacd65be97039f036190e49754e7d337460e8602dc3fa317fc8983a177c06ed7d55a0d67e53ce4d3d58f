@@ -1,7 +1,0 @@
-function r(e, n, c, o = 0, a = 0) {
-  const t = document.createElement("canvas");
-  return t.width = n ?? e.width, t.height = c ?? e.height, t.getContext("2d").putImageData(e, -o, -a), t.toDataURL();
-}
-export {
-  r as imageDataToUrl
-};

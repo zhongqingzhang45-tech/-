@@ -1,6 +1,0 @@
-import type ts from 'typescript';
-export declare function isElement(checker: ts.TypeChecker, node: ts.Node): boolean;
-export declare function isEventTarget(checker: ts.TypeChecker, node: ts.Node): boolean;
-export declare function isKeyboardEvent(checker: ts.TypeChecker, node: ts.Node): boolean;
-export declare function isConstructor(checker: ts.TypeChecker, node: ts.Node, typeName: string): boolean;
-//# sourceMappingURL=type-checker.d.ts.map

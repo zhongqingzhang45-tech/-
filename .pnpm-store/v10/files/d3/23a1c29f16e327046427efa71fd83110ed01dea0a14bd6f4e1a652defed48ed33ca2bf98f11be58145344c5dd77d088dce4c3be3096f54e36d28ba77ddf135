@@ -1,2 +1,0 @@
-import { CustomBlocks, Options, OptionsResolved, PostPlugin, PrePlugin, TemplateContent, plugin } from "./index-Dgmp4CcH.js";
-export { CustomBlocks, Options, OptionsResolved, PostPlugin, PrePlugin, TemplateContent, plugin as default };

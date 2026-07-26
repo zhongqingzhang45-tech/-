@@ -1,1 +1,0 @@
-export declare function useSceneReady(sources: string[]): void;

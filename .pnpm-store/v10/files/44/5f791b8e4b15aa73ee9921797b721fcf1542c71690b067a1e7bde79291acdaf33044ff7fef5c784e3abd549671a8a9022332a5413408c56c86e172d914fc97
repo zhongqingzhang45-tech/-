@@ -1,3 +1,0 @@
-import { t as Options } from "./types-D06-cUms.cjs";
-import { t as UnpluginInfo } from "./index-CSlK4Qyf.cjs";
-export { Options, UnpluginInfo };

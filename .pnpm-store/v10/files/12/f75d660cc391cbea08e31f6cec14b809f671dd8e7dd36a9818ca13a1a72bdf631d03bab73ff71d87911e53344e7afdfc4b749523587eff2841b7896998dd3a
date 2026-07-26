@@ -1,5 +1,0 @@
-//#region src/constants.d.ts
-declare const PLUGIN_NAME = "unplugin-yaml";
-declare const NUXT_CONFIG_KEY = "yaml";
-//#endregion
-export { NUXT_CONFIG_KEY, PLUGIN_NAME };

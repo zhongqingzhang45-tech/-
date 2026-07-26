@@ -1,6 +1,0 @@
-import { i as Factory, m as UnpluginCombineInstance } from "./types-CTyinCGO.js";
-
-//#region src/webpack.d.ts
-declare function getWebpackPlugin<UserOptions>(factory: Factory<UserOptions>, framework?: "webpack" | "rspack"): UnpluginCombineInstance<UserOptions>["webpack"];
-//#endregion
-export { getWebpackPlugin };

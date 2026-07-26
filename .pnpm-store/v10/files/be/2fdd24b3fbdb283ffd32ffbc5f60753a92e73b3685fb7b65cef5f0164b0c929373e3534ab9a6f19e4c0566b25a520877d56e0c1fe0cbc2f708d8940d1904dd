@@ -1,6 +1,0 @@
-import { t as Options } from "./types-D06-cUms.cjs";
-import * as _$esbuild from "esbuild";
-
-//#region src/esbuild.d.ts
-declare const _default: (options?: Options | undefined) => _$esbuild.Plugin;
-export = _default;

@@ -1,9 +1,0 @@
-import { a as createS3Provider, i as S3ProviderOptions, o as UploadProvider, t as BasemoveOptions } from "../index-CkT1vHRB.mjs";
-import * as _$vite from "vite";
-
-//#region src/vite/index.d.ts
-declare const _default: (options?: BasemoveOptions) => _$vite.Plugin<any> | _$vite.Plugin<any>[];
-declare const Basemove: (options?: BasemoveOptions) => _$vite.Plugin<any> | _$vite.Plugin<any>[];
-//#endregion
-export { Basemove, type BasemoveOptions, type S3ProviderOptions, type UploadProvider, createS3Provider, _default as default };
-//# sourceMappingURL=index.d.mts.map

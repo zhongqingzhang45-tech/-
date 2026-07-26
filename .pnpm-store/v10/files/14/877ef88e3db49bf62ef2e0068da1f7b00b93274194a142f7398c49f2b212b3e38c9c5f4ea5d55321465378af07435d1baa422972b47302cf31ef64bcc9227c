@@ -1,7 +1,0 @@
-import { n as VAR_HUE, t as PresetChromaticOptions } from "./shared-B96sy2HD.mjs";
-import * as _unocss_core0 from "@unocss/core";
-
-//#region src/index.d.ts
-declare const presetChromatic: _unocss_core0.PresetFactory<object, PresetChromaticOptions>;
-//#endregion
-export { type PresetChromaticOptions, VAR_HUE, presetChromatic as default, presetChromatic };

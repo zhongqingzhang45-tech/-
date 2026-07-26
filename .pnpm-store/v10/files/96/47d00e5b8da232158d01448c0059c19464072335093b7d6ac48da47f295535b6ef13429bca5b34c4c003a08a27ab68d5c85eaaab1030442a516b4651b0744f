@@ -1,3 +1,0 @@
-import { _ as start, f as invoke, g as setLogger, h as resolve, m as resetContainer, p as provide, v as stop } from "./src-UXkTj4Np.mjs";
-
-export { invoke, provide, resetContainer, resolve, setLogger, start, stop };

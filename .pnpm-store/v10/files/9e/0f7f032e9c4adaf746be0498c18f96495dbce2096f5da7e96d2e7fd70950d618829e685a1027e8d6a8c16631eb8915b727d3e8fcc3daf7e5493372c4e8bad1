@@ -1,4 +1,0 @@
-import f from "./navigator.vue.js";
-export {
-  f as default
-};

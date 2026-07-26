@@ -1,2 +1,0 @@
-import { FeatureName, FeatureOptions, FeatureOptionsMap, Options, OptionsCommon, OptionsResolved, resolveOptions } from "./options-CSuEQV_i.js";
-export { FeatureName, FeatureOptions, FeatureOptionsMap, Options, OptionsCommon, OptionsResolved, resolveOptions };

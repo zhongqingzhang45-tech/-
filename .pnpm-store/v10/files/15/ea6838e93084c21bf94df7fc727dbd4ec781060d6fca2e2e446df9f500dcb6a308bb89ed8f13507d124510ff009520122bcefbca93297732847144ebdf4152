@@ -1,4 +1,0 @@
-var name = 'eslint-plugin-de-morgan'
-var version = '2.1.2'
-var repository = 'azat-io/eslint-plugin-de-morgan'
-export { name, repository, version }

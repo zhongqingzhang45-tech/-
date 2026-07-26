@@ -1,3 +1,0 @@
-export * from "./lib/jsx-automatic.js";
-export type JSXProps = import('./lib/runtime.js').JSXProps;
-export { Fragment, jsx, jsxs } from "./lib/runtime.js";

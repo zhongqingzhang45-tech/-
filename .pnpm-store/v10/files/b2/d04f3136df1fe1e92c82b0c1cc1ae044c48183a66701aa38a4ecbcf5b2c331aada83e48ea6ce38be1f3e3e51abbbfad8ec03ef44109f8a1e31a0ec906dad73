@@ -1,8 +1,0 @@
-import { r as createS3Provider, t as unplugin } from "../src-DWIhqm9C.mjs";
-//#region src/vite/index.ts
-var vite_default = unplugin.vite;
-const Basemove = unplugin.vite;
-//#endregion
-export { Basemove, createS3Provider, vite_default as default };
-
-//# sourceMappingURL=index.mjs.map

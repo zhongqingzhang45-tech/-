@@ -1,3 +1,0 @@
-import { s as getWebpackPlugin } from "./esbuild-Cm_SN223.js";
-
-export { getWebpackPlugin };

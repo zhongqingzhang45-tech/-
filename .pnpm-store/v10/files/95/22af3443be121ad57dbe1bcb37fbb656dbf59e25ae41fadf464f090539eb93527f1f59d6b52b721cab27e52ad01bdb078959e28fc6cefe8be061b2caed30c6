@@ -1,4 +1,0 @@
-import "./transform-B0c68K4O.mjs";
-import { t as src_default } from "./src-BsseL4ca.mjs";
-
-export { src_default as default };

@@ -1,2 +1,0 @@
-import { getImportUrlBundles } from "@proj-airi/duckdb-wasm/bundles/import-url-browser";
-export { getImportUrlBundles };

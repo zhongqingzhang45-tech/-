@@ -1,6 +1,0 @@
-import { i as Factory, m as UnpluginCombineInstance } from "./types-CTyinCGO.js";
-
-//#region src/vite.d.ts
-declare function getVitePlugin<UserOptions>(factory: Factory<UserOptions>): UnpluginCombineInstance<UserOptions>["vite"];
-//#endregion
-export { getVitePlugin };

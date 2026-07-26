@@ -1,8 +1,0 @@
-import { UnpluginInstance } from "unplugin";
-
-//#region src/index.d.ts
-declare function newPlugin(isRolldownLike?: boolean): UnpluginInstance<{
-  root?: string;
-}, false>;
-//#endregion
-export { newPlugin };

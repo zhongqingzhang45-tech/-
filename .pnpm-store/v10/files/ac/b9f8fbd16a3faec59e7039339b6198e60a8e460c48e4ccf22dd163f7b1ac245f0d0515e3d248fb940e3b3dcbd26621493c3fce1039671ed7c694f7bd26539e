@@ -1,6 +1,0 @@
-//#region src/index.ts
-console.warn("Please import 'gpuu' instead.");
-//#endregion
-export {};
-
-//# sourceMappingURL=index.mjs.map

@@ -1,6 +1,0 @@
-import { t as Options } from "./types-D06-cUms.cjs";
-import * as _$rollup from "rollup";
-
-//#region src/rollup.d.ts
-declare const _default: (options?: Options | undefined) => _$rollup.Plugin<any> | _$rollup.Plugin<any>[];
-export = _default;

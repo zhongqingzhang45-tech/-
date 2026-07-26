@@ -1,9 +1,0 @@
-import type { SpaceConfiguration } from "./types.js";
-import { type UnpluginInstance } from "unplugin";
-export interface SpaceCardOptions extends SpaceConfiguration {
-	root?: string;
-}
-export declare function generateSpaceCardReadme(configurations?: SpaceCardOptions): Promise<string>;
-export declare const SpaceCard: UnpluginInstance<SpaceConfiguration & {
-	root?: string;
-} | undefined, false>;

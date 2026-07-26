@@ -1,7 +1,0 @@
-declare const _default: import("../rule.ts").RuleModuleWithName<"invalid", [], {
-    description: string;
-    recommended: string;
-    requiresTypeChecking: boolean;
-}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
-export default _default;
-//# sourceMappingURL=no-default-error.d.ts.map

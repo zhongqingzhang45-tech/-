@@ -1,7 +1,0 @@
-type Location = 'at-top' | 'at-bottom';
-declare const _default: import("../rule.ts").RuleModuleWithName<"at-top" | "at-bottom", [Location], {
-    description: string;
-    recommended: string;
-}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
-export default _default;
-//# sourceMappingURL=prefer-default-export.d.ts.map

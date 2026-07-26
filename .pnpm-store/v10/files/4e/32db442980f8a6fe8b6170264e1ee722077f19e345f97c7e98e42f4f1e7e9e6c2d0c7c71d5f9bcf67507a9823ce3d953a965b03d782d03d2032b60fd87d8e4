@@ -1,6 +1,0 @@
-import { i as Factory, m as UnpluginCombineInstance } from "./types-CTyinCGO.js";
-
-//#region src/rolldown.d.ts
-declare function getRolldownPlugin<UserOptions>(factory: Factory<UserOptions>): UnpluginCombineInstance<UserOptions>["rolldown"];
-//#endregion
-export { getRolldownPlugin };

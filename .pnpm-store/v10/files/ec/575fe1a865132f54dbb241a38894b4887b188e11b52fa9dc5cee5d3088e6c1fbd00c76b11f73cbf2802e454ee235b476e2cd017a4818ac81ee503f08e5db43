@@ -1,9 +1,0 @@
-interface MessageOptions {
-    array?: string;
-    object?: string;
-}
-declare const _default: import("../../rule.ts").RuleModuleWithName<"invalid" | "instead", [MessageOptions], {
-    description: string;
-}, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
-export default _default;
-//# sourceMappingURL=no-empty-literal.d.ts.map

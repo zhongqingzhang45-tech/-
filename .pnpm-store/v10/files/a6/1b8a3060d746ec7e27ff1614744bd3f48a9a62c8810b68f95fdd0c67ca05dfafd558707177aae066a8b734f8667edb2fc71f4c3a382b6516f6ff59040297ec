@@ -1,4 +1,0 @@
-const c = (o) => (1 - (1 - o) ** 4) ** 0.25;
-export {
-  c as convex
-};

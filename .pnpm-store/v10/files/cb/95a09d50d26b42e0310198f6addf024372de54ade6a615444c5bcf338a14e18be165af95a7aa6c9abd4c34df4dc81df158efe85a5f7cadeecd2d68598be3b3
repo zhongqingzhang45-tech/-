@@ -1,7 +1,0 @@
-import { t as Options } from "./types-xBc6GOed.mjs";
-import * as _$unplugin from "unplugin";
-
-//#region src/core/index.d.ts
-declare const UnpluginInfo: _$unplugin.UnpluginInstance<Options | undefined, boolean>;
-//#endregion
-export { UnpluginInfo as t };

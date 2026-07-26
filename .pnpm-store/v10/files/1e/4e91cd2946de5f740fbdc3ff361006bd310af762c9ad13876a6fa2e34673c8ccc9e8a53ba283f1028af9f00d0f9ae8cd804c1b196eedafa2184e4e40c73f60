@@ -1,6 +1,0 @@
-import { i as Factory, m as UnpluginCombineInstance } from "./types-CTyinCGO.js";
-
-//#region src/esbuild.d.ts
-declare const getEsbuildPlugin: <UserOptions>(factory: Factory<UserOptions>) => UnpluginCombineInstance<UserOptions>["esbuild"];
-//#endregion
-export { getEsbuildPlugin };

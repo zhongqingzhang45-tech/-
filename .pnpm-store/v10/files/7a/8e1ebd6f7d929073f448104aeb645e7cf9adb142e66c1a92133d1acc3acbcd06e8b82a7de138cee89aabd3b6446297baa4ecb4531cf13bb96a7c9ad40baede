@@ -1,4 +1,0 @@
-import f from "./deco-outline-region.vue.js";
-export {
-  f as default
-};

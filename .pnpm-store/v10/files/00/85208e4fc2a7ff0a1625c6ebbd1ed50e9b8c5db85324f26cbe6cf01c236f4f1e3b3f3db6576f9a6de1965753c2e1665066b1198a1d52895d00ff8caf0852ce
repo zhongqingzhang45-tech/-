@@ -1,2 +1,0 @@
-import { Edition, Impl, PROPS_VARIABLE_NAME, johnsonEdition, kevinEdition, stringifyArray, transformDefineProp } from "./index-Wpe7EQHB.js";
-export { Edition, Impl, PROPS_VARIABLE_NAME, johnsonEdition, kevinEdition, stringifyArray, transformDefineProp };
