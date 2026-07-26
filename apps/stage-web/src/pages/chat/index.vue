@@ -2,18 +2,32 @@
 import { ChatSessionsDrawer } from '@proj-airi/stage-ui/components'
 import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import InteractiveArea from '@proj-airi/stage-layouts/components/Layouts/InteractiveArea.vue'
+import { ErrorBoundary } from '@proj-airi/ui'
 import { shallowRef } from 'vue'
 
 const sessionsDrawerOpen = shallowRef(false)
 </script>
 
 <template>
-  <div relative h-full w-full overflow-hidden>
-    <WidgetStage
-      h-full w-full
-      absolute inset-0 z-0
-    />
-    <div absolute inset-0 z-10 overflow-y-scroll>
+  <div class="relative h-full w-full overflow-hidden">
+    <ErrorBoundary
+      title="Stage"
+      :retryable="false"
+      class="absolute inset-0 z-0"
+    >
+      <template #fallback>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <img
+            src="/open-graph.png"
+            alt="Character"
+            class="w-[280px] h-[350px] md:w-[380px] md:h-[475px] object-contain opacity-80"
+          />
+        </div>
+      </template>
+      <WidgetStage class="h-full w-full" />
+    </ErrorBoundary>
+
+    <div class="absolute inset-0 z-10 overflow-y-scroll">
       <InteractiveArea
         v-model:sessions-drawer-open="sessionsDrawerOpen"
         class="interaction-area block"
