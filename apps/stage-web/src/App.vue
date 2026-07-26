@@ -92,11 +92,12 @@ onMounted(async () => {
   try { await displayModelsStore.initialize() } catch (e) { console.error('displayModelsStore init failed:', e) }
   try { cardStore.initialize() } catch (e) { console.error('cardStore init failed:', e) }
 
-  try {
-    if (onboardingStore.needsOnboarding) {
-      onboardingStore.showingSetup = true
-    }
-  } catch (e) { console.error('onboarding check failed:', e) }
+  // Life build uses its own auth flow; skip AIRI onboarding dialog
+  // try {
+  //   if (onboardingStore.needsOnboarding) {
+  //     onboardingStore.showingSetup = true
+  //   }
+  // } catch (e) { console.error('onboarding check failed:', e) }
 
   try { await chatSessionStore.initialize() } catch (e) { console.error('chatSessionStore init failed:', e) }
   try { await serverChannelStore.initialize({ possibleEvents: ['ui:configure'] }).catch(err => console.error('Failed to initialize Mods Server Channel in App.vue:', err)) } catch (e) { console.error('serverChannelStore init failed:', e) }
@@ -149,13 +150,13 @@ function handleSetupSkipped() {
     <Toaster />
   </ToasterRoot>
 
-  <!-- First Time Setup Dialog -->
-  <OnboardingDialog
+  <!-- First Time Setup Dialog - disabled in Life build -->
+  <!-- <OnboardingDialog
     v-model="showingSetup"
     :extra-steps="onboardingExtraSteps"
     @configured="handleSetupConfigured"
     @skipped="handleSetupSkipped"
-  />
+  /> -->
 
   <PerformanceOverlay />
 </template>
