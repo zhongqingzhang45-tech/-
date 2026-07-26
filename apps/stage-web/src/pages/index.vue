@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
 
@@ -18,43 +17,57 @@ async function handleStart() {
 onMounted(() => {
   setTimeout(() => {
     loaded.value = true
-  }, 200)
+  }, 100)
 })
 </script>
 
 <template>
-  <div relative h-full w-full overflow-hidden>
-    <WidgetStage
-      h-full w-full
-      absolute inset-0 z-0
-    />
+  <div relative h-full w-full overflow-hidden bg-white>
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-200/40 to-purple-200/40 rounded-full blur-3xl" />
+      <div class="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-gradient-to-tr from-blue-200/30 to-pink-200/30 rounded-full blur-3xl" />
+    </div>
+
     <div
       absolute inset-0 z-10
       flex="~ col"
       items-center justify-center
       px-6
-      pointer-events-none
-      :class="loaded ? 'opacity-100' : 'opacity-0'"
-      transition="opacity duration-700"
+      :class="loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
+      transition="all duration-700 ease-out"
     >
-      <div text-center pointer-events-auto>
+      <div
+        relative
+        w="[260px] h-[320px] md:w-[340px] md:h-[420px]"
+        mb="8"
+      >
+        <img
+          src="/open-graph.png"
+          alt="Life"
+          w-full h-full
+          object-contain
+          draggable="false"
+        />
+      </div>
+
+      <div text-center>
         <h1
-          text="4xl md:5xl"
+          text="3xl md:4xl"
           font-bold
-          mb="4"
+          mb="3"
           tracking-tight
         >
           <span bg-gradient-to-r="from-pink-500 via-purple-500 to-indigo-500" bg-clip-text text-transparent>
             Life
           </span>
         </h1>
-        <p text-lg text-neutral-500 mb-12>
+        <p text-base text-neutral-500 mb-10>
           二次元 AI 虚拟伴侣
         </p>
         <button
-          px-10 py-4
+          px-10 py-3.5
           text-base font-medium
-          rounded-2xl
+          rounded-xl
           bg-neutral-900 text-white
           hover:bg-neutral-800
           transition-colors
