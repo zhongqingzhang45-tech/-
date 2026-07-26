@@ -1,115 +1,203 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import type { ChatProvider } from '@xsai-ext/providers/utils'
 
-const router = useRouter()
-const loaded = ref(false)
+import Header from '@proj-airi/stage-layouts/components/Layouts/Header.vue'
+import InteractiveArea from '@proj-airi/stage-layouts/components/Layouts/InteractiveArea.vue'
+import MobileHeader from '@proj-airi/stage-layouts/components/Layouts/MobileHeader.vue'
+import MobileInteractiveArea from '@proj-airi/stage-layouts/components/Layouts/MobileInteractiveArea.vue'
+import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&url'
 
-async function handleCreate() {
-  try {
-    await router.push('/create')
-  }
-  catch {
-    window.location.href = '/create'
-  }
+import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
+import { useBackgroundThemeColor } from '@proj-airi/stage-layouts/composables/theme-color'
+import { useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
+import { HoloCoupon } from '@proj-airi/stage-ui/components'
+import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/scenes'
+import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
+import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
+import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
+import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
+import { useHearingSpeechInputPipeline } from '@proj-airi/stage-ui/stores/modules/hearing'
+import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
+import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
+import { breakpointsTailwind, useBreakpoints, useMouse } from '@vueuse/core'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+
+const paused = ref(false)
+
+function handleSettingsOpen(open: boolean) {
+  paused.value = open
 }
 
-async function handleEnter() {
-  try {
-    await router.push('/companion')
-  }
-  catch {
-    window.location.href = '/companion'
-  }
-}
+const breakpoints = useBreakpoints(breakpointsTailwind)
+const isMobile = breakpoints.smaller('md')
 
-onMounted(() => {
-  setTimeout(() => {
-    loaded.value = true
-  }, 150)
+const backgroundStore = useBackgroundStore()
+const { selectedOption, sampledColor } = storeToRefs(backgroundStore)
+const backgroundSurface = useTemplateRef<InstanceType<typeof BackgroundProvider>>('backgroundSurface')
+const { stageModelRenderer } = storeToRefs(useSettings())
+
+const { syncBackgroundTheme } = useBackgroundThemeColor({ backgroundSurface, selectedOption, sampledColor })
+onMounted(() => syncBackgroundTheme())
+
+// Audio + transcription pipeline (mirrors stage-tamagotchi)
+const settingsAudioDeviceStore = useSettingsAudioDevice()
+const { stream, enabled } = storeToRefs(settingsAudioDeviceStore)
+const { startRecord, stopRecord, onStopRecord } = useAudioRecorder(stream)
+const hearingPipeline = useHearingSpeechInputPipeline()
+const { transcribeForRecording } = hearingPipeline
+const { supportsStreamInput } = storeToRefs(hearingPipeline)
+const providersStore = useProvidersStore()
+const consciousnessStore = useConsciousnessStore()
+const { activeProvider: activeChatProvider, activeModel: activeChatModel } = storeToRefs(consciousnessStore)
+const chatStore = useChatOrchestratorStore()
+
+const shouldUseStreamInput = computed(() => supportsStreamInput.value && !!stream.value)
+
+const {
+  init: initVAD,
+  dispose: disposeVAD,
+  start: startVAD,
+  loaded: vadLoaded,
+} = useVAD(workletUrl, {
+  threshold: ref(0.6),
+  onSpeechStart: () => handleSpeechStart(),
+  onSpeechEnd: () => handleSpeechEnd(),
 })
+
+let stopOnStopRecord: (() => void) | undefined
+
+async function startAudioInteraction() {
+  try {
+    await initVAD()
+    if (stream.value)
+      await startVAD(stream.value)
+
+    // Hook once
+    stopOnStopRecord = onStopRecord(async (recording) => {
+      const text = await transcribeForRecording(recording)
+      if (!text || !text.trim())
+        return
+
+      try {
+        const provider = await providersStore.getProviderInstance(activeChatProvider.value)
+        if (!provider || !activeChatModel.value)
+          return
+
+        await chatStore.ingest(text, { model: activeChatModel.value, chatProvider: provider as ChatProvider })
+      }
+      catch (err) {
+        console.error('Failed to send chat from voice:', err)
+      }
+    })
+  }
+  catch (e) {
+    console.error('Audio interaction init failed:', e)
+  }
+}
+
+async function handleSpeechStart() {
+  // For streaming providers, ChatArea component handles transcription manually
+  // The main page should not start automatic transcription to avoid duplicate sessions
+  if (shouldUseStreamInput.value) {
+    return
+  }
+
+  startRecord()
+}
+
+async function handleSpeechEnd() {
+  if (shouldUseStreamInput.value) {
+    // Keep streaming session alive; idle timer in pipeline will handle teardown.
+    return
+  }
+
+  stopRecord()
+}
+
+function stopAudioInteraction() {
+  try {
+    stopOnStopRecord?.()
+    stopOnStopRecord = undefined
+    disposeVAD()
+  }
+  catch {}
+}
+
+watch(enabled, async (val) => {
+  if (val) {
+    await startAudioInteraction()
+  }
+  else {
+    stopAudioInteraction()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  stopAudioInteraction()
+})
+
+watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
+  if (enabled.value && loaded && s) {
+    try {
+      await startVAD(s)
+    }
+    catch (e) {
+      console.error('Failed to start VAD with stream:', e)
+    }
+  }
+})
+
+const { x: mouseX, y: mouseY } = useMouse()
+const cursorPosition = computed(() => ({
+  x: mouseX.value,
+  y: mouseY.value,
+}))
 </script>
 
 <template>
-  <div class="relative min-h-screen w-full overflow-hidden bg-neutral-900 text-white">
-    <div class="absolute inset-0 bg-gradient-to-br from-neutral-900 via-purple-950/30 to-neutral-900" />
-    
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-pink-500/10 rounded-full blur-[120px] animate-pulse" />
-      <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] animate-pulse" style="animation-delay: 1s" />
-    </div>
-
-    <div class="relative z-10 flex flex-col items-center justify-center min-h-screen px-6">
-      <div
-        :class="[
-          'transition-all duration-1000 ease-out',
-          loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8',
-        ]"
-      >
-        <div class="relative mb-10">
-          <div class="absolute -inset-4 bg-gradient-to-r from-pink-500/30 via-purple-500/30 to-indigo-500/30 rounded-full blur-3xl animate-pulse" />
-          <img
-            src="/character.avif"
-            alt="Life"
-            class="relative w-[280px] h-[380px] md:w-[360px] md:h-[480px] object-contain drop-shadow-2xl"
+  <BackgroundProvider
+    ref="backgroundSurface"
+    class="widgets top-widgets"
+    :background="selectedOption"
+    :top-color="sampledColor"
+  >
+    <div relative flex="~ col" z-2 h-100dvh w-100vw of-hidden>
+      <!-- header -->
+      <div class="px-0 py-1 md:px-3 md:py-3" w-full gap-2>
+        <Header class="hidden md:flex" />
+        <MobileHeader class="flex md:hidden" />
+      </div>
+      <!-- page -->
+      <div relative flex="~ 1 row gap-y-0 gap-x-2 <md:col">
+        <div relative flex-1 min-w="1/2">
+          <div
+            absolute left-0 z-15 px-3
+            :class="[
+              stageModelRenderer === 'live2d' ? 'top-0 h-full py-[20vh]' : 'top-1/2 -translate-y-1/2',
+            ]"
+          >
+            <ViewControlSlider />
+          </div>
+          <WidgetStage
+            h-full w-full
+            :cursor-position="cursorPosition"
+            :enable-orbit-controls="!isMobile"
+            :paused="paused"
           />
         </div>
-
-        <div class="text-center mb-12">
-          <h1 class="font-cuteen text-5xl md:text-6xl lg:text-7xl font-bold mb-4">
-            <span class="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
-              Life
-            </span>
-          </h1>
-          <p class="text-lg md:text-xl text-neutral-300 mb-3 font-medium">
-            你的专属 AI 伴侣
-          </p>
-          <p class="text-sm text-neutral-500 max-w-xs mx-auto leading-relaxed">
-            她会记住你，理解你，<br />
-            陪伴你走过每一段时光
-          </p>
-        </div>
-
-        <div class="flex flex-col gap-3 justify-center items-center">
-          <button
-            class="w-full sm:w-72 px-8 py-4 text-base font-medium rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
-            @click="handleCreate"
-          >
-            ✨ 创造你的她
-          </button>
-          <button
-            class="w-full sm:w-72 px-8 py-4 text-base font-medium rounded-2xl bg-white/5 text-white hover:bg-white/10 active:scale-[0.98] transition-all border border-white/10 backdrop-blur-sm"
-            @click="handleEnter"
-          >
-            回到她身边
-          </button>
-        </div>
-
-        <div class="mt-12 flex items-center justify-center gap-6 text-xs text-neutral-600">
-          <span class="flex items-center gap-1">
-            <span class="i-solar:heart-linear text-pink-500" />
-            温暖陪伴
-          </span>
-          <span class="flex items-center gap-1">
-            <span class="i-solar:brain-linear text-purple-500" />
-            懂得记忆
-          </span>
-          <span class="flex items-center gap-1">
-            <span class="i-solar:stars-linear text-amber-500" />
-            共同成长
-          </span>
-        </div>
-
-        <div class="mt-10 text-xs text-neutral-600 text-center">
-          © Life · 做你最特别的存在
-        </div>
+        <InteractiveArea v-if="!isMobile" h="85dvh" absolute right-4 flex flex-1 flex-col max-w="500px" min-w="30%" />
+        <MobileInteractiveArea v-if="isMobile" @settings-open="handleSettingsOpen" />
       </div>
+      <HoloCoupon />
     </div>
-  </div>
+  </BackgroundProvider>
 </template>
 
 <route lang="yaml">
-name: IndexPage
+name: IndexScenePage
 meta:
-  layout: plain
+  layout: stage
+  stageTransition:
+    name: bubble-wave-out
 </route>
