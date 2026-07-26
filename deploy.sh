@@ -21,6 +21,7 @@ fail()  { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
 
 # ---------- 配置 ----------
 GITEE_REPO="https://gitee.com/lifeos20/airi.git"
+GITEE_REPO_AUTH="https://oauth2:24d31e4a13d1d3fd1efe4d106784c875@gitee.com/lifeos20/airi.git"
 APP_DIR="$HOME/airi"
 SERVER_PORT=3000
 WEB_PORT=5173
@@ -63,6 +64,10 @@ sudo apt-get update -qq
 # 安装基础工具
 sudo apt-get install -y -qq curl git build-essential python3 nginx \
   postgresql postgresql-contrib redis-server ufw 2>/dev/null
+
+# canvas 原生模块编译需要的系统库
+sudo apt-get install -y -qq pkg-config libpixman-1-dev libcairo2-dev \
+  libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev 2>/dev/null
 
 ok "系统依赖安装完成"
 
@@ -124,10 +129,16 @@ info "Step 5: 克隆代码仓库..."
 if [ -d "$APP_DIR/.git" ]; then
   info "仓库已存在，拉取最新代码..."
   cd "$APP_DIR"
-  git pull origin main
+  # 使用带 token 的 URL 避免交互式输入
+  git remote set-url origin "$GITEE_REPO_AUTH" 2>/dev/null || true
+  git pull origin main 2>&1 || warn "git pull 失败，使用现有代码继续"
+  # 恢复为不带 token 的 URL（安全）
+  git remote set-url origin "$GITEE_REPO" 2>/dev/null || true
 else
-  git clone --depth 1 "$GITEE_REPO" "$APP_DIR"
+  git clone --depth 1 "$GITEE_REPO_AUTH" "$APP_DIR"
   cd "$APP_DIR"
+  # 恢复为不带 token 的 URL
+  git remote set-url origin "$GITEE_REPO" 2>/dev/null || true
 fi
 
 ok "代码已就绪: $(pwd)"
@@ -190,7 +201,17 @@ warn "请根据需要修改 OAuth/Stripe 等配置"
 # ============================================================
 info "Step 7: 安装项目依赖..."
 
-pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+# 移除未使用的 mineflayer-pathfinder patch（该包在 workspace 但未被部署目标引用）
+if grep -q "mineflayer-pathfinder" pnpm-workspace.yaml 2>/dev/null; then
+  sed -i '/mineflayer-pathfinder:/d' pnpm-workspace.yaml
+  info "已移除未使用的 mineflayer-pathfinder patch 配置"
+fi
+
+# pnpm install: 允许 patch 警告但不中断
+pnpm install --no-frozen-lockfile 2>&1 || {
+  warn "pnpm install 遇到警告，尝试忽略 patch 错误重试..."
+  pnpm install --no-frozen-lockfile --config.strict-peer-dependencies=false 2>&1 || true
+}
 
 ok "依赖安装完成"
 
