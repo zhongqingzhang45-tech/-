@@ -89,11 +89,23 @@ export default defineConfig({
   resolve: {
     alias: {
       '@proj-airi/server-sdk': resolve(join(import.meta.dirname, '..', '..', 'packages', 'server-sdk', 'src')),
+      '@proj-airi/server-sdk-shared': resolve(join(import.meta.dirname, '..', '..', 'packages', 'server-sdk-shared', 'src')),
+      '@proj-airi/server-shared': resolve(join(import.meta.dirname, '..', '..', 'packages', 'server-shared', 'src')),
       '@proj-airi/i18n': resolve(join(import.meta.dirname, '..', '..', 'packages', 'i18n', 'src')),
       '@proj-airi/stage-ui': resolve(join(import.meta.dirname, '..', '..', 'packages', 'stage-ui', 'src')),
       '@proj-airi/stage-pages': resolve(join(import.meta.dirname, '..', '..', 'packages', 'stage-pages', 'src')),
       '@proj-airi/stage-shared': resolve(join(import.meta.dirname, '..', '..', 'packages', 'stage-shared', 'src')),
       '@proj-airi/stage-layouts': resolve(join(import.meta.dirname, '..', '..', 'packages', 'stage-layouts', 'src')),
+      '@proj-airi/core-agent': resolve(join(import.meta.dirname, '..', '..', 'packages', 'core-agent', 'src')),
+      '@proj-airi/better-ws': resolve(join(import.meta.dirname, '..', '..', 'packages', 'better-ws', 'src')),
+      '@proj-airi/pipelines-audio': resolve(join(import.meta.dirname, '..', '..', 'packages', 'pipelines-audio', 'src')),
+      '@proj-airi/stream-kit': resolve(join(import.meta.dirname, '..', '..', 'packages', 'stream-kit', 'src')),
+      '@proj-airi/electron-screen-capture': resolve(join(import.meta.dirname, '..', '..', 'packages', 'electron-screen-capture', 'src')),
+      '@proj-airi/font-cjkfonts-allseto': resolve(join(import.meta.dirname, '..', '..', 'packages', 'font-cjkfonts-allseto', 'src')),
+      '@proj-airi/font-xiaolai': resolve(join(import.meta.dirname, '..', '..', 'packages', 'font-xiaolai', 'src')),
+      '@proj-airi/plugin-protocol': resolve(join(import.meta.dirname, '..', '..', 'packages', 'plugin-protocol', 'src')),
+      '@proj-airi/audio': resolve(join(import.meta.dirname, '..', '..', 'packages', 'audio', 'src')),
+      '@proj-airi/audio-pipelines-transcribe': resolve(join(import.meta.dirname, '..', '..', 'packages', 'audio-pipelines-transcribe', 'src')),
     },
   },
   server: {

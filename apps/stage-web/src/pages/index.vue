@@ -1,203 +1,95 @@
 <script setup lang="ts">
-import type { ChatProvider } from '@xsai-ext/providers/utils'
+import { useDark } from '@vueuse/core'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
-import Header from '@proj-airi/stage-layouts/components/Layouts/Header.vue'
-import InteractiveArea from '@proj-airi/stage-layouts/components/Layouts/InteractiveArea.vue'
-import MobileHeader from '@proj-airi/stage-layouts/components/Layouts/MobileHeader.vue'
-import MobileInteractiveArea from '@proj-airi/stage-layouts/components/Layouts/MobileInteractiveArea.vue'
-import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&url'
+const router = useRouter()
+const isDark = useDark()
+isDark.value = false
 
-import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
-import { useBackgroundThemeColor } from '@proj-airi/stage-layouts/composables/theme-color'
-import { useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
-import { HoloCoupon } from '@proj-airi/stage-ui/components'
-import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/scenes'
-import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
-import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
-import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
-import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
-import { useHearingSpeechInputPipeline } from '@proj-airi/stage-ui/stores/modules/hearing'
-import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
-import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
-import { breakpointsTailwind, useBreakpoints, useMouse } from '@vueuse/core'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+const isLoaded = ref(false)
 
-const paused = ref(false)
-
-function handleSettingsOpen(open: boolean) {
-  paused.value = open
-}
-
-const breakpoints = useBreakpoints(breakpointsTailwind)
-const isMobile = breakpoints.smaller('md')
-
-const backgroundStore = useBackgroundStore()
-const { selectedOption, sampledColor } = storeToRefs(backgroundStore)
-const backgroundSurface = useTemplateRef<InstanceType<typeof BackgroundProvider>>('backgroundSurface')
-const { stageModelRenderer } = storeToRefs(useSettings())
-
-const { syncBackgroundTheme } = useBackgroundThemeColor({ backgroundSurface, selectedOption, sampledColor })
-onMounted(() => syncBackgroundTheme())
-
-// Audio + transcription pipeline (mirrors stage-tamagotchi)
-const settingsAudioDeviceStore = useSettingsAudioDevice()
-const { stream, enabled } = storeToRefs(settingsAudioDeviceStore)
-const { startRecord, stopRecord, onStopRecord } = useAudioRecorder(stream)
-const hearingPipeline = useHearingSpeechInputPipeline()
-const { transcribeForRecording } = hearingPipeline
-const { supportsStreamInput } = storeToRefs(hearingPipeline)
-const providersStore = useProvidersStore()
-const consciousnessStore = useConsciousnessStore()
-const { activeProvider: activeChatProvider, activeModel: activeChatModel } = storeToRefs(consciousnessStore)
-const chatStore = useChatOrchestratorStore()
-
-const shouldUseStreamInput = computed(() => supportsStreamInput.value && !!stream.value)
-
-const {
-  init: initVAD,
-  dispose: disposeVAD,
-  start: startVAD,
-  loaded: vadLoaded,
-} = useVAD(workletUrl, {
-  threshold: ref(0.6),
-  onSpeechStart: () => handleSpeechStart(),
-  onSpeechEnd: () => handleSpeechEnd(),
-})
-
-let stopOnStopRecord: (() => void) | undefined
-
-async function startAudioInteraction() {
+async function handleStart() {
   try {
-    await initVAD()
-    if (stream.value)
-      await startVAD(stream.value)
-
-    // Hook once
-    stopOnStopRecord = onStopRecord(async (recording) => {
-      const text = await transcribeForRecording(recording)
-      if (!text || !text.trim())
-        return
-
-      try {
-        const provider = await providersStore.getProviderInstance(activeChatProvider.value)
-        if (!provider || !activeChatModel.value)
-          return
-
-        await chatStore.ingest(text, { model: activeChatModel.value, chatProvider: provider as ChatProvider })
-      }
-      catch (err) {
-        console.error('Failed to send chat from voice:', err)
-      }
-    })
+    await router.push('/auth')
   }
-  catch (e) {
-    console.error('Audio interaction init failed:', e)
+  catch (err) {
+    console.error('Navigation to /auth failed:', err)
+    window.location.href = '/auth'
   }
 }
 
-async function handleSpeechStart() {
-  // For streaming providers, ChatArea component handles transcription manually
-  // The main page should not start automatic transcription to avoid duplicate sessions
-  if (shouldUseStreamInput.value) {
-    return
-  }
-
-  startRecord()
-}
-
-async function handleSpeechEnd() {
-  if (shouldUseStreamInput.value) {
-    // Keep streaming session alive; idle timer in pipeline will handle teardown.
-    return
-  }
-
-  stopRecord()
-}
-
-function stopAudioInteraction() {
+async function handleExperience() {
   try {
-    stopOnStopRecord?.()
-    stopOnStopRecord = undefined
-    disposeVAD()
+    await router.push('/chat')
   }
-  catch {}
+  catch (err) {
+    console.error('Navigation to /chat failed:', err)
+    window.location.href = '/chat'
+  }
 }
 
-watch(enabled, async (val) => {
-  if (val) {
-    await startAudioInteraction()
-  }
-  else {
-    stopAudioInteraction()
-  }
-}, { immediate: true })
-
-onUnmounted(() => {
-  stopAudioInteraction()
+onMounted(() => {
+  setTimeout(() => {
+    isLoaded.value = true
+  }, 100)
 })
-
-watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
-  if (enabled.value && loaded && s) {
-    try {
-      await startVAD(s)
-    }
-    catch (e) {
-      console.error('Failed to start VAD with stream:', e)
-    }
-  }
-})
-
-const { x: mouseX, y: mouseY } = useMouse()
-const cursorPosition = computed(() => ({
-  x: mouseX.value,
-  y: mouseY.value,
-}))
 </script>
 
 <template>
-  <BackgroundProvider
-    ref="backgroundSurface"
-    class="widgets top-widgets"
-    :background="selectedOption"
-    :top-color="sampledColor"
-  >
-    <div relative flex="~ col" z-2 h-100dvh w-100vw of-hidden>
-      <!-- header -->
-      <div class="px-0 py-1 md:px-3 md:py-3" w-full gap-2>
-        <Header class="hidden md:flex" />
-        <MobileHeader class="flex md:hidden" />
-      </div>
-      <!-- page -->
-      <div relative flex="~ 1 row gap-y-0 gap-x-2 <md:col">
-        <div relative flex-1 min-w="1/2">
-          <div
-            absolute left-0 z-15 px-3
-            :class="[
-              stageModelRenderer === 'live2d' ? 'top-0 h-full py-[20vh]' : 'top-1/2 -translate-y-1/2',
-            ]"
-          >
-            <ViewControlSlider />
-          </div>
-          <WidgetStage
-            h-full w-full
-            :cursor-position="cursorPosition"
-            :enable-orbit-controls="!isMobile"
-            :paused="paused"
-          />
-        </div>
-        <InteractiveArea v-if="!isMobile" h="85dvh" absolute right-4 flex flex-1 flex-col max-w="500px" min-w="30%" />
-        <MobileInteractiveArea v-if="isMobile" @settings-open="handleSettingsOpen" />
-      </div>
-      <HoloCoupon />
+  <div class="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center px-6 relative overflow-hidden">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-pink-200/30 to-purple-200/30 rounded-full blur-3xl" />
+      <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-blue-200/30 to-purple-200/30 rounded-full blur-3xl" />
     </div>
-  </BackgroundProvider>
+
+    <div
+      :class="[
+        'relative z-10 text-center transition-all duration-700',
+        isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8',
+      ]"
+    >
+      <div class="relative w-24 h-24 mx-auto mb-8">
+        <img src="/favicon.svg" alt="Life" class="w-full h-full rounded-2xl" />
+      </div>
+
+      <h1 class="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+        <span class="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+          Life
+        </span>
+      </h1>
+
+      <p class="text-lg text-neutral-500 mb-2">二次元 AI 虚拟伴侣</p>
+      <p class="text-sm text-neutral-400 mb-12">与你的专属 AI 伴侣开启全新旅程</p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
+        <button
+          class="w-full sm:w-auto px-8 py-4 rounded-xl bg-neutral-900 text-white font-medium text-base hover:bg-neutral-800 transition-colors shadow-lg shadow-neutral-200"
+          @click="handleStart"
+        >
+          开始使用
+        </button>
+        <button
+          class="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-neutral-700 font-medium text-base hover:bg-neutral-50 transition-colors border border-neutral-200"
+          @click="handleExperience"
+        >
+          免费体验
+        </button>
+      </div>
+
+      <div class="mt-16 flex items-center justify-center gap-8 text-xs text-neutral-400">
+        <span>实时语音互动</span>
+        <span class="w-1 h-1 bg-neutral-300 rounded-full" />
+        <span>智能情感陪伴</span>
+        <span class="w-1 h-1 bg-neutral-300 rounded-full" />
+        <span>多种角色选择</span>
+      </div>
+    </div>
+  </div>
 </template>
 
 <route lang="yaml">
-name: IndexScenePage
+name: IndexPage
 meta:
-  layout: stage
-  stageTransition:
-    name: bubble-wave-out
+  layout: plain
 </route>
