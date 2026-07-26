@@ -116,6 +116,12 @@ if ! command -v pm2 &>/dev/null; then
 fi
 ok "PM2: $(pm2 -v)"
 
+# dotenvx（server 启动需要）
+if ! command -v dotenvx &>/dev/null; then
+  sudo npm install -g @dotenvx/dotenvx
+fi
+ok "dotenvx: $(dotenvx --version 2>/dev/null || echo 'installed')"
+
 # ============================================================
 # Step 3: 配置 PostgreSQL
 # ============================================================
@@ -337,6 +343,11 @@ info "Step 10: 构建 stage-web..."
 # 低配置服务器（2G/4G）可能需要 2-4G 内存才能完成构建
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+# 跳过 Live2D 模型资源下载（国内服务器可能无法访问 dist.ayaka.moe）
+# 如需启用 Live2D，请手动下载模型资源到 public/live2d/ 目录
+export LIFE_SKIP_ASSET_DOWNLOAD=1
+export LIFE_DISABLE_SOURCEMAP=1
+
 # 使用 --mode=production 构建，限制并发 worker 减少内存占用
 BUILD_RESULT=0
 pnpm -F @proj-airi/stage-web run build 2>&1 || BUILD_RESULT=$?
@@ -483,7 +494,7 @@ server {
 
     # Stage-Web 前端静态资源
     location /assets/ {
-        root /home/ubuntu/airi/apps/stage-web/dist;
+        root APP_DIR_PLACEHOLDER/apps/stage-web/dist;
         expires 1y;
         add_header Cache-Control "public, max-age=31536000, immutable";
         try_files $uri =404;
@@ -491,7 +502,7 @@ server {
 
     # 前端页面
     location / {
-        root /home/ubuntu/airi/apps/stage-web/dist;
+        root APP_DIR_PLACEHOLDER/apps/stage-web/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
@@ -500,6 +511,9 @@ server {
     client_max_body_size 50m;
 }
 NGINXEOF
+
+# 替换占位符为实际路径
+sudo sed -i "s|APP_DIR_PLACEHOLDER|$APP_DIR|g" "$NGINX_CONF"
 
 # 启用站点
 sudo ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/airi
