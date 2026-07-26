@@ -95,9 +95,11 @@ fi
 # ============================================================
 info "Step 2: 安装 Node.js + pnpm + PM2..."
 
-# Node.js 20 LTS
-if ! command -v node &>/dev/null; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Node.js 22 LTS（pnpm 10+ 需要 node:sqlite 模块，仅 Node 22+ 支持）
+NODE_MAJOR=22
+if ! command -v node &>/dev/null || ! node -v | grep -q "^v$NODE_MAJOR\."; then
+  info "安装 Node.js $NODE_MAJOR.x LTS..."
+  curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | sudo -E bash -
   sudo apt-get install -y -qq nodejs
 fi
 ok "Node.js: $(node -v)"
@@ -363,10 +365,14 @@ info "Step 11: 配置 PM2..."
 # 不能直接调用 tsx，否则环境变量不会被加载（server 启动会失败）
 START_SCRIPT="$APP_DIR/apps/server/start-server.sh"
 
-cat > "$START_SCRIPT" << 'STARTEOF'
+cat > "$START_SCRIPT" << STARTEOF
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "\$(dirname "\$0")"
+
+# 确保使用正确的 Node.js 路径（PM2 启动时 PATH 可能不包含 nodesource 的 node）
+export PATH="\$(dirname \$(which node)):\$PATH"
+
 # 通过 pnpm run start 调用 dotenvx run 加载 .env.local，然后运行 tsx
 exec pnpm run start
 STARTEOF
