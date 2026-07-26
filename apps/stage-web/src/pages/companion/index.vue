@@ -17,7 +17,6 @@ const { trackCharacterDeleted } = useAnalytics()
 const characterStore = useCharacterStore()
 const companionStore = useCompanionStore()
 const { characters } = storeToRefs(characterStore)
-const { level, relationshipTitle, daysTogether, totalChatCount, affinity } = storeToRefs(companionStore)
 
 onMounted(() => {
   characterStore.fetchList().catch(console.error)
@@ -95,7 +94,7 @@ function handleActivate(char: Character) {
           ]"
         >
           <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            {{ daysTogether }}
+            {{ companionStore.daysTogether }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             陪伴天数
@@ -109,7 +108,7 @@ function handleActivate(char: Character) {
           ]"
         >
           <div class="text-3xl font-bold text-amber-600 dark:text-amber-400">
-            {{ totalChatCount }}
+            {{ companionStore.totalChatCount }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             对话次数
@@ -123,10 +122,10 @@ function handleActivate(char: Character) {
           ]"
         >
           <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-            Lv.{{ level }}
+            Lv.{{ companionStore.level }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            {{ relationshipTitle }}
+            {{ companionStore.relationshipTitle }}
           </div>
         </div>
       </div>
