@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '../../stores/auth'
+import { useAuthStore } from '@proj-airi/stage-ui/stores/auth'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -29,15 +29,15 @@ const primaryNav: NavItem[] = [
     id: 'companion',
     label: '我的伙伴',
     icon: 'i-solar:users-group-rounded-linear',
-    path: '/settings/characters',
-    activeMatch: '/settings/characters',
+    path: '/companion',
+    activeMatch: '/companion',
   },
   {
     id: 'memory',
     label: '记忆中心',
     icon: 'i-solar:bookmark-linear',
-    path: '/settings/memory',
-    activeMatch: '/settings/memory',
+    path: '/memory',
+    activeMatch: '/memory',
   },
   {
     id: 'store',
@@ -53,15 +53,15 @@ const secondaryNav: NavItem[] = [
     id: 'account',
     label: '账户',
     icon: 'i-solar:user-circle-linear',
-    path: '/settings/account',
-    activeMatch: '/settings/account',
+    path: '/account',
+    activeMatch: '/account',
   },
   {
     id: 'settings',
     label: '设置',
     icon: 'i-solar:settings-bold-duotone',
     path: '/settings',
-    activeMatch: '^/settings/(?!characters|memory|account)',
+    activeMatch: '/settings',
   },
 ]
 
@@ -202,7 +202,7 @@ const avatarInitial = computed(() => {
           'hover:bg-neutral-100 dark:hover:bg-neutral-800/60',
           'cursor-pointer transition-colors',
         ]"
-        @click="navigate({ id: 'account', label: '账户', icon: '', path: '/settings/account' })"
+        @click="navigate({ id: 'account', label: '账户', icon: '', path: '/account' })"
       >
         <div
           :class="[

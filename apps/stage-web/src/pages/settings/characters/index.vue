@@ -14,12 +14,10 @@ const { trackCharacterDeleted } = useAnalytics()
 const characterStore = useCharacterStore()
 const { characters } = storeToRefs(characterStore)
 
-// Fetch on mount
 onMounted(() => {
   characterStore.fetchList().catch(console.error)
 })
 
-// Search
 const searchQuery = ref('')
 const filteredCharacters = computed(() => {
   const query = searchQuery.value.toLowerCase()
@@ -29,7 +27,6 @@ const filteredCharacters = computed(() => {
   })
 })
 
-// Selection / Dialog
 const isDialogOpen = ref(false)
 const selectedCharacter = ref<Character | undefined>(undefined)
 
@@ -44,9 +41,7 @@ function handleEdit(char: Character) {
 }
 
 function handleDelete(id: string) {
-  // TODO: Remove this
-  // eslint-disable-next-line no-alert
-  if (confirm('Are you sure you want to delete this character?')) {
+  if (confirm('确定要删除这个伙伴吗？')) {
     characterStore.remove(id)
       .then(() => trackCharacterDeleted({ character_id: id }))
       .catch(console.error)
@@ -54,35 +49,93 @@ function handleDelete(id: string) {
 }
 
 function handleActivate(char: Character) {
-  // TODO: Implement activation logic (global store for active character)
-  // eslint-disable-next-line no-console
   console.log('Activate', char.id)
 }
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 p-4 md:p-6">
+  <div class="h-full flex flex-col gap-6 p-4 md:p-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl text-neutral-900 font-bold dark:text-neutral-100">
-          Characters
+        <h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+          我的伙伴
         </h1>
-        <p class="mt-1 text-neutral-500 dark:text-neutral-400">
-          Manage your AI characters and their capabilities.
+        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+          管理你的 AI 虚拟伴侣，创造独一无二的她
         </p>
       </div>
 
       <div class="flex items-center gap-2">
         <FieldInput
           v-model="searchQuery"
-          placeholder="Search..."
-          class="w-64"
+          placeholder="搜索伙伴..."
+          class="w-48"
         />
         <Button @click="handleCreate">
           <div class="i-solar:add-circle-bold mr-2" />
-          Create New
+          创造新伙伴
         </Button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div
+        :class="[
+          'rounded-2xl p-4',
+          'bg-gradient-to-br from-pink-500/10 to-purple-500/10',
+          'border border-pink-200/50 dark:border-pink-800/30',
+        ]"
+      >
+        <div class="text-2xl font-bold text-pink-600 dark:text-pink-400">
+          {{ characters.size }}
+        </div>
+        <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          我的伙伴
+        </div>
+      </div>
+      <div
+        :class="[
+          'rounded-2xl p-4',
+          'bg-gradient-to-br from-blue-500/10 to-cyan-500/10',
+          'border border-blue-200/50 dark:border-blue-800/30',
+        ]"
+      >
+        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          1
+        </div>
+        <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          当前陪伴
+        </div>
+      </div>
+      <div
+        :class="[
+          'rounded-2xl p-4',
+          'bg-gradient-to-br from-amber-500/10 to-orange-500/10',
+          'border border-amber-200/50 dark:border-amber-800/30',
+        ]"
+      >
+        <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+          0
+        </div>
+        <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          记忆碎片
+        </div>
+      </div>
+      <div
+        :class="[
+          'rounded-2xl p-4',
+          'bg-gradient-to-br from-emerald-500/10 to-teal-500/10',
+          'border border-emerald-200/50 dark:border-emerald-800/30',
+        ]"
+      >
+        <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          Lv.1
+        </div>
+        <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          关系等级
+        </div>
       </div>
     </div>
 
@@ -95,18 +148,18 @@ function handleActivate(char: Character) {
       v-else
       class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 pb-20 lg:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] sm:gap-5"
     >
-      <!-- Create Card (Visual) -->
+      <!-- Create Card -->
       <button
-        class="group relative min-h-120px flex flex-col cursor-pointer items-center justify-center gap-3 overflow-hidden border-2 border-neutral-200 rounded-xl border-dashed bg-neutral-50/50 p-6 transition-all duration-300 dark:border-neutral-800 hover:border-primary-400 dark:bg-neutral-900/20 hover:bg-primary-50/30 dark:hover:border-primary-600 dark:hover:bg-primary-900/10"
+        class="group relative min-h-120px flex flex-col cursor-pointer items-center justify-center gap-3 overflow-hidden border-2 border-neutral-200 rounded-2xl border-dashed bg-neutral-50/50 p-6 transition-all duration-300 dark:border-neutral-800 hover:border-purple-400 dark:bg-neutral-900/20 hover:bg-purple-50/30 dark:hover:border-purple-600 dark:hover:bg-purple-900/10"
         @click="handleCreate"
       >
-        <div class="i-solar:add-circle-linear text-5xl text-neutral-300 transition-colors dark:text-neutral-700 group-hover:text-primary-400 dark:group-hover:text-primary-500" />
-        <span class="text-neutral-500 font-medium transition-colors dark:text-neutral-500 group-hover:text-primary-600 dark:group-hover:text-primary-400">
-          Create Character
+        <div class="i-solar:add-circle-linear text-5xl text-neutral-300 transition-colors dark:text-neutral-700 group-hover:text-purple-400 dark:group-hover:text-purple-500" />
+        <span class="text-neutral-500 font-medium transition-colors dark:text-neutral-500 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+          创造新伙伴
         </span>
       </button>
 
-      <!-- Items -->
+      <!-- Character Items -->
       <CharacterItem
         v-for="char in filteredCharacters"
         :key="char.id"
@@ -130,6 +183,6 @@ function handleActivate(char: Character) {
 <route lang="yaml">
 meta:
   layout: settings
-  title: Characters
-  subtitleKey: settings.title
+  title: 我的伙伴
+  subtitle: 管理你的 AI 虚拟伴侣
 </route>

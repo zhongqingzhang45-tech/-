@@ -7,10 +7,10 @@ const loaded = ref(false)
 
 async function handleCreate() {
   try {
-    await router.push('/settings/characters')
+    await router.push('/create')
   }
   catch {
-    window.location.href = '/settings/characters'
+    window.location.href = '/create'
   }
 }
 
