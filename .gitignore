@@ -5,6 +5,9 @@
 # Node.js
 node_modules
 
+# pnpm store (should live globally, never in repo)
+.pnpm-store/
+
 # Logs
 *.log
 *.logs
@@ -143,3 +146,6 @@ apps/stage-tamagotchi/electron.vite.config.*.mjs
 
 docs/ai/context/verifications/
 .playwright-mcp/
+
+# Local debug scripts
+screenshot-test.mjs
