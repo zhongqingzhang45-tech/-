@@ -10,22 +10,7 @@ const sessionsDrawerOpen = shallowRef(false)
 
 <template>
   <div class="relative h-full w-full overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50">
-    <ErrorBoundary
-      title="Stage"
-      :retryable="false"
-      class="absolute inset-0 z-0"
-    >
-      <template #fallback>
-        <div class="absolute inset-0 flex items-center justify-center">
-          <img
-            src="/character.avif"
-            alt="Life Character"
-            class="w-[280px] h-[350px] md:w-[380px] md:h-[475px] object-contain opacity-80"
-          />
-        </div>
-      </template>
-      <WidgetStage class="h-full w-full" />
-    </ErrorBoundary>
+    <WidgetStage class="h-full w-full" />
 
     <div class="absolute inset-0 z-10 overflow-y-scroll">
       <InteractiveArea
