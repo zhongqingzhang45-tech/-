@@ -4,7 +4,7 @@ import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from '
 
 import { nanoid } from '../utils/id'
 
-export type CapabilityAliasSurface = 'llm' | 'asr'
+export type CapabilityAliasSurface = 'llm' | 'asr' | 'tts'
 export type CapabilityAliasRoutePool = 'primary' | 'fallback'
 
 export interface ProviderCatalogTtsVoiceLanguage {

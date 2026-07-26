@@ -141,7 +141,7 @@ export function createWebhookOperation(deps: WebhookOperationDeps) {
       case 'invoice.updated':
       case 'invoice.paid':
       case 'invoice.payment_failed': {
-        const result = await handleInvoiceEvent(event.data.object, deps.stripeService)
+        const result = await handleInvoiceEvent(event.id, event.data.object, deps.stripeService, deps.billingService)
         if (event.type === 'invoice.payment_failed')
           deps.metrics?.stripePaymentFailed.add(1)
         if (event.type === 'invoice.paid' && event.data.object.amount_paid && event.data.object.currency) {
@@ -323,8 +323,10 @@ async function handleSubscriptionEvent(
 }
 
 async function handleInvoiceEvent(
+  stripeEventId: string,
   invoice: Stripe.Invoice,
   stripeService: StripeService,
+  billingService: BillingService,
 ): Promise<StripeSubscriptionEventContext | null> {
   const stripeCustomerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
   if (!stripeCustomerId)
@@ -339,6 +341,10 @@ async function handleInvoiceEvent(
   const subscriptionId = subDetails
     ? (typeof subDetails.subscription === 'string' ? subDetails.subscription : subDetails.subscription?.id)
     : undefined
+
+  const firstLine = invoice.lines?.data?.[0] as any
+  const stripePriceId = firstLine?.price?.id
+  const fluxAmountMetadata = firstLine?.price?.metadata?.fluxAmount
 
   await stripeService.upsertInvoice({
     userId: customer.userId,
@@ -357,14 +363,34 @@ async function handleInvoiceEvent(
     metadata: invoice.metadata ? JSON.stringify(invoice.metadata) : null,
   })
 
-  // TODO: implement subscription-based flux crediting when subscriptions are enabled
-  if (invoice.status === 'paid' && invoice.amount_paid && subscriptionId)
-    logger.withFields({ userId: customer.userId, invoiceId: invoice.id, amountPaid: invoice.amount_paid }).warn('Subscription invoice paid but flux crediting for subscriptions is not yet implemented')
+  if (invoice.status === 'paid' && invoice.amount_paid && subscriptionId && fluxAmountMetadata) {
+    const fluxAmount = Number(fluxAmountMetadata)
+    if (Number.isFinite(fluxAmount) && fluxAmount > 0) {
+      const result = await billingService.creditFluxFromInvoice({
+        stripeEventId,
+        userId: customer.userId,
+        stripeInvoiceId: invoice.id,
+        stripeSubscriptionId: subscriptionId,
+        amountPaid: invoice.amount_paid,
+        currency: invoice.currency,
+        fluxAmount,
+      })
+      logger.withFields({
+        userId: customer.userId,
+        invoiceId: invoice.id,
+        fluxAmount,
+        amountPaid: invoice.amount_paid,
+        applied: result.applied,
+        balanceAfter: result.balanceAfter,
+      }).log('Processed flux credit for subscription invoice')
+    }
+  }
 
   return {
     userId: customer.userId,
     stripeCustomerId,
     stripeSubscriptionId: subscriptionId ?? '',
+    stripePriceId,
     subscriptionStatus: invoice.status ?? undefined,
     amountPaid: invoice.amount_paid,
     currency: invoice.currency,

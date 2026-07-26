@@ -362,7 +362,7 @@ function requireUserDeletionService(service: UserDeletionService | undefined): U
 export function createAuth(
   db: Database,
   env: Env,
-  email?: EmailService,
+  email?: EmailService | null,
   metrics?: AuthMetrics | null,
   userDeletionService?: UserDeletionService,
   productEventService?: ProductEventService,

@@ -94,6 +94,7 @@ import { createStripeService } from './services/domain/stripe'
 import { createUserDeletionService } from './services/domain/user-deletion'
 import { createVoicePackService } from './services/domain/voice-packs'
 import { createEnvelopeCrypto } from './utils/envelope-crypto'
+import { createProviderConfigCrypto } from './utils/provider-config-crypto'
 import { ApiError, createInternalError } from './utils/error'
 import { nanoid } from './utils/id'
 import { getTrustedOrigin } from './utils/origin'
@@ -617,14 +618,30 @@ export async function createApp() {
     build: ({ dependsOn }) => createProductEventService(dependsOn.db, dependsOn.otel?.product, dependsOn.posthogSink),
   })
 
+  // Provider config crypto for at-rest encryption of user-provided API keys
+  // and secrets stored in user_provider_configs.config (jsonb). Reuses the
+  // same master key as envelopeCrypto but derives a separate AES key via
+  // HKDF with a distinct salt/info pair — cryptographic isolation without
+  // requiring operators to manage another 32-byte secret.
+  const providerConfigCrypto = injeca.provide('libs:providerConfigCrypto', {
+    dependsOn: { env: parsedEnv },
+    build: ({ dependsOn }) => createProviderConfigCrypto({
+      masterKey: dependsOn.env.LLM_ROUTER_MASTER_KEY,
+      previousMasterKey: dependsOn.env.LLM_ROUTER_MASTER_KEY_PREVIOUS,
+    }),
+  })
+
   const characterService = injeca.provide('services:characters', {
     dependsOn: { db, otel },
     build: ({ dependsOn }) => createCharacterService(dependsOn.db, dependsOn.otel?.engagement),
   })
 
   const providerService = injeca.provide('services:providers', {
-    dependsOn: { db },
-    build: ({ dependsOn }) => createProviderService(dependsOn.db),
+    dependsOn: { db, providerConfigCrypto },
+    build: ({ dependsOn }) => createProviderService({
+      db: dependsOn.db,
+      configCrypto: dependsOn.providerConfigCrypto,
+    }),
   })
 
   const chatService = injeca.provide('services:chats', {
