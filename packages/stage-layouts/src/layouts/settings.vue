@@ -7,6 +7,7 @@ import { computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute } from 'vue-router'
 
+import AppSidebar from '../components/Layouts/AppSidebar.vue'
 import HeaderLink from '../components/Layouts/HeaderLink.vue'
 
 import { themeColorFromValue, useThemeColor } from '../composables/theme-color'
@@ -72,37 +73,42 @@ onMounted(() => updateThemeColor())
 </script>
 
 <template>
-  <div
-    :style="{
-      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-      paddingRight: 'env(safe-area-inset-right, 0px)',
-      paddingLeft: 'env(safe-area-inset-left, 0px)',
-    }"
-    :class="['h-full w-full', 'flex flex-col']"
-  >
-    <!-- Header -->
-    <div
-      v-if="!isStageTamagotchi()"
-      :class="['px-0 py-1 hidden sm:block', 'md:px-3 md:py-3', 'w-full gap-2', 'bg-$bg-color']"
-    >
-      <HeaderLink />
+  <div class="flex h-full w-full">
+    <div class="hidden md:flex">
+      <AppSidebar />
     </div>
-    <!-- Content -->
     <div
-      :class="[
-        'px-3 py-0 2xl:max-w-screen-2xl md:py-0 xl:px-4',
-        isStageTamagotchi() ? 'sm:max-h-[calc(100%)] max-h-[calc(100%)]' : 'sm:max-h-[calc(100%-56px)] max-h-[calc(100%-40px)]',
-        'mx-auto flex min-h-0 w-full flex-1 flex-col',
-      ]"
+      :style="{
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+      }"
+      :class="['min-w-0 flex-1 flex flex-col h-full overflow-hidden']"
     >
-      <PageHeader
-        :title="routeHeaderMetadata?.title || ''"
-        :subtitle="routeHeaderMetadata?.subtitle"
-        :disable-back-button="routeMeta.disableBackButton || (isStageTamagotchi() && route.path === '/settings')"
-      />
-      <div id="settings-scroll-container" :class="['relative', 'min-h-0', 'flex-1', 'overflow-y-auto', 'scrollbar-none']">
-        <RouterView />
+      <!-- Header -->
+      <div
+        v-if="!isStageTamagotchi()"
+        :class="['px-0 py-1 hidden sm:block', 'md:px-3 md:py-3', 'w-full gap-2', 'bg-$bg-color']"
+      >
+        <HeaderLink />
+      </div>
+      <!-- Content -->
+      <div
+        :class="[
+          'px-3 py-0 2xl:max-w-screen-2xl md:py-0 xl:px-4',
+          isStageTamagotchi() ? 'sm:max-h-[calc(100%)] max-h-[calc(100%)]' : 'sm:max-h-[calc(100%-56px)] max-h-[calc(100%-40px)]',
+          'mx-auto flex min-h-0 w-full flex-1 flex-col',
+        ]"
+      >
+        <PageHeader
+          :title="routeHeaderMetadata?.title || ''"
+          :subtitle="routeHeaderMetadata?.subtitle"
+          :disable-back-button="routeMeta.disableBackButton || (isStageTamagotchi() && route.path === '/settings')"
+        />
+        <div id="settings-scroll-container" :class="['relative', 'min-h-0', 'flex-1', 'overflow-y-auto', 'scrollbar-none']">
+          <RouterView />
+        </div>
       </div>
     </div>
   </div>
