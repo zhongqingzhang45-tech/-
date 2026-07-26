@@ -19,63 +19,49 @@ interface NavItem {
 
 const primaryNav: NavItem[] = [
   {
-    id: 'chat',
-    label: '对话',
-    icon: 'i-solar:chat-round-line-duotone',
+    id: 'life',
+    label: 'Life Room',
+    icon: 'i-solar:heart-hand-up-linear',
     path: '/chat',
     activeMatch: '/chat',
   },
   {
-    id: 'characters',
-    label: '角色',
-    icon: 'i-solar:user-circle-line-duotone',
+    id: 'companion',
+    label: '我的伙伴',
+    icon: 'i-solar:users-group-rounded-linear',
     path: '/settings/characters',
     activeMatch: '/settings/characters',
   },
   {
     id: 'memory',
-    label: '记忆',
-    icon: 'i-solar:bookmark-circle-line-duotone',
+    label: '记忆中心',
+    icon: 'i-solar:bookmark-linear',
     path: '/settings/memory',
     activeMatch: '/settings/memory',
   },
   {
-    id: 'models',
-    label: '模型',
-    icon: 'i-solar:cpu-line-duotone',
-    path: '/settings/models',
-    activeMatch: '/settings/models',
-  },
-  {
-    id: 'providers',
-    label: '服务提供商',
-    icon: 'i-solar:cloud-storage-line-duotone',
-    path: '/settings/providers',
-    activeMatch: '/settings/providers',
-  },
-  {
-    id: 'modules',
-    label: '模块',
-    icon: 'i-solar:widget-2-line-duotone',
-    path: '/settings/modules',
-    activeMatch: '/settings/modules',
+    id: 'store',
+    label: 'Life 商店',
+    icon: 'i-solar:shop-linear',
+    path: '/store',
+    activeMatch: '/store',
   },
 ]
 
 const secondaryNav: NavItem[] = [
   {
-    id: 'flux',
-    label: 'Flux',
-    icon: 'i-solar:bolt-circle-line-duotone',
-    path: '/settings/flux',
-    activeMatch: '/settings/flux',
+    id: 'account',
+    label: '账户',
+    icon: 'i-solar:user-circle-linear',
+    path: '/settings/account',
+    activeMatch: '/settings/account',
   },
   {
     id: 'settings',
     label: '设置',
     icon: 'i-solar:settings-bold-duotone',
     path: '/settings',
-    activeMatch: '^/settings/(?!characters|memory|models|providers|modules|flux)',
+    activeMatch: '^/settings/(?!characters|memory|account)',
   },
 ]
 

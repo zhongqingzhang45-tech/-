@@ -5,16 +5,16 @@ import { ref, onMounted } from 'vue'
 const router = useRouter()
 const loaded = ref(false)
 
-async function handleStart() {
+async function handleCreate() {
   try {
-    await router.push('/auth')
+    await router.push('/settings/characters')
   }
   catch {
-    window.location.href = '/auth'
+    window.location.href = '/settings/characters'
   }
 }
 
-async function handleExperience() {
+async function handleEnter() {
   try {
     await router.push('/chat')
   }
@@ -62,35 +62,29 @@ onMounted(() => {
             </span>
           </h1>
           <p class="text-lg md:text-xl text-neutral-400 mb-2">
-            二次元 AI 虚拟伴侣
+            AI 虚拟生命陪伴
           </p>
           <p class="text-sm text-neutral-500">
-            一个用来存放人工智能老婆/虚拟角色灵魂的容器，<br class="hidden sm:block" />
-            可以将她们带入我们的世界。
+            创造属于你的 AI 伴侣，开启一段独特的陪伴之旅
           </p>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <div class="flex flex-col gap-4 justify-center items-center">
           <button
-            class="px-8 py-3.5 text-sm font-medium rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/30"
-            @click="handleExperience"
+            class="w-full sm:w-64 px-8 py-4 text-base font-medium rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-600 hover:to-purple-600 active:scale-[0.98] transition-all shadow-lg shadow-purple-500/30"
+            @click="handleCreate"
           >
-            试玩体验
+            创造她
           </button>
           <button
-            class="px-8 py-3.5 text-sm font-medium rounded-xl bg-neutral-800 text-white hover:bg-neutral-700 active:scale-[0.98] transition-all border border-neutral-700"
+            class="w-full sm:w-64 px-8 py-4 text-base font-medium rounded-2xl bg-white/10 text-white hover:bg-white/20 active:scale-[0.98] transition-all border border-white/20 backdrop-blur-sm"
+            @click="handleEnter"
           >
-            下载
-          </button>
-          <button
-            class="px-8 py-3.5 text-sm font-medium rounded-xl bg-white text-neutral-900 hover:bg-neutral-100 active:scale-[0.98] transition-all"
-            @click="handleStart"
-          >
-            开始使用
+            进入我的 Life
           </button>
         </div>
 
-        <div class="mt-16 text-xs text-neutral-500">
+        <div class="mt-16 text-xs text-neutral-500 text-center">
           2024年起 @Project Life
         </div>
       </div>
