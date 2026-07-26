@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const currentStep = ref(1)
-const totalSteps = 4
+const totalSteps = 5
 
 const characterName = ref('')
 const selectedPersonality = ref('')
@@ -295,6 +295,38 @@ async function handleCreate() {
         </div>
       </template>
 
+      <!-- Step 5: Complete -->
+      <template v-else-if="currentStep === 5">
+        <div class="text-center mb-8">
+          <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500">
+            <div class="i-solar:sparkles-linear text-4xl text-white" />
+          </div>
+          <h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+            她，准备好啦
+          </h1>
+          <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+            {{ characterName || '她' }}正在等着你，开启这段特别的陪伴吧
+          </p>
+        </div>
+
+        <div class="relative mb-8">
+          <div class="absolute inset-0 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-indigo-500/20 rounded-3xl blur-xl" />
+          <div class="relative flex flex-col items-center p-8 rounded-3xl border border-neutral-200/50 bg-white/40 backdrop-blur-sm dark:border-neutral-800/50 dark:bg-neutral-900/40">
+            <img
+              src="/character.avif"
+              alt="character"
+              class="w-40 h-56 object-contain mb-4 drop-shadow-2xl"
+            />
+            <h2 class="text-xl font-bold text-neutral-800 dark:text-neutral-200">
+              {{ characterName || '小梦' }}
+            </h2>
+            <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+              {{ personalities.find(p => p.id === selectedPersonality)?.name || '温柔体贴' }}
+            </p>
+          </div>
+        </div>
+      </template>
+
       <!-- Navigation -->
       <div class="mt-10 flex items-center gap-3">
         <button
@@ -316,7 +348,7 @@ async function handleCreate() {
           class="flex-1 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 px-6 py-4 text-base font-medium text-white shadow-lg shadow-purple-500/30 transition hover:from-pink-600 hover:to-purple-600 active:scale-[0.98]"
           @click="handleCreate"
         >
-          创造她 ✨
+          开始陪伴 ✨
         </button>
       </div>
 

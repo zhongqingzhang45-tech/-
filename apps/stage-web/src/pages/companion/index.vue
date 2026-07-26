@@ -3,6 +3,7 @@ import type { Character } from '@proj-airi/stage-ui/types/character'
 
 import { useAnalytics } from '@proj-airi/stage-ui/composables'
 import { useCharacterStore } from '@proj-airi/stage-ui/stores/characters'
+import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
 import { Button, FieldInput } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
@@ -14,7 +15,9 @@ import CharacterItem from '../settings/characters/components/CharacterItem.vue'
 const router = useRouter()
 const { trackCharacterDeleted } = useAnalytics()
 const characterStore = useCharacterStore()
+const companionStore = useCompanionStore()
 const { characters } = storeToRefs(characterStore)
+const { level, relationshipTitle, daysTogether, totalChatCount, affinity } = storeToRefs(companionStore)
 
 onMounted(() => {
   characterStore.fetchList().catch(console.error)
@@ -61,10 +64,10 @@ function handleActivate(char: Character) {
       <!-- Header -->
       <div class="mb-10">
         <h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-          我的伙伴
+          我的 Life
         </h1>
         <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-          管理你的 AI 虚拟伴侣，创造独一无二的她
+          每一个她，都是独一无二的陪伴
         </p>
       </div>
 
@@ -81,7 +84,7 @@ function handleActivate(char: Character) {
             {{ characters.size }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            我的伙伴
+            我的 Life
           </div>
         </div>
         <div
@@ -92,10 +95,10 @@ function handleActivate(char: Character) {
           ]"
         >
           <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            1
+            {{ daysTogether }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            当前陪伴
+            陪伴天数
           </div>
         </div>
         <div
@@ -106,10 +109,10 @@ function handleActivate(char: Character) {
           ]"
         >
           <div class="text-3xl font-bold text-amber-600 dark:text-amber-400">
-            0
+            {{ totalChatCount }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            记忆碎片
+            对话次数
           </div>
         </div>
         <div
@@ -120,10 +123,10 @@ function handleActivate(char: Character) {
           ]"
         >
           <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-            Lv.1
+            Lv.{{ level }}
           </div>
           <div class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            关系等级
+            {{ relationshipTitle }}
           </div>
         </div>
       </div>
@@ -137,7 +140,7 @@ function handleActivate(char: Character) {
         />
         <Button @click="handleCreate">
           <div class="i-solar:add-circle-bold mr-2" />
-          创造新伙伴
+          创造新的她
         </Button>
       </div>
 
@@ -157,7 +160,7 @@ function handleActivate(char: Character) {
         >
           <div class="i-solar:add-circle-linear text-5xl text-neutral-300 transition-colors dark:text-neutral-700 group-hover:text-purple-400 dark:group-hover:text-purple-500" />
           <span class="text-neutral-500 font-medium transition-colors dark:text-neutral-500 group-hover:text-purple-600 dark:group-hover:text-purple-400">
-            创造新伙伴
+            创造新的她
           </span>
         </button>
 
@@ -186,5 +189,5 @@ function handleActivate(char: Character) {
 <route lang="yaml">
 meta:
   layout: stage
-  title: 我的伙伴
+  title: 我的 Life
 </route>
