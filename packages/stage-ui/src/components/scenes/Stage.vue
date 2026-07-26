@@ -125,47 +125,6 @@ const live2dStore = useLive2dParams()
 const showStage = ref(true)
 const viewUpdateCleanups: Array<() => void> = []
 
-const modelLoadFailed = ref(false)
-const characterImg = '/character.avif'
-const characterPos = ref({ x: 0, y: 0 })
-const characterScale = ref(1)
-const characterHover = ref(false)
-const characterBounce = ref(false)
-
-function onLive2DError(err: Error) {
-  console.error('[Stage] Live2D scene error:', err)
-  modelLoadFailed.value = true
-}
-
-function onCharacterMouseMove(e: MouseEvent) {
-  const target = e.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const centerX = rect.left + rect.width / 2
-  const centerY = rect.top + rect.height / 2
-  const deltaX = (e.clientX - centerX) / rect.width
-  const deltaY = (e.clientY - centerY) / rect.height
-  characterPos.value = {
-    x: deltaX * 12,
-    y: deltaY * 8,
-  }
-}
-
-function onCharacterMouseLeave() {
-  characterPos.value = { x: 0, y: 0 }
-  characterHover.value = false
-}
-
-function onCharacterMouseEnter() {
-  characterHover.value = true
-}
-
-function onCharacterClick() {
-  characterBounce.value = true
-  setTimeout(() => {
-    characterBounce.value = false
-  }, 500)
-}
-
 // Caption + Presentation broadcast channels
 type CaptionChannelEvent
   = | { type: 'caption-speaker', text: string }
