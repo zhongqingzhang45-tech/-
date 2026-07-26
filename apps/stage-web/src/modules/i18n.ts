@@ -7,8 +7,7 @@ function getLocale() {
   let language = localStorage.getItem('settings/language')
 
   if (!language) {
-    // Life 国内版默认使用简体中文
-    language = navigator.language || 'zh-Hans'
+    language = 'zh-Hans'
   }
 
   return resolveSupportedLocale(language, Object.keys(messages!))

@@ -3,7 +3,7 @@ chat:
     retry: Réessayer
   message:
     character-name:
-      airi: AIRI
+      airi: Life
       core-system: Système central
       you: Vous
   reasoning: Raisonnement
