@@ -200,15 +200,15 @@ info "Step 7: 安装项目依赖..."
 # ---------- 7.1 清理 pnpm-workspace.yaml 中的问题配置 ----------
 WORKSPACE_FILE="pnpm-workspace.yaml"
 
-# 移除未使用的 mineflayer-pathfinder patch（workspace 中未引用）
+# 移除未使用的 mineflayer-pathfinder patch（只删除 .patch 行，保留 catalog 版本声明）
 if grep -q "mineflayer-pathfinder" "$WORKSPACE_FILE" 2>/dev/null; then
-  sed -i '/mineflayer-pathfinder/d' "$WORKSPACE_FILE"
+  sed -i '/mineflayer-pathfinder.*\.patch$/d' "$WORKSPACE_FILE"
   info "已移除未使用的 mineflayer-pathfinder patch"
 fi
 
-# 移除 @mediapipe/tasks-vision patch（补丁与当前包版本不匹配，会导致安装失败）
-if grep -q "@mediapipe/tasks-vision" "$WORKSPACE_FILE" 2>/dev/null; then
-  sed -i "/@mediapipe\/tasks-vision/d" "$WORKSPACE_FILE"
+# 移除 @mediapipe/tasks-vision patch（补丁与当前包版本不匹配，只删除 .patch 行）
+if grep -q "@mediapipe/tasks-vision.*\.patch" "$WORKSPACE_FILE" 2>/dev/null; then
+  sed -i '/@mediapipe\/tasks-vision.*\.patch$/d' "$WORKSPACE_FILE"
   info "已移除 @mediapipe/tasks-vision patch（补丁不匹配）"
 fi
 
