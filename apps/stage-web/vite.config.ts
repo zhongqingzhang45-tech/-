@@ -84,6 +84,9 @@ export default defineConfig({
       '@framework/type/csmmap',
       '@framework/utils/cubismdebug',
       '@framework/model/cubismmoc',
+
+      // wlipsync uses top-level await
+      'wlipsync',
     ],
   },
   resolve: {
