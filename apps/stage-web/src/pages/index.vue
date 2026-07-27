@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
-import ChatStage from './components/ChatStage.vue'
+import ChatStage from '../components/ChatStage.vue'
 
 const router = useRouter()
 const companionStore = useCompanionStore()
@@ -111,7 +111,5 @@ const features = [
 <route lang="yaml">
 name: IndexScenePage
 meta:
-  layout: stage
-  stageTransition:
-    name: bubble-wave-out
+  layout: empty
 </route>

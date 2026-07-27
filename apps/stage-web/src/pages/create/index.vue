@@ -370,6 +370,6 @@ async function handleCreate() {
 
 <route lang="yaml">
 meta:
-  layout: plain
+  layout: empty
   title: 创造我的 Life
 </route>
