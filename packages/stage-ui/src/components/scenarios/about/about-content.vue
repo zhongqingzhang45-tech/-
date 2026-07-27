@@ -11,11 +11,11 @@ const props = withDefaults(defineProps<{
   links?: AboutLink[]
 }>(), {
   title: 'Project',
-  highlight: 'AIRI',
-  subtitle: '',
+  highlight: 'Life',
+  subtitle: '二次元 AI 虚拟伴侣',
   links: () => ([
-    { label: 'Home', href: 'https://airi.moeru.ai/docs/', icon: 'i-solar:home-smile-outline' },
-    { label: 'Documentations', href: 'https://airi.moeru.ai/docs/en/docs/overview/', icon: 'i-solar:document-add-outline' },
+    { label: '首页', href: 'https://life.moeru.ai/', icon: 'i-solar:home-smile-outline' },
+    { label: '文档', href: 'https://life.moeru.ai/docs/', icon: 'i-solar:document-add-outline' },
     { label: 'GitHub', href: 'https://github.com/moeru-ai/airi', icon: 'i-simple-icons:github' },
   ]),
 })

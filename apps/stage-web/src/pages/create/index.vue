@@ -2,7 +2,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
+
 const router = useRouter()
+const companionStore = useCompanionStore()
+
 const currentStep = ref(1)
 const totalSteps = 5
 
@@ -43,7 +47,8 @@ function prevStep() {
 }
 
 async function handleCreate() {
-  await router.push('/chat')
+  companionStore.recordChat()
+  await router.push('/')
 }
 </script>
 

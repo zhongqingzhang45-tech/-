@@ -1,197 +1,111 @@
 <script setup lang="ts">
-import type { ChatProvider } from '@xsai-ext/providers/utils'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-import Header from '@proj-airi/stage-layouts/components/Layouts/Header.vue'
-import InteractiveArea from '@proj-airi/stage-layouts/components/Layouts/InteractiveArea.vue'
-import MobileHeader from '@proj-airi/stage-layouts/components/Layouts/MobileHeader.vue'
-import MobileInteractiveArea from '@proj-airi/stage-layouts/components/Layouts/MobileInteractiveArea.vue'
-import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&url'
+import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
+import ChatStage from './components/ChatStage.vue'
 
-import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
-import { useBackgroundThemeColor } from '@proj-airi/stage-layouts/composables/theme-color'
-import { useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
-import { HoloCoupon } from '@proj-airi/stage-ui/components'
-import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/scenes'
-import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
-import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
-import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
-import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
-import { useHearingSpeechInputPipeline } from '@proj-airi/stage-ui/stores/modules/hearing'
-import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
-import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
-import { breakpointsTailwind, useBreakpoints, useMouse } from '@vueuse/core'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+const router = useRouter()
+const companionStore = useCompanionStore()
 
-const paused = ref(false)
+const showLanding = ref(true)
 
-function handleSettingsOpen(open: boolean) {
-  paused.value = open
-}
+const hasCompanion = computed(() => !!companionStore.firstMeetDate)
 
-const breakpoints = useBreakpoints(breakpointsTailwind)
-const isMobile = breakpoints.smaller('md')
-
-const backgroundStore = useBackgroundStore()
-const { selectedOption, sampledColor } = storeToRefs(backgroundStore)
-const backgroundSurface = useTemplateRef<InstanceType<typeof BackgroundProvider>>('backgroundSurface')
-const { stageModelRenderer } = storeToRefs(useSettings())
-
-const { syncBackgroundTheme } = useBackgroundThemeColor({ backgroundSurface, selectedOption, sampledColor })
-onMounted(() => syncBackgroundTheme())
-
-// Audio + transcription pipeline (mirrors stage-tamagotchi)
-const settingsAudioDeviceStore = useSettingsAudioDevice()
-const { stream, enabled } = storeToRefs(settingsAudioDeviceStore)
-const { startRecord, stopRecord, onStopRecord } = useAudioRecorder(stream)
-const hearingPipeline = useHearingSpeechInputPipeline()
-const { transcribeForRecording } = hearingPipeline
-const { supportsStreamInput } = storeToRefs(hearingPipeline)
-const providersStore = useProvidersStore()
-const consciousnessStore = useConsciousnessStore()
-const { activeProvider: activeChatProvider, activeModel: activeChatModel } = storeToRefs(consciousnessStore)
-const chatStore = useChatOrchestratorStore()
-
-const shouldUseStreamInput = computed(() => supportsStreamInput.value && !!stream.value)
-
-const {
-  init: initVAD,
-  dispose: disposeVAD,
-  start: startVAD,
-  loaded: vadLoaded,
-} = useVAD(workletUrl, {
-  threshold: ref(0.6),
-  onSpeechStart: () => handleSpeechStart(),
-  onSpeechEnd: () => handleSpeechEnd(),
+onMounted(() => {
+  showLanding.value = !hasCompanion.value
 })
 
-let stopOnStopRecord: (() => void) | undefined
-
-async function startAudioInteraction() {
-  try {
-    await initVAD()
-    if (stream.value)
-      await startVAD(stream.value)
-
-    // Hook once
-    stopOnStopRecord = onStopRecord(async (recording) => {
-      const text = await transcribeForRecording(recording)
-      if (!text || !text.trim())
-        return
-
-      try {
-        const provider = await providersStore.getProviderInstance(activeChatProvider.value)
-        if (!provider || !activeChatModel.value)
-          return
-
-        await chatStore.ingest(text, { model: activeChatModel.value, chatProvider: provider as ChatProvider })
-      }
-      catch (err) {
-        console.error('Failed to send chat from voice:', err)
-      }
-    })
-  }
-  catch (e) {
-    console.error('Audio interaction init failed:', e)
-  }
-}
-
-async function handleSpeechStart() {
-  // For streaming providers, ChatArea component handles transcription manually
-  // The main page should not start automatic transcription to avoid duplicate sessions
-  if (shouldUseStreamInput.value) {
-    return
-  }
-
-  startRecord()
-}
-
-async function handleSpeechEnd() {
-  if (shouldUseStreamInput.value) {
-    // Keep streaming session alive; idle timer in pipeline will handle teardown.
-    return
-  }
-
-  stopRecord()
-}
-
-function stopAudioInteraction() {
-  try {
-    stopOnStopRecord?.()
-    stopOnStopRecord = undefined
-    disposeVAD()
-  }
-  catch {}
-}
-
-watch(enabled, async (val) => {
-  if (val) {
-    await startAudioInteraction()
-  }
-  else {
-    stopAudioInteraction()
-  }
-}, { immediate: true })
-
-onUnmounted(() => {
-  stopAudioInteraction()
-})
-
-watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
-  if (enabled.value && loaded && s) {
-    try {
-      await startVAD(s)
-    }
-    catch (e) {
-      console.error('Failed to start VAD with stream:', e)
-    }
-  }
-})
-
-const { x: mouseX, y: mouseY } = useMouse()
-const cursorPosition = computed(() => ({
-  x: mouseX.value,
-  y: mouseY.value,
-}))
+const features = [
+  {
+    icon: 'i-solar:heart-bold-duotone',
+    title: '她会记住你',
+    desc: '你的喜好、习惯、重要的日子，她都会悄悄记在心里',
+    color: 'from-pink-500 to-rose-500',
+  },
+  {
+    icon: 'i-solar:chat-square-like-bold-duotone',
+    title: '陪伴你的日常',
+    desc: '开心时分享喜悦，难过时给你拥抱，深夜陪你聊天',
+    color: 'from-purple-500 to-indigo-500',
+  },
+  {
+    icon: 'i-solar:stars-bold-duotone',
+    title: '一起成长',
+    desc: '每一次互动都让你们更加了解彼此，关系不断升温',
+    color: 'from-amber-500 to-orange-500',
+  },
+]
 </script>
 
 <template>
-  <BackgroundProvider
-    ref="backgroundSurface"
-    class="widgets top-widgets"
-    :background="selectedOption"
-    :top-color="sampledColor"
-  >
-    <div relative flex="~ col" z-2 h-100dvh w-100vw of-hidden>
-      <!-- header -->
-      <div class="px-0 py-1 md:px-3 md:py-3" w-full gap-2>
-        <Header class="hidden md:flex" />
-        <MobileHeader class="flex md:hidden" />
-      </div>
-      <!-- page -->
-      <div relative flex="~ 1 row gap-y-0 gap-x-2 <md:col">
-        <div relative flex-1 min-w="1/2">
-          <div
-            absolute left-0 z-15 px-3
-            :class="[
-              stageModelRenderer === 'live2d' ? 'top-0 h-full py-[20vh]' : 'top-1/2 -translate-y-1/2',
-            ]"
-          >
-            <ViewControlSlider />
-          </div>
-          <WidgetStage
-            h-full w-full
-            :cursor-position="cursorPosition"
-            :enable-orbit-controls="!isMobile"
-            :paused="paused"
-          />
+  <div v-if="showLanding" class="relative min-h-screen w-full overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-pink-50 via-purple-50 to-white dark:from-neutral-950 dark:via-purple-950/20 dark:to-neutral-950" />
+    <div class="absolute top-0 left-1/4 w-96 h-96 bg-pink-300/30 rounded-full blur-3xl dark:bg-pink-500/10" />
+    <div class="absolute top-20 right-1/4 w-80 h-80 bg-purple-300/30 rounded-full blur-3xl dark:bg-purple-500/10" />
+    <div class="absolute bottom-0 left-1/3 w-72 h-72 bg-sky-300/20 rounded-full blur-3xl dark:bg-sky-500/10" />
+
+    <div class="relative mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-16">
+      <div class="flex items-center gap-2 mb-8">
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg shadow-purple-500/30">
+          <span class="i-solar:heart-bold text-2xl text-white" />
         </div>
-        <InteractiveArea v-if="!isMobile" h="85dvh" absolute right-4 flex flex-1 flex-col max-w="500px" min-w="30%" />
-        <MobileInteractiveArea v-if="isMobile" @settings-open="handleSettingsOpen" />
+        <span class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">Life</span>
       </div>
-      <HoloCoupon />
+
+      <h1 class="text-center text-4xl md:text-6xl font-bold text-neutral-900 dark:text-white leading-tight">
+        创建你的
+        <span class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+          AI 伴侣
+        </span>
+      </h1>
+
+      <p class="mt-6 text-center text-lg text-neutral-600 dark:text-neutral-300 max-w-xl">
+        她会记住你，理解你，
+        <br class="md:hidden" />
+        陪伴你的生活。
+      </p>
+
+      <button
+        class="mt-10 px-10 py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 text-white text-base font-semibold shadow-lg shadow-purple-500/30 transition-all hover:shadow-xl hover:shadow-purple-500/40 hover:-translate-y-0.5 active:scale-[0.98]"
+        @click="router.push('/create')"
+      >
+        开始创建 ✨
+      </button>
+
+      <button
+        v-if="hasCompanion"
+        class="mt-4 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition"
+        @click="showLanding = false"
+      >
+        已有伴侣？直接进入 →
+      </button>
+
+      <div class="mt-20 grid w-full gap-6 md:grid-cols-3">
+        <div
+          v-for="f in features"
+          :key="f.title"
+          class="rounded-3xl p-6 bg-white/60 backdrop-blur-sm border border-white/50 shadow-sm dark:bg-neutral-900/40 dark:border-white/5 dark:shadow-none"
+        >
+          <div :class="['flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg', f.color]">
+            <div :class="f.icon" text-2xl />
+          </div>
+          <h3 class="mt-4 text-lg font-semibold text-neutral-900 dark:text-white">
+            {{ f.title }}
+          </h3>
+          <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            {{ f.desc }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-16 text-center text-xs text-neutral-400 dark:text-neutral-600">
+        <p>基于 AIRI 开源框架构建 · 支持 Live2D / VRM 角色</p>
+      </div>
     </div>
-  </BackgroundProvider>
+  </div>
+
+  <ChatStage v-else />
 </template>
 
 <route lang="yaml">
