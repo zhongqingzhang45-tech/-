@@ -17,6 +17,7 @@ import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-re
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
+import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useHearingSpeechInputPipeline } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
@@ -153,10 +154,19 @@ const cursorPosition = computed(() => ({
 
 const router = useRouter()
 const companionStore = useCompanionStore()
+const subscriptionStore = useSubscriptionStore()
 
 function goToCompanion() {
   router.push('/companion')
 }
+
+function goToSubscription() {
+  router.push('/subscription')
+}
+
+const showChatLimitBanner = computed(() =>
+  subscriptionStore.isFree && subscriptionStore.chatUsagePercent >= 80,
+)
 </script>
 
 <template>
@@ -180,6 +190,16 @@ function goToCompanion() {
           </span>
           <span class="i-solar:chevron-right-linear text-xs text-neutral-400" />
         </button>
+
+        <button
+          v-if="!subscriptionStore.isFree"
+          class="hidden md:flex absolute right-32 top-1/2 -translate-y-1/2 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm z-20"
+          :class="['bg-gradient-to-r', subscriptionStore.tierBadgeClass]"
+          @click="goToSubscription"
+        >
+          <span class="i-solar:crown-bold text-xs" />
+          {{ subscriptionStore.tierLabel }}
+        </button>
       </div>
       <div relative flex="~ 1 row gap-y-0 gap-x-2 <md:col">
         <div relative flex-1 min-w="1/2">
@@ -201,7 +221,45 @@ function goToCompanion() {
         <InteractiveArea v-if="!isMobile" h="85dvh" absolute right-4 flex flex-1 flex-col max-w="500px" min-w="30%" />
         <MobileInteractiveArea v-if="isMobile" @settings-open="handleSettingsOpen" />
       </div>
+
+      <Transition name="slide-up">
+        <div
+          v-if="showChatLimitBanner"
+          class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-lg max-w-md"
+        >
+          <span class="i-solar:danger-triangle-bold-duotone text-amber-500 shrink-0" />
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-neutral-600 dark:text-neutral-400">
+              今日剩余 {{ subscriptionStore.dailyChatRemaining }} 条消息
+            </div>
+            <div class="mt-1 h-1 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+              <div
+                class="h-full bg-gradient-to-r from-amber-400 to-pink-500 transition-all"
+                :style="{ width: `${subscriptionStore.chatUsagePercent}%` }"
+              />
+            </div>
+          </div>
+          <button
+            class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-md shadow-purple-500/20 hover:shadow-lg transition"
+            @click="goToSubscription"
+          >
+            升级
+          </button>
+        </div>
+      </Transition>
       <HoloCoupon />
     </div>
   </BackgroundProvider>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 20px);
+}
+</style>
