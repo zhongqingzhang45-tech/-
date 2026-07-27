@@ -16,12 +16,14 @@ import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/s
 import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
+import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useHearingSpeechInputPipeline } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
 import { breakpointsTailwind, useBreakpoints, useMouse } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 
 const paused = ref(false)
 
@@ -148,6 +150,13 @@ const cursorPosition = computed(() => ({
   x: mouseX.value,
   y: mouseY.value,
 }))
+
+const router = useRouter()
+const companionStore = useCompanionStore()
+
+function goToCompanion() {
+  router.push('/companion')
+}
 </script>
 
 <template>
@@ -158,9 +167,19 @@ const cursorPosition = computed(() => ({
     :top-color="sampledColor"
   >
     <div relative flex="~ col" z-2 h-100dvh w-100vw of-hidden>
-      <div class="px-0 py-1 md:px-3 md:py-3" w-full gap-2>
+      <div class="px-0 py-1 md:px-3 md:py-3 relative" w-full gap-2>
         <Header class="hidden md:flex" />
         <MobileHeader class="flex md:hidden" />
+        <button
+          class="hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-neutral-900/70 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:-translate-y-[calc(50%+1px)] z-20"
+          @click="goToCompanion"
+        >
+          <span class="text-base">{{ companionStore.moodEmoji }}</span>
+          <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            Lv.{{ companionStore.level }}
+          </span>
+          <span class="i-solar:chevron-right-linear text-xs text-neutral-400" />
+        </button>
       </div>
       <div relative flex="~ 1 row gap-y-0 gap-x-2 <md:col">
         <div relative flex-1 min-w="1/2">
