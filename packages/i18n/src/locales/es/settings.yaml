@@ -39,7 +39,7 @@ dialogs:
     credentialsSafeOpenSource: >-
       Life es de código abierto en {github}, si desea comprobar cómo manejamos sus credenciales, no dude en inspeccionar nuestro código.
     enableChatCheck: >-
-      Permitir a airi enviar un mensaje "ping" al primer modelo de chat disponible para comprobar la disponibilidad
+      Permitir a Life enviar un mensaje "ping" al primer modelo de chat disponible para comprobar la disponibilidad
     start: '¡Hagámoslo!'
     loginPrompt: Inicia sesión para utilizar el proveedor oficial de Life para obtener la mejor experiencia.
     loginAction: Iniciar sesión

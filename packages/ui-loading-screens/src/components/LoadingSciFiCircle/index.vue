@@ -90,6 +90,7 @@ const projectLifeAsciiArt = computed(() => {
 const projectLifeMetadata = `
 Project Life team from Moeru AI (https://moeru.ai) and other contributors
 Open sourced on https://github.com/moeru-ai/airi
+Life - 你的二次元 AI 陪伴
 `
 
 const bootMessages = computed<BootMessage[]>(() => [

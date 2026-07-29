@@ -87,7 +87,7 @@ jobs:
         run: |
           VERSION="${RELEASE_TAG_NAME#v}"
           if [ -z "$VERSION" ]; then
-            VERSION="$(sed -n 's/^AIRI_VERSION_NAME=//p' apps/stage-pocket/android/app-version.properties)"
+            VERSION="$(sed -n 's/^LIFE_VERSION_NAME=//p' apps/stage-pocket/android/app-version.properties)"
           fi
 
           APK_NAME="${PRODUCT_NAME}-${VERSION}-android.apk"

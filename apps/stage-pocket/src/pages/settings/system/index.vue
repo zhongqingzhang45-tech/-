@@ -65,6 +65,15 @@ const icpFilingNumber = '京ICP备XXXXXXXX号-1'
         <div class="ml-auto i-solar:arrow-right-linear text-xs text-neutral-400" />
       </button>
 
+      <button
+        class="w-full flex items-center gap-3 rounded-2xl border border-neutral-200/60 bg-white/60 px-4 py-3 text-left transition active:scale-[0.98] dark:border-neutral-800/60 dark:bg-neutral-900/40"
+        @click="router.push('/terms')"
+      >
+        <div class="i-solar:document-text-bold-duotone text-lg text-neutral-500 dark:text-neutral-400" />
+        <span class="text-sm font-medium text-neutral-800 dark:text-neutral-200">用户协议</span>
+        <div class="ml-auto i-solar:arrow-right-linear text-xs text-neutral-400" />
+      </button>
+
       <div class="text-center text-xs text-neutral-400 dark:text-neutral-600 pt-2">
         <p>备案号：{{ icpFilingNumber }}</p>
         <p class="mt-1">Life · 你的 AI 伴侣</p>

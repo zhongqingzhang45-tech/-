@@ -133,7 +133,7 @@ function refreshWindow() {
 }
 
 /**
- * Requests the main process to move the AIRI desktop window back to screen center.
+ * Requests the main process to move the Life desktop window back to screen center.
  */
 function resetMainWindowPosition() {
   centerMainWindow().catch(console.error)

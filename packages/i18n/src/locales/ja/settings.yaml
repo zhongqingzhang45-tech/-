@@ -39,7 +39,7 @@ dialogs:
     credentialsSafeOpenSource: >-
       Lifeのソースコードは{github}で公開されています。認証情報の取り扱い方法を確認したい場合は、お気軽にコードをご確認ください。
     enableChatCheck: >-
-      Airiが最初に利用できるチャットモデルに「ping」メッセージを送信して利用可能状況を確認することを許可する
+      Lifeが最初に利用できるチャットモデルに「ping」メッセージを送信して利用可能状況を確認することを許可する
     start: 始めましょう！
     loginPrompt: 最適な体験を提供するLife公式プロバイダーを利用するには、ログインしてください。
     loginAction: サインイン

@@ -39,7 +39,7 @@ function createTestI18n() {
             },
             message: {
               'character-name': {
-                'airi': 'AIRI',
+                'airi': 'Life',
                 'core-system': 'System',
                 'you': 'You',
               },

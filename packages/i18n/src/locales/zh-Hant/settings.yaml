@@ -39,7 +39,7 @@ dialogs:
     credentialsSafeOpenSource: >-
       Life is open sourced at {github}, if you want to check how we handle your credentials, feel free to inspect our code.
     enableChatCheck: >-
-      Allow airi to send a "ping" message to the first available chat model to check availability
+      允許 Life 向第一個可用的聊天模型發送 "ping" 訊息以檢查可用性
     start: 開始吧！
     loginPrompt: Sign in to use the official Life provider for the best experience.
     loginAction: Sign in

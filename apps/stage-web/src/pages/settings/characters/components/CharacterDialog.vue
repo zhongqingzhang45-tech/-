@@ -238,7 +238,7 @@ const isOpen = computed({
               <!-- Identity Tab -->
               <div v-show="activeTab === 'identity'" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                  <FieldInput v-model="form.characterId" label="Handle ID" placeholder="e.g. airi-core" required />
+                  <FieldInput v-model="form.characterId" label="Handle ID" placeholder="e.g. life-core" required />
                   <FieldInput v-model="form.version" label="Version" placeholder="1.0.0" />
                 </div>
 
