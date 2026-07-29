@@ -18,6 +18,8 @@ import {
   AIRI_CHAT_SESSION_ID_HEADER,
 } from '../libs/analytics-headers'
 import { extractMessageText, isCloudSyncableMessage } from '../libs/chat-sync'
+import { useCompanionStore } from './companion'
+import { useMemoryStore } from './companion/memory'
 import { useSubscriptionStore } from './companion/subscription'
 import { createMinecraftContext } from './chat/context-providers'
 import { useChatContextStore } from './chat/context-store'
@@ -50,6 +52,49 @@ function isTextDelta(event: StreamEvent): event is Extract<StreamEvent, { type: 
 
 export type { QueuedSendSnapshot, ChatOrchestratorSendOptions as SendOptions } from '@proj-airi/core-agent'
 
+/**
+ * Lightweight pattern-based memory extractor.
+ * Scans user messages for self-disclosures (name, preferences, facts) and
+ * persists them so getSystemPromptSupplement can retrieve them on the next turn.
+ *
+ * This is intentionally simple — no NLP, no embeddings. It covers the three
+ * validation scenarios (name, preference, emotional state) without adding
+ * dependencies or latency. Upgrades to LLM-based extraction can slot in later
+ * by replacing this function.
+ */
+function extractMemoriesFromMessage(text: string, memoryStore: ReturnType<typeof useMemoryStore>): void {
+  // Name: "我叫小雨" / "我的名字是小雨" / "我是小雨"
+  const nameMatch = text.match(/(?:我叫|我的名字是|我是)([^\s,，。.!！?？]{1,10})/)
+  if (nameMatch?.[1]) {
+    memoryStore.setUserName(nameMatch[1])
+    memoryStore.addMemory(`用户的名字是「${nameMatch[1]}」`, 'important', 9)
+  }
+
+  // Preferences: "我喜欢猫" / "我爱吃寿司" / "我偏好XX"
+  const prefMatch = text.match(/(?:我喜欢|我爱|我偏好|我比较喜欢)([^\s,，。.!！?？]{1,20})/)
+  if (prefMatch?.[1]) {
+    memoryStore.setUserPreference(prefMatch[1], 'liked')
+    // Deduplicate: only add if no existing memory has the same content
+    const exists = memoryStore.memories.some(
+      m => m.content.includes(prefMatch[1]) && m.type === 'preference',
+    )
+    if (!exists) {
+      memoryStore.addMemory(`用户喜欢${prefMatch[1]}`, 'preference', 7)
+    }
+  }
+
+  // Emotional state / events: "今天很累" / "我很难过" / "今天发生了XX"
+  const eventMatch = text.match(/(?:今天|昨天|刚刚|刚才)([^\s,，。.!！?？]{2,30})/)
+  if (eventMatch?.[1]) {
+    const exists = memoryStore.memories.some(
+      m => m.content.includes(eventMatch[1]) && m.type === 'event',
+    )
+    if (!exists) {
+      memoryStore.addMemory(`用户提到：${eventMatch[0]}`, 'event', 5)
+    }
+  }
+}
+
 export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   const llmStore = useLLM()
   const llmToolsetPromptsStore = useLlmToolsetPromptsStore()
@@ -61,7 +106,13 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
   useWebSearchStore()
   const consciousnessStore = useConsciousnessStore()
   const artistryAutonomousStore = useAutonomousArtistryStore()
+  const companionStore = useCompanionStore()
+  const memoryStore = useMemoryStore()
   const { activeModel, activeProvider } = storeToRefs(consciousnessStore)
+
+  // Captured from onUserTurnReady so getSystemPromptSupplement can do
+  // relevance-based memory retrieval using the current message text.
+  let pendingMessageText = ''
   const {
     trackFirstMessage,
     trackMessageSendStarted,
@@ -194,7 +245,52 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     },
     getActiveSessionId: () => activeSessionId.value,
     getActiveProvider: () => activeProvider.value,
-    getSystemPromptSupplement: () => llmToolsetPromptsStore.activeToolsetPrompt,
+    getSystemPromptSupplement: () => {
+      const parts: string[] = []
+
+      // Tool guidance (existing)
+      const toolPrompt = llmToolsetPromptsStore.activeToolsetPrompt
+      if (toolPrompt)
+        parts.push(toolPrompt)
+
+      // Companion profile — gives the AI its identity and relationship context
+      const companionParts: string[] = []
+      if (companionStore.characterName) {
+        companionParts.push(`你的名字是「${companionStore.characterName}」。`)
+      }
+      if (companionStore.personality) {
+        const personalityDesc: Record<string, string> = {
+          gentle: '你性格温柔体贴，善解人意，总是关心对方的感受。',
+          tsundere: '你性格傲娇可爱，嘴硬心软，其实很在意对方。',
+          cheerful: '你性格活泼开朗，元气满满，笑容治愈。',
+          mature: '你性格成熟知性，温柔可靠，会给出建议。',
+        }
+        const desc = personalityDesc[companionStore.personality]
+        if (desc)
+          companionParts.push(desc)
+      }
+      if (companionStore.level > 1) {
+        companionParts.push(`你们的关系等级是 ${companionStore.level}（${companionStore.relationshipTitle}），已认识 ${companionStore.daysTogether} 天。`)
+      }
+      if (memoryStore.userName) {
+        companionParts.push(`用户的名字是「${memoryStore.userName}」。`)
+      }
+      if (companionParts.length > 0) {
+        parts.push(companionParts.join(' '))
+      }
+
+      // Memory retrieval — inject relevant memories as context for this turn
+      const subscription = useSubscriptionStore()
+      if (subscription.memoryUnlocked && pendingMessageText) {
+        const memories = memoryStore.getRelevantMemories(pendingMessageText, 5)
+        if (memories.length > 0) {
+          const memoryLines = memories.map(m => `- ${m.content}`)
+          parts.push(`你记得关于用户的以下信息，请在对话中自然地引用：\n${memoryLines.join('\n')}`)
+        }
+      }
+
+      return parts.length > 0 ? parts.join('\n\n') : undefined
+    },
     runtimeContextProviders: [
       createMinecraftContext,
     ],
@@ -361,6 +457,16 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       }
     },
     onUserTurnReady: ({ messageText, sessionMessages }) => {
+      // Capture for getSystemPromptSupplement's memory retrieval
+      pendingMessageText = messageText
+
+      // Extract memories from the user's message using lightweight pattern matching.
+      // Only runs for members with memory unlocked; free-tier users get no extraction.
+      const subscription = useSubscriptionStore()
+      if (subscription.memoryUnlocked) {
+        extractMemoriesFromMessage(messageText, memoryStore)
+      }
+
       const autonomousTarget = cardStore.activeCard?.extensions?.airi?.modules?.artistry?.autonomousTarget || 'user'
       if (autonomousTarget === 'user')
         void artistryAutonomousStore.runArtistTask(messageText, toProviderHistory(sessionMessages))
