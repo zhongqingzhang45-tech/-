@@ -3,9 +3,9 @@
   "type": "module",
   "version": "0.11.3",
   "private": true,
-  "description": "Core character pipeline orchestration for AIRI (segmentation, emotion, delay, optional TTS)",
+  "description": "Core character pipeline orchestration for Life (segmentation, emotion, delay, optional TTS)",
   "author": {
-    "name": "Moeru AI Project AIRI Team",
+    "name": "Moeru AI Project Life Team",
     "email": "airi@moeru.ai",
     "url": "https://github.com/moeru-ai"
   },

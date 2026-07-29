@@ -81,29 +81,29 @@ const narrowAsciiArt = computed(() => (`
         /
 `))
 
-const projectAIRIAsciiArt = computed(() => {
+const projectLifeAsciiArt = computed(() => {
   if (isDeviceSm.value)
     return narrowAsciiArt.value
   return wideAsciiArt.value
 })
 
-const projectAIRIMetadata = `
-Project AIRI team from Moeru AI (https://moeru.ai) and other contributors
+const projectLifeMetadata = `
+Project Life team from Moeru AI (https://moeru.ai) and other contributors
 Open sourced on https://github.com/moeru-ai/airi
 `
 
 const bootMessages = computed<BootMessage[]>(() => [
-  ...projectAIRIAsciiArt.value.split('\n').map(line => ({
+  ...projectLifeAsciiArt.value.split('\n').map(line => ({
     template: line,
     typingSpeed: 1,
     withoutTimestamp: true,
   })),
   {
-    template: `Project AIRI version ${import.meta.env.VITE_AIRI_VERSION || '1.0.0'} @ ${import.meta.env.VITE_AIRI_COMMIT || '0240602'} build`,
+    template: `Project Life version ${import.meta.env.VITE_AIRI_VERSION || '1.0.0'} @ ${import.meta.env.VITE_AIRI_COMMIT || '0240602'} build`,
     typingSpeed: 5,
     withoutTimestamp: true,
   },
-  ...projectAIRIMetadata.trim().split('\n').map(line => ({
+  ...projectLifeMetadata.trim().split('\n').map(line => ({
     template: line,
     typingSpeed: 1,
     withoutTimestamp: true,
@@ -127,7 +127,7 @@ const bootMessages = computed<BootMessage[]>(() => [
     typingSpeed: 1,
   },
   {
-    template: 'Initializing AIRI subsystems...',
+    template: 'Initializing Life subsystems...',
     typingSpeed: 1,
     pending: true,
     onPendingCheck: () => {
@@ -162,7 +162,7 @@ const bootMessages = computed<BootMessage[]>(() => [
     },
   },
   {
-    template: 'AIRI core services initialized',
+    template: 'Life core services initialized',
     typingSpeed: 1,
   },
   {
@@ -238,7 +238,7 @@ const bootMessages = computed<BootMessage[]>(() => [
     typingSpeed: 1,
   },
   {
-    template: 'AIRI ready',
+    template: 'Life ready',
     typingSpeed: 1,
   },
 ])

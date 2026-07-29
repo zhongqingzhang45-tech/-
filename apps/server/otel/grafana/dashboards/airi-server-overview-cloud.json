@@ -4403,7 +4403,7 @@
     "timezone": "browser",
     "to": "now"
   },
-  "title": "AIRI Server Overview",
+  "title": "Life Server Overview",
   "variables": [
     {
       "kind": "QueryVariable",

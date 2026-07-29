@@ -16,7 +16,7 @@ import { authGuard } from '../../../middlewares/auth'
 import { normalizeProviderVoiceForCatalog } from '../../../services/domain/provider-catalog/provider-voices'
 import { createBadGatewayError, createBadRequestError, createNotFoundError } from '../../../utils/error'
 
-const DEFAULT_PREVIEW_TEXT = 'Hello, this is an AIRI voice preview.'
+const DEFAULT_PREVIEW_TEXT = 'Hello, this is a Life voice preview.'
 
 const TtsModelUpdateBodySchema = object({
   displayName: optional(pipe(string(), maxLength(120))),

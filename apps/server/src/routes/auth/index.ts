@@ -81,7 +81,7 @@ export async function createAuthRoutes(deps: AuthRoutesDeps) {
     // subject ignoring the ban, then 403 if banned, so an invalid/expired token
     // still falls through to better-auth's own 401 rather than being masked.
     // (/oauth2/introspect needs confidential client credentials, which no
-    // first-party AIRI client has, so it has no reachable banned-caller path.)
+    // first-party Life client has, so it has no reachable banned-caller path.)
     .use('/api/auth/oauth2/userinfo', async (c, next) => {
       const resolved = await resolveSessionIgnoringBan(deps.auth, deps.env, c.req.raw.headers)
       if (resolved && isUserBannedNow(resolved.user))

@@ -2,9 +2,9 @@
   "name": "@proj-airi/plugin-protocol",
   "type": "module",
   "version": "0.11.3",
-  "description": "Plugin protocol event definitions and shared websocket types for Project AIRI",
+  "description": "Plugin protocol event definitions and shared websocket types for Project Life",
   "author": {
-    "name": "Moeru AI Project AIRI Team",
+    "name": "Moeru AI Project Life Team",
     "email": "airi@moeru.ai",
     "url": "https://github.com/moeru-ai"
   },

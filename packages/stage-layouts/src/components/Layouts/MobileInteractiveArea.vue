@@ -15,6 +15,7 @@ import { useChatMaintenanceStore } from '@proj-airi/stage-ui/stores/chat/mainten
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useChatStreamStore } from '@proj-airi/stage-ui/stores/chat/stream-store'
 import { useL2dViewControl } from '@proj-airi/stage-ui/stores/live2d'
+import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
@@ -83,6 +84,8 @@ const { enabled, stream } = storeToRefs(settingsAudioDevice)
 const { ingest, onAfterMessageComposed } = chatOrchestrator
 const { t } = useI18n()
 const subscriptionStore = useSubscriptionStore()
+const companionStore = useCompanionStore()
+const assistantLabel = computed(() => companionStore.displayName)
 const { audioContext } = useAudioContext()
 const { startAnalyzer, stopAnalyzer } = useAudioAnalyzer()
 let analyzerSource: MediaStreamAudioSourceNode | undefined
@@ -195,6 +198,7 @@ onMounted(() => {
           :messages="historyMessages"
           :sending="sending"
           :streaming-message="streamingMessage"
+          :assistant-label="assistantLabel"
           max-w="[calc(100%-3.5rem)]"
           w-full self-start pb-3 pl-3
           class="chat-history"

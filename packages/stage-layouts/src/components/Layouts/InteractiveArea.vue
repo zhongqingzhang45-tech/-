@@ -6,6 +6,7 @@ import { useAnalytics } from '@proj-airi/stage-ui/composables/use-analytics'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useChatStreamStore } from '@proj-airi/stage-ui/stores/chat/stream-store'
+import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
 import { useDeferredMount } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
@@ -20,6 +21,8 @@ const { isReady } = useDeferredMount()
 const { sending } = storeToRefs(useChatOrchestratorStore())
 const { messages } = storeToRefs(useChatSessionStore())
 const { streamingMessage } = storeToRefs(useChatStreamStore())
+const companionStore = useCompanionStore()
+const assistantLabel = computed(() => companionStore.displayName)
 
 const isLoading = ref(true)
 const historyMessages = computed(() => messages.value as unknown as ChatHistoryItem[])
@@ -53,6 +56,7 @@ function handleDeleteMessage(index: number) {
             :messages="historyMessages"
             :sending="sending"
             :streaming-message="streamingMessage"
+            :assistant-label="assistantLabel"
             h-full
             variant="desktop"
             @delete-message="handleDeleteMessage($event.index)"

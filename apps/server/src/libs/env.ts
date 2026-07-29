@@ -136,7 +136,7 @@ const EnvSchema = object({
   // From address must be a verified Resend sender (e.g. `noreply@your-domain`).
   RESEND_FROM_EMAIL: optional(string(), 'noreply@airi.moeru.ai'),
   // Optional friendly name; rendered as `Name <email>` per Resend's RFC 5322 display-name format.
-  RESEND_FROM_NAME: optional(string(), 'Project AIRI'),
+  RESEND_FROM_NAME: optional(string(), 'Project Life'),
 
   STRIPE_SECRET_KEY: optional(string()),
   STRIPE_WEBHOOK_SECRET: optional(string()),

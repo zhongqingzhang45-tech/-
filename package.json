@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
-  "description": "Life - 基于 AIRI 的国内版二次元 AI 虚拟伴侣",
+  "description": "Life - 二次元 AI 虚拟伴侣",
   "author": {
     "name": "Life Team",
     "url": "https://github.com/moeru-ai/airi"

@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: AIRI Dashboards
+  - name: Life Dashboards
     orgId: 1
-    folder: AIRI
+    folder: Life
     type: file
     disableDeletion: false
     editable: true

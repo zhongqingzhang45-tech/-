@@ -83,7 +83,7 @@ watch(settings.themeColorsHueDynamic, () => {
 }, { immediate: true })
 
 // Initialize first-time setup check when app mounts
-// NOTICE: Each initialize call is wrapped in try-catch because the full AIRI
+// NOTICE: Each initialize call is wrapped in try-catch because the full Life
 // runtime depends on Live2D SDK, IndexedDB, audio pipelines, etc. In the Life
 // build these may be missing, so we must not let one failure block the others
 // or prevent the UI from rendering.

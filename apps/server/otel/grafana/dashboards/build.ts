@@ -1105,7 +1105,7 @@ const variables = [
 // ---------------------------------------------------------------------------
 
 /**
- * AIRI Server Overview dashboard.
+ * Life Server Overview dashboard.
  *
  * Reading order:
  *   1. Service Health — dense operations screen with request, LLM, provider,
@@ -1162,7 +1162,7 @@ export const dashboard = {
     timezone: 'browser',
     to: 'now',
   },
-  title: 'AIRI Server Overview',
+  title: 'Life Server Overview',
   variables,
 }
 

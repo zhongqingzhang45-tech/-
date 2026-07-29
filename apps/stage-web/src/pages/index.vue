@@ -100,7 +100,7 @@ const features = [
       </div>
 
       <div class="mt-16 text-center text-xs text-neutral-400 dark:text-neutral-600">
-        <p>基于 AIRI 开源框架构建 · 支持 Live2D / VRM 角色</p>
+        <p>你的 AI 伴侣 · 支持 Live2D / VRM 角色</p>
       </div>
     </div>
   </div>

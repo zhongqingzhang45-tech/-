@@ -76,7 +76,7 @@ export async function validateLive2DZip(file: File | Blob): Promise<Live2DValida
     }
   }
 
-  // 3. Basename Collision Audit (AIRI ZipLoader weakness)
+  // 3. Basename Collision Audit (Life ZipLoader weakness)
   const basenames = new Map<string, string[]>()
   allPaths.forEach((p) => {
     if (p.endsWith('/'))
@@ -89,7 +89,7 @@ export async function validateLive2DZip(file: File | Blob): Promise<Live2DValida
 
   for (const [base, paths] of basenames.entries()) {
     if (paths.length > 1) {
-      report.errors.push(`BASENAME COLLISION: Filename "${base}" exists in multiple locations: ${paths.join(', ')}. This causes data loss in AIRI's loader.`)
+      report.errors.push(`BASENAME COLLISION: Filename "${base}" exists in multiple locations: ${paths.join(', ')}. This causes data loss in Life's loader.`)
     }
   }
 

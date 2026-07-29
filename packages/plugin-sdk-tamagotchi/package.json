@@ -3,9 +3,9 @@
   "type": "module",
   "version": "0.11.3",
   "private": true,
-  "description": "Tamagotchi-specific DX helpers for Project AIRI plugins",
+  "description": "Tamagotchi-specific DX helpers for Project Life plugins",
   "author": {
-    "name": "Moeru AI Project AIRI Team",
+    "name": "Moeru AI Project Life Team",
     "email": "airi@moeru.ai",
     "url": "https://github.com/moeru-ai"
   },

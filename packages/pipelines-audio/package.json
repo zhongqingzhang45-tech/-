@@ -3,9 +3,9 @@
   "type": "module",
   "version": "0.11.3",
   "private": true,
-  "description": "Audio pipeline orchestration for AIRI (capture, VAD, encode, stream)",
+  "description": "Audio pipeline orchestration for Life (capture, VAD, encode, stream)",
   "author": {
-    "name": "Moeru AI Project AIRI Team",
+    "name": "Moeru AI Project Life Team",
     "email": "airi@moeru.ai",
     "url": "https://github.com/moeru-ai"
   },

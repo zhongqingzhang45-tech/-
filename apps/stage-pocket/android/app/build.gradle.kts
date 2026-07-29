@@ -20,11 +20,11 @@ val androidTargetSdk = targetSdkVersion
 val appVersionProperties = Properties().apply {
     rootProject.file("app-version.properties").inputStream().use(::load)
 }
-val androidVersionName = appVersionProperties.getProperty("AIRI_VERSION_NAME")
-    ?: error("AIRI_VERSION_NAME is missing in android/app-version.properties")
-val androidVersionCode = appVersionProperties.getProperty("AIRI_VERSION_CODE")
+val androidVersionName = appVersionProperties.getProperty("LIFE_VERSION_NAME")
+    ?: error("LIFE_VERSION_NAME is missing in android/app-version.properties")
+val androidVersionCode = appVersionProperties.getProperty("LIFE_VERSION_CODE")
     ?.toIntOrNull()
-    ?: error("AIRI_VERSION_CODE is missing or invalid in android/app-version.properties")
+    ?: error("LIFE_VERSION_CODE is missing or invalid in android/app-version.properties")
 
 plugins {
     id("com.android.application")

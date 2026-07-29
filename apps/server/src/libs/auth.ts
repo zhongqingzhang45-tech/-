@@ -135,7 +135,7 @@ function buildTrustedClientSeeds(env: Env): TrustedClientSeed[] {
   const clients: TrustedClientSeed[] = []
   clients.push({
     clientId: OIDC_CLIENT_ID_WEB,
-    name: 'AIRI Stage Web',
+    name: 'Life Stage Web',
     type: 'web',
     public: true,
     redirectUris: buildWebRedirectUris(env),
@@ -153,7 +153,7 @@ function buildTrustedClientSeeds(env: Env): TrustedClientSeed[] {
   // obfuscation, not a meaningful confidentiality boundary.
   clients.push({
     clientId: OIDC_CLIENT_ID_ELECTRON,
-    name: 'AIRI Stage Desktop',
+    name: 'Life Stage Desktop',
     type: 'native',
     public: true,
     redirectUris: [
@@ -172,7 +172,7 @@ function buildTrustedClientSeeds(env: Env): TrustedClientSeed[] {
   // Same reasoning as Web: native WebView cannot safely store secrets.
   clients.push({
     clientId: OIDC_CLIENT_ID_POCKET,
-    name: 'AIRI Stage Mobile',
+    name: 'Life Stage Mobile',
     type: 'native',
     public: true,
     redirectUris: [

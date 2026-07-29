@@ -65,13 +65,13 @@ export function getServerAuthBootstrapContext(): ServerAuthBootstrapContext | nu
  * Resolves API-server context carried by server redirects into static auth UI.
  *
  * Use when:
- * - The standalone auth UI serves more than one AIRI environment from the same
+ * - The standalone auth UI serves more than one Life environment from the same
  *   Pages deployment, such as production `accounts.airi.build` handling server-dev
  *   OIDC redirects.
  *
  * Expects:
  * - The server-owned `/auth/*` redirect sets `api_server_url`.
- * - Only known AIRI API origins and localhost development origins are accepted.
+ * - Only known Life API origins and localhost development origins are accepted.
  *
  * Returns:
  * - A bootstrap context using the trusted API origin, or null when no trusted

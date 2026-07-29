@@ -338,9 +338,9 @@ export async function buildApp(deps: AppDeps) {
      */
     .on('GET', '/', c => c.json({
       service: 'airi-api',
-      message: 'This is the Project AIRI API server. Visit https://airi.moeru.ai to use the product, or see the docs at https://airi.moeru.ai/docs.',
-      docs: 'https://airi.moeru.ai/docs',
-      ui: 'https://airi.moeru.ai',
+      message: 'This is the Project Life API server. Visit https://life.moeru.ai to use the product, or see the docs at https://life.moeru.ai/docs.',
+      docs: 'https://life.moeru.ai/docs',
+      ui: 'https://life.moeru.ai',
     }))
 
     /**

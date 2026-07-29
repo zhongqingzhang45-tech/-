@@ -39,7 +39,7 @@ const warningReport: Live2DValidationReport = {
   errors: [],
   warnings: [
     'HEAVY RESOURCE: MOC file is 45.28 MB. This may cause performance issues in web browsers.',
-    'Missing preview image. AIRI can still import this model, but the selector card will use a fallback preview.',
+    'Missing preview image. Life can still import this model, but the selector card will use a fallback preview.',
   ],
   checks: [
     'Entry point identified: model/elena.model3.json',
@@ -61,7 +61,7 @@ const invalidReport: Live2DValidationReport = {
   errors: [
     'Invalid Structure: No .model3.json found and 0 .moc3 files encountered.',
     'Missing thumbnail referenced by model settings.',
-    'BASENAME COLLISION: Filename "texture_00.png" exists in multiple locations: model/textures/texture_00.png, model/expressions/texture_00.png. This causes data loss in AIRI\'s loader.',
+    'BASENAME COLLISION: Filename "texture_00.png" exists in multiple locations: model/textures/texture_00.png, model/expressions/texture_00.png. This causes data loss in Life\'s loader.',
   ],
   warnings: [
     'Archive contains loose files at the root. Put the model files in one folder before zipping.',

@@ -25,12 +25,12 @@ finish-args:
   - --filesystem=home:rw
 
 modules:
-  - name: AIRI-App
+  - name: Life-App
     buildsystem: simple
     build-commands:
       - mkdir -p /app/bin
-      - mkdir -p /app/bin/airi
-      - cp -r ./* /app/bin/airi/
+      - mkdir -p /app/bin/life
+      - cp -r ./* /app/bin/life/
       - install airi.sh /app/bin/airi.sh
       - chmod +x /app/bin/airi/airi.sh
       - chmod +x /app/bin/airi/airi

@@ -25,7 +25,7 @@ jobs:
     name: Build iOS
     runs-on: macos-26
     env:
-      PRODUCT_NAME: 'AIRI'
+      PRODUCT_NAME: 'Life'
       VITE_ENABLE_POSTHOG: 'true'
       UPLOAD_TESTFLIGHT: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.testflight) }}
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}

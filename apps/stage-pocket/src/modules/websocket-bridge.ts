@@ -42,7 +42,7 @@ function postBridgeMessage(command: HostBridgeCommand) {
     return
   }
 
-  throw new Error('AIRI host websocket bridge is unavailable')
+  throw new Error('Life host websocket bridge is unavailable')
 }
 
 function dispatchNativeEvent(payload: string) {
@@ -143,7 +143,7 @@ class HostBridgeConnection {
 function createCloseBeforeOpenError(event: Extract<HostBridgeEvent, { kind: 'close' }>) {
   const reason = event.reason ? ` ${event.reason}` : ''
   const code = typeof event.code === 'number' ? ` with code ${event.code}` : ''
-  return new Error(`AIRI host websocket bridge closed before opening${code}.${reason}`)
+  return new Error(`Life host websocket bridge closed before opening${code}.${reason}`)
 }
 
 export function getHostWebSocketConnector(url: string): ClientConnector<string> | undefined {

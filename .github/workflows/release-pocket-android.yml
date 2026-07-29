@@ -27,7 +27,7 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
     env:
-      PRODUCT_NAME: 'AIRI'
+      PRODUCT_NAME: 'Life'
       # Every current trigger path produces an installable APK artifact, so ship the analytics-enabled build consistently.
       VITE_ENABLE_POSTHOG: 'true'
     steps:

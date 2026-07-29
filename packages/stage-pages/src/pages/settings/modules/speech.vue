@@ -199,7 +199,7 @@ function currentTtsModelId() {
 }
 
 /**
- * Checks whether the selected provider is one of AIRI's official TTS providers.
+ * Checks whether the selected provider is one of Life's official TTS providers.
  */
 function isOfficialTtsProvider(providerId: string) {
   return providerId === OFFICIAL_SPEECH_PROVIDER_ID || providerId === OFFICIAL_SPEECH_STREAMING_PROVIDER_ID
