@@ -173,7 +173,6 @@ const cursorPosition = computed(() => ({
 
 const router = useRouter()
 const companionStore = useCompanionStore()
-const subscriptionStore = useSubscriptionStore()
 
 function goToCompanion() {
   router.push('/companion')
