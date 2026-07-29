@@ -9,7 +9,10 @@ export const useConsciousnessStore = defineStore('consciousness', () => {
   const providersStore = useProvidersStore()
 
   // State
-  const activeProvider = useLocalStorageManualReset<string>('settings/consciousness/active-provider', '')
+  // Default to the built-in official provider so fresh installs don't trip
+  // "Provider metadata for  not found" errors on first paint. Users can
+  // switch to any other provider (or clear the selection) later in settings.
+  const activeProvider = useLocalStorageManualReset<string>('settings/consciousness/active-provider', 'official-provider')
   const activeModel = useLocalStorageManualReset<string>('settings/consciousness/active-model', '')
   const activeCustomModelName = useLocalStorageManualReset<string>('settings/consciousness/active-custom-model', '')
   const expandedDescriptions = refManualReset<Record<string, boolean>>(() => ({}))
