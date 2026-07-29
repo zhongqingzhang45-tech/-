@@ -8,6 +8,7 @@ import { HearingConfig } from '@proj-airi/stage-ui/components/scenarios/dialogs/
 import { useAudioAnalyzer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
+import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
@@ -43,6 +44,7 @@ const { askPermission } = useSettingsAudioDevice()
 const { enabled, stream } = storeToRefs(useSettingsAudioDevice())
 const chatOrchestrator = useChatOrchestratorStore()
 const chatSession = useChatSessionStore()
+const subscriptionStore = useSubscriptionStore()
 const { ingest, onAfterMessageComposed } = chatOrchestrator
 const { messages } = storeToRefs(chatSession)
 const { audioContext } = useAudioContext()
@@ -80,13 +82,22 @@ async function handleSend() {
     })
   }
   catch (error) {
-    // preserve any user input when failed to send the message
-    messageInput.value = [textToSend, messageInput.value.trim()].filter(Boolean).join(' ')
+    // NOTICE: Restore user's typed text for every failure path except the
+    // daily-quota one. If the user ran out of free messages today, re-injecting
+    // the same text on retry just burns another click without benefit — keep
+    // the input empty and let the inline CTA drive upgrade instead.
+    const isQuotaExceeded = error instanceof Error && error.name === 'ChatQuotaExceededError'
+    if (!isQuotaExceeded) {
+      messageInput.value = [textToSend, messageInput.value.trim()].filter(Boolean).join(' ')
+    }
+    const userVisibleMessage = isQuotaExceeded
+      ? `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`
+      : (errorMessageFrom(error) ?? 'Failed to send message')
     chatSession.setSessionMessages(chatSession.activeSessionId, [
       ...messages.value.slice(0, -1),
       {
         role: 'error',
-        content: errorMessageFrom(error) ?? 'Failed to send message',
+        content: userVisibleMessage,
       },
     ])
   }

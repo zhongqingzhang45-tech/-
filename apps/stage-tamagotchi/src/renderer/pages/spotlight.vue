@@ -51,11 +51,13 @@ async function handleSend() {
     })
   }
   catch (error) {
-    await showResultNotification({
-      body: t('tamagotchi.spotlight.errors.prefix', {
+    const isQuotaExceeded = error instanceof Error && error.name === 'ChatQuotaExceededError'
+    const body = isQuotaExceeded
+      ? '今日免费对话次数已用完，升级会员后可无限畅聊～'
+      : t('tamagotchi.spotlight.errors.prefix', {
         message: errorMessageFrom(error) ?? t('tamagotchi.spotlight.errors.unknown'),
-      }),
-    })
+      })
+    await showResultNotification({ body })
   }
   finally {
     sending.value = false
@@ -103,7 +105,7 @@ function handleKeydown(event: KeyboardEvent) {
         :disabled="sending"
         autofocus
         type="text"
-        placeholder="Ask AIRI…"
+        placeholder="问 Life 点什么…"
         :class="[
           'relative z-1',
           'w-full bg-transparent',

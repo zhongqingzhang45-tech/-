@@ -16,6 +16,7 @@ import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/s
 import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
+import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
 import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
@@ -53,6 +54,19 @@ const providersStore = useProvidersStore()
 const consciousnessStore = useConsciousnessStore()
 const { activeProvider: activeChatProvider, activeModel: activeChatModel } = storeToRefs(consciousnessStore)
 const chatStore = useChatOrchestratorStore()
+const chatSessionStore = useChatSessionStore()
+const subscriptionStore = useSubscriptionStore()
+
+function injectVoiceQuotaMessage() {
+  const sessionId = chatSessionStore.activeSessionId
+  chatSessionStore.setSessionMessages(sessionId, [
+    ...chatSessionStore.getSessionMessages(sessionId),
+    {
+      role: 'error' as const,
+      content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+    },
+  ])
+}
 
 const shouldUseStreamInput = computed(() => supportsStreamInput.value && !!stream.value)
 
@@ -89,6 +103,8 @@ async function startAudioInteraction() {
       }
       catch (err) {
         console.error('Failed to send chat from voice:', err)
+        if (err instanceof Error && err.name === 'ChatQuotaExceededError')
+          injectVoiceQuotaMessage()
       }
     })
   }

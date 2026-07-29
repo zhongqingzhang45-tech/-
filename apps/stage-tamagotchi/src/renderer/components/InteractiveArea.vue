@@ -8,6 +8,7 @@ import { ChatHistory, JournalPreviewModal } from '@proj-airi/stage-ui/components
 import { useAnalytics } from '@proj-airi/stage-ui/composables/use-analytics'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
+import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useChatStreamStore } from '@proj-airi/stage-ui/stores/chat/stream-store'
 import { useJournalPreviewStore } from '@proj-airi/stage-ui/stores/journal-preview'
@@ -36,6 +37,7 @@ const chatSyncStore = useChatSyncStore()
 const backgroundStore = useBackgroundStore()
 const journalPreviewStore = useJournalPreviewStore()
 const airiCardStore = useAiriCardStore()
+const subscriptionStore = useSubscriptionStore()
 
 const { messages } = storeToRefs(chatSession)
 const { streamingMessage } = storeToRefs(chatStream)
@@ -105,14 +107,24 @@ async function handleSend() {
     attachmentsToSend.forEach(att => URL.revokeObjectURL(att.url))
   }
   catch (error) {
-    // restore on failure
-    messageInput.value = textToSend
-    attachments.value = attachmentsToSend
+    // NOTICE: Quota-exceeded is not a transient send failure — re-seating the
+    // original user input into the textarea just invites them to click again
+    // and hit the same wall. Swap the body for the Chinese upgrade CTA and
+    // keep the input blank so the inline messaging makes sense.
+    const isQuotaExceeded = error instanceof Error && error.name === 'ChatQuotaExceededError'
+    if (!isQuotaExceeded) {
+      // restore on failure
+      messageInput.value = textToSend
+      attachments.value = attachmentsToSend
+    }
+    const userVisibleMessage = isQuotaExceeded
+      ? `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`
+      : (errorMessageFrom(error) ?? '发送失败，请稍后重试')
     chatSession.setSessionMessages(chatSession.activeSessionId, [
       ...messages.value,
       {
         role: 'error',
-        content: errorMessageFrom(error) ?? 'Failed to send message',
+        content: userVisibleMessage,
       },
     ])
   }

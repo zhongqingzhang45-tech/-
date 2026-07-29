@@ -9,6 +9,7 @@ import { ChatSessionsDrawer } from '@proj-airi/stage-ui/components/scenarios/cha
 import { useAnalytics, useAudioAnalyzer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
+import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useChatMaintenanceStore } from '@proj-airi/stage-ui/stores/chat/maintenance'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useChatStreamStore } from '@proj-airi/stage-ui/stores/chat/stream-store'
@@ -79,6 +80,7 @@ const settingsAudioDevice = useSettingsAudioDevice()
 const { enabled, stream } = storeToRefs(settingsAudioDevice)
 const { ingest, onAfterMessageComposed } = chatOrchestrator
 const { t } = useI18n()
+const subscriptionStore = useSubscriptionStore()
 const { audioContext } = useAudioContext()
 const { startAnalyzer, stopAnalyzer } = useAudioAnalyzer()
 let analyzerSource: MediaStreamAudioSourceNode | undefined
@@ -121,11 +123,21 @@ async function handleSend() {
     })
   }
   catch (error) {
-    messageInput.value = textToSend
-    messages.value.pop()
+    // NOTICE: Quota-exceeded is a user-plan boundary, not a transient failure.
+    // Don't re-insert the optimistic user message (the user can't send it
+    // again without upgrading anyway) and swap the generic "error" body for a
+    // Chinese upgrade CTA that matches the Life product voice.
+    const isQuotaExceeded = error instanceof Error && error.name === 'ChatQuotaExceededError'
+    if (!isQuotaExceeded) {
+      messageInput.value = textToSend
+      messages.value.pop()
+    }
+    const userVisibleMessage = isQuotaExceeded
+      ? `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`
+      : ((error as Error).message || '发送失败，请稍后重试')
     messages.value.push({
       role: 'error',
-      content: (error as Error).message,
+      content: userVisibleMessage,
     })
   }
 }

@@ -24,6 +24,8 @@ import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useVoiceInputSession } from '@proj-airi/stage-ui/composables'
 import { useCanvasPixelIsTransparentAtPoint } from '@proj-airi/stage-ui/composables/canvas-alpha'
 import { useSpeakingStore } from '@proj-airi/stage-ui/stores/audio'
+import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
+import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useHearingSpeechInputPipeline, useHearingStore } from '@proj-airi/stage-ui/stores/modules/hearing'
 import { useOnboardingStore } from '@proj-airi/stage-ui/stores/onboarding'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
@@ -297,6 +299,8 @@ const hearingPipeline = useHearingSpeechInputPipeline()
 const { transcribeForMediaStream, stopStreamingTranscription } = hearingPipeline
 const { error: transcriptionError, supportsStreamInput } = storeToRefs(hearingPipeline)
 const chatSyncStore = useChatSyncStore()
+const chatSessionStore = useChatSessionStore()
+const subscriptionStore = useSubscriptionStore()
 const streamingTranscriptionUnavailable = ref(false)
 const shouldUseStreamInput = computed(() => supportsStreamInput.value && !!stream.value && !streamingTranscriptionUnavailable.value)
 const voiceTranscriptBuffer = createTranscriptBuffer({
@@ -479,6 +483,23 @@ async function sendVoiceInputTextToChat(text: string) {
     await chatSyncStore.requestIngest({ text })
   }
   catch (err) {
+    // NOTICE: Quota-exceeded surfaces as a visible chat error entry instead
+    // of going through the generic "voice input failed" reporter, because the
+    // reporter is wired to caption failures and mic pipeline issues — a
+    // plan-quota error belongs inline with the rest of the chat UX so the
+    // user sees the Chinese upgrade CTA + daily limit, not a technical
+    // report.
+    if (err instanceof Error && err.name === 'ChatQuotaExceededError') {
+      const sessionId = chatSessionStore.activeSessionId
+      chatSessionStore.setSessionMessages(sessionId, [
+        ...chatSessionStore.getSessionMessages(sessionId),
+        {
+          role: 'error' as const,
+          content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+        },
+      ])
+      return
+    }
     reportVoiceInputFailure('send to chat', err)
   }
 }
