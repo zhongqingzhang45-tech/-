@@ -104,5 +104,3 @@ meta:
   layout: empty
   title: 用户协议
 </route>
-</content>
-</invoke>

@@ -4,6 +4,7 @@ import type { PluginOption } from 'vite'
 
 import process from 'node:process'
 
+import { createRequire } from 'node:module'
 import { execSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 
@@ -34,6 +35,38 @@ function isEnvTruthy(value: string | undefined | null): boolean {
 
 const stageUIAssetsRoot = resolve(join(import.meta.dirname, '..', '..', 'packages', 'stage-ui', 'src', 'assets'))
 const sharedCacheDir = resolve(join(import.meta.dirname, '..', '..', '.cache'))
+
+// NOTICE:
+// unplugin-vue-i18n 的 runtimeOnly:true 会把 `import { useI18n } from "vue-i18n"`
+// 重写为 `from "vue-i18n/dist/vue-i18n.runtime.esm-bundler.js"`。
+// rolldown/vite 8 对 exports 字段的 `"./dist/*": "./dist/*"` 通配符映射支持不完整，
+// 需要通过 createRequire 拿到绝对路径再注入 alias，否则 stage-pages 里的页面会报
+// UNLOADABLE_DEPENDENCY。
+// 源码: node_modules/vue-i18n/package.json 的 exports 字段。
+// 移除条件: 升级到支持 exports 通配符的 rolldown 版本后可删除。
+const requireFromPocket = createRequire(import.meta.url)
+const vueI18nRuntimeEsmBundlerPath = requireFromPocket.resolve('vue-i18n/dist/vue-i18n.runtime.esm-bundler.js')
+
+// Life: 当远程构建/沙箱环境无法访问 dist.ayaka.moe / cubism.live2d.com 时，
+// 设置 LIFE_SKIP_ASSET_DOWNLOAD=1 可跳过 Live2D/VRM 模型资产与 Cubism SDK 下载，
+// 让 dev server 在缺资产状态下也能启动（模型加载会在运行时降级）。
+function shouldSkipAssetDownload(): boolean {
+  return process.env.LIFE_SKIP_ASSET_DOWNLOAD === '1' || process.env.LIFE_SKIP_ASSET_DOWNLOAD === 'true'
+}
+
+function buildAssetDownloadPlugins() {
+  if (shouldSkipAssetDownload()) {
+    console.warn('[Life] LIFE_SKIP_ASSET_DOWNLOAD=1, 跳过 Live2D/VRM 模型资产与 Cubism SDK 下载。')
+    return []
+  }
+  return [
+    DownloadLive2DSDK(),
+    Download('https://dist.ayaka.moe/live2d-models/hiyori_free_zh.zip', 'hiyori_free_zh.zip', 'live2d/models', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
+    Download('https://dist.ayaka.moe/live2d-models/hiyori_pro_zh.zip', 'hiyori_pro_zh.zip', 'live2d/models', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
+    Download('https://dist.ayaka.moe/vrm-models/VRoid-Hub/AvatarSample-A/AvatarSample_A.vrm', 'AvatarSample_A.vrm', 'vrm/models/AvatarSample-A', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
+    Download('https://dist.ayaka.moe/vrm-models/VRoid-Hub/AvatarSample-B/AvatarSample_B.vrm', 'AvatarSample_B.vrm', 'vrm/models/AvatarSample-B', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
+  ]
+}
 
 export default defineConfig({
   optimizeDeps: {
@@ -165,14 +198,28 @@ export default defineConfig({
       fullInstall: true,
     }),
 
+    // NOTICE:
+    // unplugin-vue-i18n 的 runtimeOnly:true 会把 `import { useI18n } from "vue-i18n"`
+    // 重写为 `from "vue-i18n/dist/vue-i18n.runtime.esm-bundler.js"`（见 lib/index.mjs
+    // 的 getVueI18nAliasPath）。rolldown/vite 8 对 vue-i18n package.json exports 字段
+    // 的 `"./dist/*": "./dist/*"` 通配符映射支持不完整，resolveId 时报 No such file or
+    // directory。这里在 resolveId 钩子里用 Node 的 createRequire 拿到绝对路径返回，
+    // 绕过 rolldown 的 exports 解析。
+    // 移除条件: 升级到支持 exports 通配符的 rolldown 版本后可删除此插件。
+    {
+      name: 'life-fix-vue-i18n-runtime-resolve',
+      enforce: 'pre',
+      resolveId(source) {
+        if (source === 'vue-i18n/dist/vue-i18n.runtime.esm-bundler.js') {
+          return vueI18nRuntimeEsmBundlerPath
+        }
+      },
+    },
+
     // https://github.com/webfansplz/vite-plugin-vue-devtools
     VueDevTools(),
 
-    DownloadLive2DSDK(),
-    Download('https://dist.ayaka.moe/live2d-models/hiyori_free_zh.zip', 'hiyori_free_zh.zip', 'live2d/models', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
-    Download('https://dist.ayaka.moe/live2d-models/hiyori_pro_zh.zip', 'hiyori_pro_zh.zip', 'live2d/models', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
-    Download('https://dist.ayaka.moe/vrm-models/VRoid-Hub/AvatarSample-A/AvatarSample_A.vrm', 'AvatarSample_A.vrm', 'vrm/models/AvatarSample-A', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
-    Download('https://dist.ayaka.moe/vrm-models/VRoid-Hub/AvatarSample-B/AvatarSample_B.vrm', 'AvatarSample_B.vrm', 'vrm/models/AvatarSample-B', { parentDir: stageUIAssetsRoot, cacheDir: sharedCacheDir }),
+    ...buildAssetDownloadPlugins(),
 
     ...isEnvTruthy(process.env.VITE_CAP_SYNC_IOS_AFTER_BUILD ?? '')
       ? [{

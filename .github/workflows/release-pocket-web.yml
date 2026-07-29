@@ -1,0 +1,97 @@
+name: Release Pocket (Web)
+
+permissions:
+  contents: write
+  actions: read
+
+on:
+  release:
+    types:
+      - prereleased
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: Build only (no upload to release)
+        required: false
+        default: false
+        type: boolean
+      tag:
+        description: Specific tag for the release upload
+        required: false
+        type: string
+      skip_asset_download:
+        description: Skip Live2D/VRM asset download (produces a build without bundled models)
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build Web bundle
+    runs-on: ubuntu-latest
+    env:
+      PRODUCT_NAME: 'Life'
+      VITE_ENABLE_POSTHOG: 'true'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build:packages
+
+      - name: Validate workflow dispatch release tag
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.build_only && inputs.tag == '' }}
+        run: |
+          echo "workflow_dispatch release uploads require the tag input"
+          exit 1
+
+      - name: Build web assets
+        run: pnpm -F @proj-airi/stage-web run build
+        env:
+          # Allow callers to produce a model-less bundle for environments where
+          # dist.ayaka.moe / cubism.live2d.com are unreachable. The runtime
+          # will degrade gracefully when models are absent.
+          LIFE_SKIP_ASSET_DOWNLOAD: ${{ inputs.skip_asset_download && '1' || '0' }}
+
+      - name: Package web bundle
+        env:
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          VERSION="${RELEASE_TAG_NAME#v}"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(sed -n 's/^LIFE_VERSION_NAME=//p' apps/stage-pocket/android/app-version.properties)"
+          fi
+
+          BUNDLE_NAME="${PRODUCT_NAME}-${VERSION}-web.zip"
+          BUNDLE_DIR="apps/stage-web/bundle"
+
+          mkdir -p "$BUNDLE_DIR"
+          # Zip the dist output preserving relative paths so it can be unpacked
+          # into any static host (nginx, Cloudflare Pages, Vercel, etc.).
+          (cd apps/stage-web && zip -r "$BUNDLE_DIR/$BUNDLE_NAME" dist)
+
+          echo "BUNDLE_NAME=$BUNDLE_NAME" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Upload web bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BUNDLE_NAME }}
+          path: apps/stage-web/bundle/${{ env.BUNDLE_NAME }}
+          if-no-files-found: error
+
+      - name: Upload to GitHub Releases
+        id: upload-github-release
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.build_only) }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/stage-web/bundle/${{ env.BUNDLE_NAME }}
+          append_body: true
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
