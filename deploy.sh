@@ -20,9 +20,9 @@ warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
 
 # ---------- 配置 ----------
-GITEE_REPO="https://gitee.com/lifeos20/airi.git"
-GITEE_REPO_AUTH="https://oauth2:24d31e4a13d1d3fd1efe4d106784c875@gitee.com/lifeos20/airi.git"
-APP_DIR="$HOME/airi"
+GITEE_REPO="https://gitee.com/lifeos20/life.git"
+GITEE_REPO_AUTH="https://oauth2:70de1a8f93c4080c2c70c9ae0b53f6a2@gitee.com/lifeos20/life.git"
+APP_DIR="$HOME/life"
 SERVER_PORT=3000
 
 # 数据库配置
