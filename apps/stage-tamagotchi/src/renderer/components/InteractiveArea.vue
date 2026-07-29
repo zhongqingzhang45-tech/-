@@ -7,6 +7,7 @@ import { useStopSpeakingButton } from '@proj-airi/stage-layouts/composables/useS
 import { ChatHistory, JournalPreviewModal } from '@proj-airi/stage-ui/components'
 import { useAnalytics } from '@proj-airi/stage-ui/composables/use-analytics'
 import { useBackgroundStore } from '@proj-airi/stage-ui/stores/background'
+import type { ErrorMessage } from '@proj-airi/core-agent'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
@@ -117,14 +118,16 @@ async function handleSend() {
       messageInput.value = textToSend
       attachments.value = attachmentsToSend
     }
-    const userVisibleMessage = isQuotaExceeded
-      ? `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`
-      : (errorMessageFrom(error) ?? '发送失败，请稍后重试')
+    const quotaMessage: ErrorMessage = {
+      role: 'error',
+      content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+      meta: { type: 'quota-exceeded', limit: subscriptionStore.dailyChatLimit.value },
+    }
     chatSession.setSessionMessages(chatSession.activeSessionId, [
       ...messages.value,
-      {
+      isQuotaExceeded ? quotaMessage : {
         role: 'error',
-        content: userVisibleMessage,
+        content: errorMessageFrom(error) ?? 'Failed to send message',
       },
     ])
   }
@@ -288,6 +291,7 @@ async function handleCleanupMessages() {
         @delete-message="handleDeleteMessage($event.index)"
         @retry-message="handleRetryMessage($event.index)"
         @tool-call-rerun="handleToolCallRerun"
+        @upgrade="router.push('/subscription')"
       />
     </div>
 

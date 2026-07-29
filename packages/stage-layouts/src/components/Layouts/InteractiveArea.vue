@@ -57,6 +57,7 @@ function handleDeleteMessage(index: number) {
             variant="desktop"
             @delete-message="handleDeleteMessage($event.index)"
             @tool-call-rerun="rerunToolCall"
+            @upgrade="$router.push('/subscription')"
             @vue:mounted="isLoading = false"
           />
         </div>

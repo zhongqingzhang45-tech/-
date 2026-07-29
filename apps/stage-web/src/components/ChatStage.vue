@@ -15,6 +15,7 @@ import { HoloCoupon } from '@proj-airi/stage-ui/components'
 import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
+import type { ErrorMessage } from '@proj-airi/core-agent'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useCompanionStore } from '@proj-airi/stage-ui/stores/companion'
@@ -57,14 +58,16 @@ const chatStore = useChatOrchestratorStore()
 const chatSessionStore = useChatSessionStore()
 const subscriptionStore = useSubscriptionStore()
 
-function injectVoiceQuotaMessage() {
+function injectVoiceQuotaMessage(): void {
+  const message: ErrorMessage = {
+    role: 'error',
+    content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+    meta: { type: 'quota-exceeded', limit: subscriptionStore.dailyChatLimit.value },
+  }
   const sessionId = chatSessionStore.activeSessionId
   chatSessionStore.setSessionMessages(sessionId, [
     ...chatSessionStore.getSessionMessages(sessionId),
-    {
-      role: 'error' as const,
-      content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
-    },
+    message,
   ])
 }
 

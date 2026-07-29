@@ -34,6 +34,7 @@ const emit = defineEmits<{
   (e: 'deleteMessage', payload: { message: ChatHistoryItem, index: number, key: string | number }): void
   (e: 'retryMessage', payload: { message: ChatHistoryItem, index: number, key: string | number }): void
   (e: 'toolCallRerun', payload: { message: ChatHistoryItem, index: number, key: string | number, toolCallId: string, toolName: string, args: string }): void
+  (e: 'upgrade', payload: { message: ChatHistoryItem, index: number, key: string | number }): void
 }>()
 
 const chatHistoryRef = ref<HTMLDivElement>()
@@ -114,6 +115,14 @@ function emitToolCallRerun(
     ...payload,
   })
 }
+
+function emitUpgrade(message: ChatHistoryItem, index: number) {
+  emit('upgrade', {
+    message,
+    index,
+    key: getChatHistoryItemKey(message, index),
+  })
+}
 </script>
 
 <template>
@@ -135,6 +144,7 @@ function emitToolCallRerun(
           @copy="emitCopyMessage(message, index)"
           @retry="emitRetryMessage(message, index)"
           @delete="emitDeleteMessage(message, index)"
+          @upgrade="emitUpgrade(message, index)"
         />
         <ChatAssistantItem
           v-else-if="message.role === 'assistant'"

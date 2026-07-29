@@ -8,6 +8,7 @@ import { ChatHistory, HearingConfigDialog } from '@proj-airi/stage-ui/components
 import { ChatSessionsDrawer } from '@proj-airi/stage-ui/components/scenarios/chat'
 import { useAnalytics, useAudioAnalyzer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
+import type { ErrorMessage } from '@proj-airi/core-agent'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useChatMaintenanceStore } from '@proj-airi/stage-ui/stores/chat/maintenance'
@@ -22,7 +23,7 @@ import { useResizeObserver, useScreenSafeArea } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 import ViewControls from '../Layouts/InteractiveArea/Actions/ViewControls.vue'
 import IndicatorMicVolume from '../Widgets/IndicatorMicVolume.vue'
@@ -77,6 +78,7 @@ const { themeColorsHueDynamic } = storeToRefs(useSettings())
 const { viewControlsEnabled: l2dViewCtrlEnabled } = useL2dViewControl()
 const { viewControlsEnabled: threeViewCtrlEnabled } = useThreeViewControl()
 const settingsAudioDevice = useSettingsAudioDevice()
+const router = useRouter()
 const { enabled, stream } = storeToRefs(settingsAudioDevice)
 const { ingest, onAfterMessageComposed } = chatOrchestrator
 const { t } = useI18n()
@@ -132,12 +134,14 @@ async function handleSend() {
       messageInput.value = textToSend
       messages.value.pop()
     }
-    const userVisibleMessage = isQuotaExceeded
-      ? `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`
-      : ((error as Error).message || '发送失败，请稍后重试')
-    messages.value.push({
+    const quotaMessage: ErrorMessage = {
       role: 'error',
-      content: userVisibleMessage,
+      content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+      meta: { type: 'quota-exceeded', limit: subscriptionStore.dailyChatLimit.value },
+    }
+    messages.value.push(isQuotaExceeded ? quotaMessage : {
+      role: 'error',
+      content: (error as Error).message || '发送失败，请稍后重试',
     })
   }
 }
@@ -199,6 +203,7 @@ onMounted(() => {
           ]"
           @delete-message="handleDeleteMessage($event.index)"
           @tool-call-rerun="rerunToolCall"
+          @upgrade="router.push('/subscription')"
         />
       </Transition>
     </KeepAlive>

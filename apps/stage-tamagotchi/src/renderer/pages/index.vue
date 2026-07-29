@@ -23,6 +23,7 @@ import {
 import { WidgetStage } from '@proj-airi/stage-ui/components/scenes'
 import { useVoiceInputSession } from '@proj-airi/stage-ui/composables'
 import { useCanvasPixelIsTransparentAtPoint } from '@proj-airi/stage-ui/composables/canvas-alpha'
+import type { ErrorMessage } from '@proj-airi/core-agent'
 import { useSpeakingStore } from '@proj-airi/stage-ui/stores/audio'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
 import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
@@ -490,13 +491,15 @@ async function sendVoiceInputTextToChat(text: string) {
     // user sees the Chinese upgrade CTA + daily limit, not a technical
     // report.
     if (err instanceof Error && err.name === 'ChatQuotaExceededError') {
+      const message: ErrorMessage = {
+        role: 'error',
+        content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+        meta: { type: 'quota-exceeded', limit: subscriptionStore.dailyChatLimit.value },
+      }
       const sessionId = chatSessionStore.activeSessionId
       chatSessionStore.setSessionMessages(sessionId, [
         ...chatSessionStore.getSessionMessages(sessionId),
-        {
-          role: 'error' as const,
-          content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
-        },
+        message,
       ])
       return
     }

@@ -7,6 +7,7 @@ import { ChatSessionsDrawer } from '@proj-airi/stage-ui/components/scenarios/cha
 import { HearingConfig } from '@proj-airi/stage-ui/components/scenarios/dialogs/audio-input/index'
 import { useAudioAnalyzer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
+import type { ErrorMessage } from '@proj-airi/core-agent'
 import { useChatOrchestratorStore } from '@proj-airi/stage-ui/stores/chat'
 import { useSubscriptionStore } from '@proj-airi/stage-ui/stores/companion/subscription'
 import { useChatSessionStore } from '@proj-airi/stage-ui/stores/chat/session-store'
@@ -19,6 +20,7 @@ import { storeToRefs } from 'pinia'
 import { DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuRoot, DropdownMenuTrigger, PopoverContent, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import IndicatorMicVolume from './IndicatorMicVolume.vue'
 
@@ -39,6 +41,8 @@ const lastEnterTime = ref(0)
 const providersStore = useProvidersStore()
 const { activeProvider, activeModel } = storeToRefs(useConsciousnessStore())
 const { themeColorsHueDynamic } = storeToRefs(useSettings())
+
+const router = useRouter()
 
 const { askPermission } = useSettingsAudioDevice()
 const { enabled, stream } = storeToRefs(useSettingsAudioDevice())
@@ -90,14 +94,16 @@ async function handleSend() {
     if (!isQuotaExceeded) {
       messageInput.value = [textToSend, messageInput.value.trim()].filter(Boolean).join(' ')
     }
-    const userVisibleMessage = isQuotaExceeded
-      ? `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`
-      : (errorMessageFrom(error) ?? 'Failed to send message')
+    const quotaMessage: ErrorMessage = {
+      role: 'error',
+      content: `今日免费对话次数已用完（${subscriptionStore.dailyChatLimit.value} 条/天），升级会员后可无限畅聊～`,
+      meta: { type: 'quota-exceeded', limit: subscriptionStore.dailyChatLimit.value },
+    }
     chatSession.setSessionMessages(chatSession.activeSessionId, [
       ...messages.value.slice(0, -1),
-      {
+      isQuotaExceeded ? quotaMessage : {
         role: 'error',
-        content: userVisibleMessage,
+        content: errorMessageFrom(error) ?? 'Failed to send message',
       },
     ])
   }

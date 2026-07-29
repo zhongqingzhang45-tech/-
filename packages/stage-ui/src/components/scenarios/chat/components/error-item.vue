@@ -26,7 +26,10 @@ const emit = defineEmits<{
   (e: 'copy'): void
   (e: 'retry'): void
   (e: 'delete'): void
+  (e: 'upgrade'): void
 }>()
+
+const isQuotaExceeded = computed(() => props.message.meta?.type === 'quota-exceeded')
 
 const boxClasses = computed(() => [
   'min-w-0',
@@ -77,11 +80,25 @@ const copyText = computed(() => getChatHistoryItemCopyText(props.message as Chat
             :content="message.content"
             class="whitespace-pre-wrap break-all text-violet-500 dark:text-violet-300"
           />
+          <div
+            v-if="isQuotaExceeded"
+            class="mt-2 flex flex-wrap gap-2"
+          >
+            <Button
+              size="sm"
+              variant="default"
+              class="bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
+              icon="i-solar:crown-bold-duotone"
+              @click="emit('upgrade')"
+            >
+              升级会员
+            </Button>
+          </div>
         </div>
       </template>
     </ChatActionMenu>
     <div
-      v-if="canRetry && !showPlaceholder"
+      v-if="canRetry && !showPlaceholder && !isQuotaExceeded"
       :class="[
         'self-end mt-1 w-fit',
       ]"

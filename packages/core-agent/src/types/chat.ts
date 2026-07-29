@@ -38,6 +38,10 @@ export type ChatMessage = ChatAssistantMessage | SystemMessage | ToolMessage | U
 export interface ErrorMessage {
   role: 'error'
   content: string
+  meta?: {
+    type: 'quota-exceeded'
+    limit?: number
+  }
 }
 
 export interface ContextMessage extends ContextUpdate<Record<string, unknown>, unknown> {
