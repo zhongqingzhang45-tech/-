@@ -18,6 +18,7 @@ import {
   AIRI_CHAT_SESSION_ID_HEADER,
 } from '../libs/analytics-headers'
 import { extractMessageText, isCloudSyncableMessage } from '../libs/chat-sync'
+import { useSubscriptionStore } from './companion/subscription'
 import { createMinecraftContext } from './chat/context-providers'
 import { useChatContextStore } from './chat/context-store'
 import { useChatSessionStore } from './chat/session-store'
@@ -368,6 +369,13 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       const artistry = cardStore.activeCard?.extensions?.airi?.modules?.artistry
       if (artistry?.autonomousEnabled && artistry?.autonomousTarget === 'assistant')
         void artistryAutonomousStore.runArtistTask(messageText, toProviderHistory(sessionMessages))
+
+      // NOTICE: Count one daily-chat consumption after the assistant's turn has
+      // been fully produced rather than at user-submit time. Transient failures
+      // (network blip, 429 from upstream, WebSocket mid-stream drop) that get
+      // retried should not silently burn a free-tier user's quota — the user
+      // only "gets" one turn they can read, so we only deduct one.
+      useSubscriptionStore().recordChat()
     },
   })
 
@@ -381,6 +389,17 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     options: ChatOrchestratorSendOptions,
     targetSessionId?: string,
   ) {
+    // NOTICE: Enforce free-tier daily quota at the send entry point so no
+    // inference work is scheduled for already-over-limit users. Throwing
+    // lets the UI layer render the upgrade CTA instead of a generic chat
+    // error. We intentionally don't catch here — the caller handles the
+    // user-visible surface (toast + banner).
+    const subscription = useSubscriptionStore()
+    if (!subscription.canChat()) {
+      const error = new Error('Daily chat limit reached for free tier')
+      error.name = 'ChatQuotaExceededError'
+      throw error
+    }
     return runtime.ingest(sendingMessage, options, targetSessionId)
   }
 
